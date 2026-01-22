@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # Event Planner Core API
+  event-planner-core:
+    build: .
+    container_name: event-planner-core
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      # Server Configuration
+      NODE_ENV: development
+      PORT: 3001
+      
+      # Database Configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: event_planner_core
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      
+      # Auth Service Configuration
+      AUTH_SERVICE_URL: http://event-planner-auth:3000
+      AUTH_SERVICE_TOKEN: your_auth_service_token
+      
+      # JWT Configuration
+      JWT_SECRET: your_jwt_secret_for_validation
+      
+      # CORS Configuration
+      CORS_ORIGIN: http://localhost:3000
+      
+      # Logging
+      LOG_LEVEL: info
+      LOG_FILE_PATH: logs
+      
+      # Rate Limiting
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX_REQUESTS: 100
+    networks:
+      - event-planner-network
+    depends_on:
+      - postgres
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: event-planner-core-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: event_planner_core
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    networks:
+      - event-planner-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d event_planner_core"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Volumes
+volumes:
+  postgres_data:
+    driver: local
+
+# Networks
+networks:
+  event-planner-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
