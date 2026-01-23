@@ -7,41 +7,141 @@ const {
   SecurityErrorHandler,
   ConflictError 
 } = require('../../utils/errors');
+const { 
+  createResponse,
+  successResponse,
+  errorResponse,
+  validationErrorResponse,
+  notFoundResponse,
+  unauthorizedResponse,
+  forbiddenResponse,
+  conflictResponse,
+  serverErrorResponse,
+  badRequestResponse,
+  createdResponse,
+  paginatedResponse
+} = require('../../utils/response');
+const { recordSecurityEvent, recordBusinessOperation } = require('../../middleware/metrics');
 
 class GuestsController {
   async createGuest(req, res, next) {
     try {
-      // Security: Validate user permissions
+      // Validation des entrées
+      const { first_name, last_name, email, phone } = req.body;
+      
+      // Validation du prénom
+      if (!first_name || typeof first_name !== 'string' || first_name.trim().length < 2) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'first_name',
+          message: 'Le prénom est requis et doit contenir au moins 2 caractères'
+        }));
+      }
+      
+      if (first_name.length > 100) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'first_name',
+          message: 'Le prénom ne peut pas dépasser 100 caractères'
+        }));
+      }
+      
+      // Validation du nom
+      if (!last_name || typeof last_name !== 'string' || last_name.trim().length < 2) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'last_name',
+          message: 'Le nom est requis et doit contenir au moins 2 caractères'
+        }));
+      }
+      
+      if (last_name.length > 100) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'last_name',
+          message: 'Le nom ne peut pas dépasser 100 caractères'
+        }));
+      }
+      
+      // Validation de l'email
+      if (!email) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'email',
+          message: 'L\'email est requis'
+        }));
+      }
+      
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'email',
+          message: 'L\'email n\'est pas valide'
+        }));
+      }
+      
+      if (email.length > 255) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'email',
+          message: 'L\'email ne peut pas dépasser 255 caractères'
+        }));
+      }
+      
+      // Validation du téléphone si fourni
+      if (phone) {
+        const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+        if (!phoneRegex.test(phone)) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'phone',
+            message: 'Le numéro de téléphone n\'est pas valide (format international)'
+          }));
+        }
+      }
+      
+      // Sécurité: Validation utilisateur
       if (!req.user || !req.user.id) {
-        throw new AuthorizationError('User authentication required');
+        recordSecurityEvent('unauthorized_guest_creation', 'high');
+        return res.status(401).json(unauthorizedResponse(
+          'Utilisateur non authentifié'
+        ));
       }
 
-      // Security: Rate limiting check
+      // Sécurité: Vérification rate limiting
       if (req.rateLimit && req.rateLimit.remaining === 0) {
-        throw SecurityErrorHandler.handleRateLimit(req);
+        recordSecurityEvent('rate_limit_exceeded', 'medium');
+        const rateLimitError = SecurityErrorHandler.handleRateLimit(req);
+        return res.status(429).json(errorResponse(
+          rateLimitError.message,
+          null,
+          'RATE_LIMIT_EXCEEDED'
+        ));
       }
 
-      // Security: Validate email format and check for suspicious patterns
-      const { email } = req.body;
-      if (email && (email.includes('..') || email.includes('://') || email.length > 255)) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'Suspicious email pattern detected');
+      // Sécurité: Détection de patterns suspects dans l'email
+      if (email && (email.includes('..') || email.includes('://') || email.includes('<script>') || email.includes('javascript:'))) {
+        recordSecurityEvent('suspicious_email_pattern', 'high');
+        const securityError = SecurityErrorHandler.handleInvalidInput(req, 'Suspicious email pattern detected');
+        return res.status(403).json(errorResponse(
+          securityError.message,
+          null,
+          'SECURITY_VIOLATION'
+        ));
       }
 
       const result = await guestsService.createGuest(req.body, req.user.id);
       
       if (!result.success) {
-        if (result.error && result.error.includes('already exists')) {
-          throw new ConflictError(result.error);
+        if (result.error && result.error.includes('existe déjà')) {
+          return res.status(409).json(conflictResponse(result.error));
+        }
+        if (result.error && result.error.includes('validation')) {
+          return res.status(400).json(validationErrorResponse(result.details || result.error));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.status(201).json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
+      recordBusinessOperation('guest_created', 'success');
+      res.status(201).json(createdResponse(
+        result.message || 'Invité créé avec succès',
+        result.data
+      ));
     } catch (error) {
+      recordBusinessOperation('guest_created', 'error');
       next(error);
     }
   }
@@ -50,69 +150,114 @@ class GuestsController {
     try {
       const { id } = req.params;
       
-      // Security: Validate ID parameter
-      if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid guest ID provided');
+      // Validation du paramètre ID
+      if (!id) {
+        return res.status(400).json(badRequestResponse(
+          'L\'ID de l\'invité est requis'
+        ));
       }
-
+      
       const guestId = parseInt(id);
       
-      // Security: Check for potential SQL injection patterns
-      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in guest ID');
+      if (isNaN(guestId) || guestId <= 0) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID de l\'invité doit être un nombre entier positif'
+        }));
+      }
+
+      // Sécurité: Détection de tentatives d'injection
+      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*') || id.toString().includes('DROP') || id.toString().includes('DELETE')) {
+        recordSecurityEvent('sql_injection_attempt', 'critical');
+        const securityError = SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in guest ID');
+        return res.status(403).json(errorResponse(
+          securityError.message,
+          null,
+          'SECURITY_VIOLATION'
+        ));
       }
 
       const result = await guestsService.getGuestById(guestId, req.user.id);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Guest');
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Invité'));
+        }
+        if (result.error && result.error.includes('accès')) {
+          return res.status(403).json(forbiddenResponse(result.error));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      // Security: Log access to sensitive personal data
-      console.info('Guest data accessed:', {
-        guestId,
-        userId: req.user.id,
-        ip: req.ip,
-        timestamp: new Date().toISOString()
-      });
-
-      res.json({
-        success: true,
-        data: result.data
-      });
+      recordBusinessOperation('guest_viewed', 'success');
+      res.json(successResponse(
+        'Invité récupéré avec succès',
+        result.data
+      ));
     } catch (error) {
+      recordBusinessOperation('guest_viewed', 'error');
       next(error);
     }
   }
 
   async getGuests(req, res, next) {
     try {
-      // Security: Validate query parameters
+      // Validation des paramètres de requête
       const { page, limit, status, search, event_id } = req.query;
       
+      // Validation du paramètre page
       if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
-        throw new ValidationError('Invalid page parameter');
+        return res.status(400).json(validationErrorResponse({
+          field: 'page',
+          message: 'Le numéro de page doit être un entier positif'
+        }));
       }
       
+      // Validation du paramètre limit
       if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
-        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
+        return res.status(400).json(validationErrorResponse({
+          field: 'limit',
+          message: 'La limite doit être un entier entre 1 et 100'
+        }));
       }
 
+      // Validation du paramètre search
       if (search && search.length > 255) {
-        throw new ValidationError('Search query too long (max 255 characters)');
+        return res.status(400).json(validationErrorResponse({
+          field: 'search',
+          message: 'La recherche ne peut pas dépasser 255 caractères'
+        }));
       }
 
-      // Security: Check for XSS patterns in search
-      if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onload='))) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in search query');
+      // Sécurité: Détection XSS dans la recherche
+      if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onerror=') || search.includes('onclick='))) {
+        recordSecurityEvent('xss_attempt', 'high');
+        const securityError = SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in guest search');
+        return res.status(403).json(errorResponse(
+          securityError.message,
+          null,
+          'SECURITY_VIOLATION'
+        ));
       }
 
-      // Security: Validate status parameter
-      if (status && !['pending', 'confirmed', 'cancelled'].includes(status)) {
-        throw new ValidationError('Invalid status parameter');
+      // Validation du statut si fourni
+      const validStatuses = ['pending', 'confirmed', 'cancelled'];
+      if (status && !validStatuses.includes(status)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'status',
+          message: `Le statut doit être l'une des valeurs suivantes: ${validStatuses.join(', ')}`
+        }));
+      }
+
+      // Validation de event_id si fourni
+      if (event_id) {
+        const eventId = parseInt(event_id);
+        if (isNaN(eventId) || eventId <= 0) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'event_id',
+            message: 'L\'ID de l\'événement doit être un nombre entier positif'
+          }));
+        }
       }
 
       const options = {
@@ -120,21 +265,36 @@ class GuestsController {
         limit: limit ? parseInt(limit) : 20,
         status,
         search,
-        event_id: event_id ? parseInt(event_id) : null,
+        event_id: event_id ? parseInt(event_id) : undefined,
         userId: req.user.id
       };
 
       const result = await guestsService.getGuests(options);
       
       if (!result.success) {
+        if (result.error && result.error.includes('non autorisé')) {
+          return res.status(403).json(forbiddenResponse(result.error));
+        }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data
-      });
+      // Réponse paginée si pagination
+      if (result.pagination) {
+        recordBusinessOperation('guests_listed', 'success');
+        res.json(paginatedResponse(
+          'Invités récupérés avec succès',
+          result.data,
+          result.pagination
+        ));
+      } else {
+        recordBusinessOperation('guests_listed', 'success');
+        res.json(successResponse(
+          'Invités récupérés avec succès',
+          result.data
+        ));
+      }
     } catch (error) {
+      recordBusinessOperation('guests_listed', 'error');
       next(error);
     }
   }
@@ -455,7 +615,7 @@ class GuestsController {
       }
 
       // Security: Check for XSS in search
-      if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onload='))) {
+      if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onerror=') || search.includes('onclick='))) {
         throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in guest search');
       }
 

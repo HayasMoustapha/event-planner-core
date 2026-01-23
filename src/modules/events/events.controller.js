@@ -6,32 +6,110 @@ const {
   AuthorizationError,
   SecurityErrorHandler 
 } = require('../../utils/errors');
+const { 
+  createResponse,
+  successResponse,
+  errorResponse,
+  validationErrorResponse,
+  notFoundResponse,
+  unauthorizedResponse,
+  forbiddenResponse,
+  conflictResponse,
+  serverErrorResponse,
+  badRequestResponse,
+  createdResponse,
+  paginatedResponse
+} = require('../../utils/response');
+const { recordSecurityEvent, recordBusinessOperation } = require('../../middleware/metrics');
 
 class EventsController {
   async createEvent(req, res, next) {
     try {
-      // Security: Validate user permissions
+      // Validation des entrées
+      const { title, description, event_date, location } = req.body;
+      
+      if (!title || typeof title !== 'string' || title.trim().length < 3) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'title',
+          message: 'Le titre est requis et doit contenir au moins 3 caractères'
+        }));
+      }
+      
+      if (!event_date) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'event_date',
+          message: 'La date de l\'événement est requise'
+        }));
+      }
+      
+      if (!location || typeof location !== 'string' || location.trim().length < 3) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'location',
+          message: 'Le lieu est requis et doit contenir au moins 3 caractères'
+        }));
+      }
+      
+      // Validation de la date
+      const eventDate = new Date(event_date);
+      if (isNaN(eventDate.getTime())) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'event_date',
+          message: 'La date de l\'événement est invalide'
+        }));
+      }
+      
+      if (eventDate < new Date()) {
+        return res.status(400).json(badRequestResponse(
+          'La date de l\'événement ne peut pas être dans le passé'
+        ));
+      }
+      
+      // Validation de la description si présente
+      if (description && (typeof description !== 'string' || description.length > 2000)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'description',
+          message: 'La description doit être une chaîne de caractères de maximum 2000 caractères'
+        }));
+      }
+      
+      // Sécurité: Validation utilisateur
       if (!req.user || !req.user.id) {
-        throw new AuthorizationError('User authentication required');
+        recordSecurityEvent('unauthorized_access_attempt', 'high');
+        return res.status(401).json(unauthorizedResponse(
+          'Utilisateur non authentifié'
+        ));
       }
 
-      // Security: Rate limiting check (would be implemented by middleware)
+      // Sécurité: Vérification rate limiting
       if (req.rateLimit && req.rateLimit.remaining === 0) {
-        throw SecurityErrorHandler.handleRateLimit(req);
+        recordSecurityEvent('rate_limit_exceeded', 'medium');
+        const rateLimitError = SecurityErrorHandler.handleRateLimit(req);
+        return res.status(429).json(errorResponse(
+          rateLimitError.message,
+          null,
+          'RATE_LIMIT_EXCEEDED'
+        ));
       }
 
       const result = await eventsService.createEvent(req.body, req.user.id);
       
       if (!result.success) {
+        if (result.error && result.error.includes('déjà existe')) {
+          return res.status(409).json(conflictResponse(result.error));
+        }
+        if (result.error && result.error.includes('validation')) {
+          return res.status(400).json(validationErrorResponse(result.details || result.error));
+        }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.status(201).json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
+      recordBusinessOperation('event_created', 'success');
+      res.status(201).json(createdResponse(
+        result.message || 'Événement créé avec succès',
+        result.data
+      ));
     } catch (error) {
+      recordBusinessOperation('event_created', 'error');
       next(error);
     }
   }
@@ -40,66 +118,115 @@ class EventsController {
     try {
       const { id } = req.params;
       
-      // Security: Validate ID parameter
-      if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid event ID provided');
+      // Validation du paramètre ID
+      if (!id) {
+        return res.status(400).json(badRequestResponse(
+          'L\'ID de l\'événement est requis'
+        ));
       }
-
+      
       const eventId = parseInt(id);
       
-      // Security: Check for potential SQL injection patterns
-      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in event ID');
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID de l\'événement doit être un nombre entier positif'
+        }));
+      }
+
+      // Sécurité: Détection de tentatives d'injection
+      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*') || id.toString().includes('DROP') || id.toString().includes('DELETE')) {
+        recordSecurityEvent('sql_injection_attempt', 'critical');
+        const securityError = SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in event ID');
+        return res.status(403).json(errorResponse(
+          securityError.message,
+          null,
+          'SECURITY_VIOLATION'
+        ));
       }
 
       const result = await eventsService.getEventById(eventId, req.user.id);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Event');
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
+        }
+        if (result.error && result.error.includes('accès')) {
+          return res.status(403).json(forbiddenResponse(result.error));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      // Security: Log access to sensitive data
+      // Sécurité: Log accès aux données sensibles
       if (result.data && result.data.organizer_id !== req.user.id) {
         console.warn('Access to non-owned event:', {
           eventId,
           userId: req.user.id,
           organizerId: result.data.organizer_id,
-          ip: req.ip
+          ip: req.ip,
+          userAgent: req.get('User-Agent')
         });
+        recordSecurityEvent('unauthorized_event_access', 'medium');
       }
 
-      res.json({
-        success: true,
-        data: result.data
-      });
+      recordBusinessOperation('event_viewed', 'success');
+      res.json(successResponse(
+        'Événement récupéré avec succès',
+        result.data
+      ));
     } catch (error) {
+      recordBusinessOperation('event_viewed', 'error');
       next(error);
     }
   }
 
   async getEvents(req, res, next) {
     try {
-      // Security: Validate query parameters
+      // Validation des paramètres de requête
       const { page, limit, status, search } = req.query;
       
+      // Validation du paramètre page
       if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
-        throw new ValidationError('Invalid page parameter');
+        return res.status(400).json(validationErrorResponse({
+          field: 'page',
+          message: 'Le numéro de page doit être un entier positif'
+        }));
       }
       
+      // Validation du paramètre limit
       if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
-        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
+        return res.status(400).json(validationErrorResponse({
+          field: 'limit',
+          message: 'La limite doit être un entier entre 1 et 100'
+        }));
       }
 
+      // Validation du paramètre search
       if (search && search.length > 255) {
-        throw new ValidationError('Search query too long (max 255 characters)');
+        return res.status(400).json(validationErrorResponse({
+          field: 'search',
+          message: 'La recherche ne peut pas dépasser 255 caractères'
+        }));
       }
 
-      // Security: Check for XSS patterns in search
-      if (search && (search.includes('<script>') || search.includes('javascript:'))) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in search query');
+      // Sécurité: Détection XSS dans la recherche
+      if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onerror=') || search.includes('onclick='))) {
+        recordSecurityEvent('xss_attempt', 'high');
+        const securityError = SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in search query');
+        return res.status(403).json(errorResponse(
+          securityError.message,
+          null,
+          'SECURITY_VIOLATION'
+        ));
+      }
+
+      // Validation du statut si fourni
+      const validStatuses = ['draft', 'published', 'archived'];
+      if (status && !validStatuses.includes(status)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'status',
+          message: `Le statut doit être l'une des valeurs suivantes: ${validStatuses.join(', ')}`
+        }));
       }
 
       const options = {
@@ -113,14 +240,29 @@ class EventsController {
       const result = await eventsService.getEvents(options);
       
       if (!result.success) {
+        if (result.error && result.error.includes('non autorisé')) {
+          return res.status(403).json(forbiddenResponse(result.error));
+        }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data
-      });
+      // Réponse paginée si pagination
+      if (result.pagination) {
+        recordBusinessOperation('events_listed', 'success');
+        res.json(paginatedResponse(
+          'Événements récupérés avec succès',
+          result.data,
+          result.pagination
+        ));
+      } else {
+        recordBusinessOperation('events_listed', 'success');
+        res.json(successResponse(
+          'Événements récupérés avec succès',
+          result.data
+        ));
+      }
     } catch (error) {
+      recordBusinessOperation('events_listed', 'error');
       next(error);
     }
   }
@@ -129,48 +271,115 @@ class EventsController {
     try {
       const { id } = req.params;
       
-      // Security: Validate ID and permissions
-      if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid event ID provided');
+      // Validation du paramètre ID
+      if (!id) {
+        return res.status(400).json(badRequestResponse(
+          'L\'ID de l\'événement est requis'
+        ));
       }
-
+      
       const eventId = parseInt(id);
       
-      // Security: Check ownership before update
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID de l\'événement doit être un nombre entier positif'
+        }));
+      }
+
+      // Validation des données de mise à jour
+      const updateData = req.body;
+      if (!updateData || Object.keys(updateData).length === 0) {
+        return res.status(400).json(badRequestResponse(
+          'Au moins un champ doit être fourni pour la mise à jour'
+        ));
+      }
+
+      // Validation du titre si fourni
+      if (updateData.title && (typeof updateData.title !== 'string' || updateData.title.trim().length < 3)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'title',
+          message: 'Le titre doit contenir au moins 3 caractères'
+        }));
+      }
+
+      // Validation de la date si fournie
+      if (updateData.event_date) {
+        const eventDate = new Date(updateData.event_date);
+        if (isNaN(eventDate.getTime())) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'event_date',
+            message: 'La date de l\'événement est invalide'
+          }));
+        }
+        
+        if (eventDate < new Date()) {
+          return res.status(400).json(badRequestResponse(
+            'La date de l\'événement ne peut pas être dans le passé'
+          ));
+        }
+      }
+
+      // Validation du statut si fourni
+      if (updateData.status && !['draft', 'published', 'archived'].includes(updateData.status)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'status',
+          message: 'Le statut doit être draft, published ou archived'
+        }));
+      }
+
+      // Validation de la description si fournie
+      if (updateData.description && (typeof updateData.description !== 'string' || updateData.description.length > 2000)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'description',
+          message: 'La description doit être une chaîne de maximum 2000 caractères'
+        }));
+      }
+
+      // Validation du lieu si fourni
+      if (updateData.location && (typeof updateData.location !== 'string' || updateData.location.trim().length < 3)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'location',
+          message: 'Le lieu doit contenir au moins 3 caractères'
+        }));
+      }
+
+      // Sécurité: Vérification de l'événement existant
       const existingEvent = await eventsService.getEventById(eventId, req.user.id);
       if (!existingEvent.success) {
-        throw new NotFoundError('Event');
+        if (existingEvent.error && (existingEvent.error.includes('non trouvé') || existingEvent.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
+        }
+        throw new ValidationError(existingEvent.error, existingEvent.details);
       }
 
+      // Sécurité: Vérification des permissions
       if (existingEvent.data.organizer_id !== req.user.id) {
-        throw new AuthorizationError('Only event organizers can update events');
-      }
-
-      // Security: Validate update data
-      const updateData = req.body;
-      if (updateData.status && !['draft', 'published', 'archived'].includes(updateData.status)) {
-        throw new ValidationError('Invalid event status');
-      }
-
-      if (updateData.event_date && new Date(updateData.event_date) < new Date()) {
-        throw new ValidationError('Event date cannot be in the past');
+        recordSecurityEvent('unauthorized_event_update', 'high');
+        return res.status(403).json(forbiddenResponse(
+          'Seul l\'organisateur peut modifier un événement'
+        ));
       }
 
       const result = await eventsService.updateEvent(eventId, updateData, req.user.id);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Event');
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
+        }
+        if (result.error && result.error.includes('conflit')) {
+          return res.status(409).json(conflictResponse(result.error));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
+      recordBusinessOperation('event_updated', 'success');
+      res.json(successResponse(
+        result.message || 'Événement mis à jour avec succès',
+        result.data
+      ));
     } catch (error) {
+      recordBusinessOperation('event_updated', 'error');
       next(error);
     }
   }
@@ -179,40 +388,72 @@ class EventsController {
     try {
       const { id } = req.params;
       
-      // Security: Validate ID and permissions
-      if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid event ID provided');
+      // Validation du paramètre ID
+      if (!id) {
+        return res.status(400).json(badRequestResponse(
+          'L\'ID de l\'événement est requis'
+        ));
       }
-
+      
       const eventId = parseInt(id);
       
-      // Security: Check ownership before deletion
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID de l\'événement doit être un nombre entier positif'
+        }));
+      }
+
+      // Sécurité: Vérification de l'événement existant
       const existingEvent = await eventsService.getEventById(eventId, req.user.id);
       if (!existingEvent.success) {
-        throw new NotFoundError('Event');
+        if (existingEvent.error && (existingEvent.error.includes('non trouvé') || existingEvent.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
+        }
+        throw new ValidationError(existingEvent.error, existingEvent.details);
       }
 
+      // Sécurité: Vérification des permissions
       if (existingEvent.data.organizer_id !== req.user.id) {
-        throw new AuthorizationError('Only event organizers can delete events');
+        recordSecurityEvent('unauthorized_event_deletion', 'high');
+        return res.status(403).json(forbiddenResponse(
+          'Seul l\'organisateur peut supprimer un événement'
+        ));
       }
 
-      // Security: Check if event can be deleted (no tickets sold, etc.)
+      // Validation: Vérifier si l'événement peut être supprimé
       if (existingEvent.data.status === 'published') {
-        throw new ValidationError('Cannot delete published events. Archive them instead.');
+        return res.status(400).json(badRequestResponse(
+          'Impossible de supprimer un événement publié. Archivez-le plutôt.'
+        ));
+      }
+
+      // Validation: Vérifier s'il y a des billets vendus
+      if (existingEvent.data.tickets_sold && existingEvent.data.tickets_sold > 0) {
+        return res.status(400).json(badRequestResponse(
+          'Impossible de supprimer un événement avec des billets vendus'
+        ));
       }
 
       const result = await eventsService.deleteEvent(eventId, req.user.id);
       
       if (!result.success) {
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
+        }
+        if (result.error && result.error.includes('conflit')) {
+          return res.status(409).json(conflictResponse(result.error));
+        }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
+      recordBusinessOperation('event_deleted', 'success');
+      res.json(successResponse(
+        result.message || 'Événement supprimé avec succès',
+        result.data
+      ));
     } catch (error) {
+      recordBusinessOperation('event_deleted', 'error');
       next(error);
     }
   }
@@ -221,44 +462,79 @@ class EventsController {
     try {
       const { id } = req.params;
       
-      // Security: Validate ID and permissions
-      if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid event ID provided');
+      // Validation du paramètre ID
+      if (!id) {
+        return res.status(400).json(badRequestResponse(
+          'L\'ID de l\'événement est requis'
+        ));
       }
-
+      
       const eventId = parseInt(id);
       
-      // Security: Check ownership and business rules
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID de l\'événement doit être un nombre entier positif'
+        }));
+      }
+
+      // Sécurité: Vérification de l'événement existant
       const existingEvent = await eventsService.getEventById(eventId, req.user.id);
       if (!existingEvent.success) {
-        throw new NotFoundError('Event');
+        if (existingEvent.error && (existingEvent.error.includes('non trouvé') || existingEvent.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
+        }
+        throw new ValidationError(existingEvent.error, existingEvent.details);
       }
 
+      // Sécurité: Vérification des permissions
       if (existingEvent.data.organizer_id !== req.user.id) {
-        throw new AuthorizationError('Only event organizers can publish events');
+        recordSecurityEvent('unauthorized_event_publish', 'high');
+        return res.status(403).json(forbiddenResponse(
+          'Seul l\'organisateur peut publier un événement'
+        ));
       }
 
+      // Validation: Vérifier si l'événement peut être publié
       if (existingEvent.data.status !== 'draft') {
-        throw new ValidationError('Only draft events can be published');
+        return res.status(400).json(badRequestResponse(
+          'Seuls les événements en brouillon peuvent être publiés'
+        ));
       }
 
-      // Security: Validate event is ready for publication
+      // Validation: Vérifier si l'événement est prêt pour la publication
       if (!existingEvent.data.title || !existingEvent.data.location || !existingEvent.data.event_date) {
-        throw new ValidationError('Event must have title, location, and date to be published');
+        return res.status(400).json(badRequestResponse(
+          'L\'événement doit avoir un titre, un lieu et une date pour être publié'
+        ));
+      }
+
+      // Validation: Vérifier si la date est dans le futur
+      if (new Date(existingEvent.data.event_date) < new Date()) {
+        return res.status(400).json(badRequestResponse(
+          'Impossible de publier un événement dont la date est dans le passé'
+        ));
       }
 
       const result = await eventsService.publishEvent(eventId, req.user.id);
       
       if (!result.success) {
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
+        }
+        if (result.error && result.error.includes('conflit')) {
+          return res.status(409).json(conflictResponse(result.error));
+        }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
+      recordBusinessOperation('event_published', 'success');
+      res.json(successResponse(
+        result.message || 'Événement publié avec succès',
+        result.data
+      ));
     } catch (error) {
+      recordBusinessOperation('event_published', 'error');
       next(error);
     }
   }
@@ -267,39 +543,65 @@ class EventsController {
     try {
       const { id } = req.params;
       
-      // Security: Validate ID and permissions
-      if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid event ID provided');
+      // Validation du paramètre ID
+      if (!id) {
+        return res.status(400).json(badRequestResponse(
+          'L\'ID de l\'événement est requis'
+        ));
       }
-
+      
       const eventId = parseInt(id);
       
-      // Security: Check ownership
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID de l\'événement doit être un nombre entier positif'
+        }));
+      }
+
+      // Sécurité: Vérification de l'événement existant
       const existingEvent = await eventsService.getEventById(eventId, req.user.id);
       if (!existingEvent.success) {
-        throw new NotFoundError('Event');
+        if (existingEvent.error && (existingEvent.error.includes('non trouvé') || existingEvent.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
+        }
+        throw new ValidationError(existingEvent.error, existingEvent.details);
       }
 
+      // Sécurité: Vérification des permissions
       if (existingEvent.data.organizer_id !== req.user.id) {
-        throw new AuthorizationError('Only event organizers can archive events');
+        recordSecurityEvent('unauthorized_event_archive', 'high');
+        return res.status(403).json(forbiddenResponse(
+          'Seul l\'organisateur peut archiver un événement'
+        ));
       }
 
+      // Validation: Vérifier si l'événement est déjà archivé
       if (existingEvent.data.status === 'archived') {
-        throw new ValidationError('Event is already archived');
+        return res.status(400).json(badRequestResponse(
+          'L\'événement est déjà archivé'
+        ));
       }
 
       const result = await eventsService.archiveEvent(eventId, req.user.id);
       
       if (!result.success) {
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
+        }
+        if (result.error && result.error.includes('conflit')) {
+          return res.status(409).json(conflictResponse(result.error));
+        }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
+      recordBusinessOperation('event_archived', 'success');
+      res.json(successResponse(
+        result.message || 'Événement archivé avec succès',
+        result.data
+      ));
     } catch (error) {
+      recordBusinessOperation('event_archived', 'error');
       next(error);
     }
   }
@@ -308,34 +610,58 @@ class EventsController {
     try {
       const { id } = req.params;
       
-      // Security: Validate ID and permissions
-      if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid event ID provided');
+      // Validation du paramètre ID
+      if (!id) {
+        return res.status(400).json(badRequestResponse(
+          'L\'ID de l\'événement est requis'
+        ));
       }
-
+      
       const eventId = parseInt(id);
       
-      // Security: Check ownership for stats access
-      const existingEvent = await eventsService.getEventById(eventId, req.user.id);
-      if (!existingEvent.success) {
-        throw new NotFoundError('Event');
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID de l\'événement doit être un nombre entier positif'
+        }));
       }
 
+      // Sécurité: Vérification de l'événement existant
+      const existingEvent = await eventsService.getEventById(eventId, req.user.id);
+      if (!existingEvent.success) {
+        if (existingEvent.error && (existingEvent.error.includes('non trouvé') || existingEvent.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
+        }
+        throw new ValidationError(existingEvent.error, existingEvent.details);
+      }
+
+      // Sécurité: Vérification des permissions pour les stats
       if (existingEvent.data.organizer_id !== req.user.id) {
-        throw new AuthorizationError('Only event organizers can view event statistics');
+        recordSecurityEvent('unauthorized_stats_access', 'high');
+        return res.status(403).json(forbiddenResponse(
+          'Seul l\'organisateur peut voir les statistiques d\'un événement'
+        ));
       }
 
       const result = await eventsService.getEventStats(eventId, req.user.id);
       
       if (!result.success) {
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
+        }
+        if (result.error && result.error.includes('accès')) {
+          return res.status(403).json(forbiddenResponse(result.error));
+        }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data
-      });
+      recordBusinessOperation('event_stats_viewed', 'success');
+      res.json(successResponse(
+        'Statistiques de l\'événement récupérées avec succès',
+        result.data
+      ));
     } catch (error) {
+      recordBusinessOperation('event_stats_viewed', 'error');
       next(error);
     }
   }
