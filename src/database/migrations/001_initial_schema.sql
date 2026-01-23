@@ -3,10 +3,11 @@
 -- Description: Create complete database schema based on event-planner-core-diagram.md
 -- Author: Event Planner Team
 -- Created: 2024-01-24
+-- Note: Database 'event_planner_core' should be created manually
 
 -- Create database if not exists
-CREATE DATABASE IF NOT EXISTS event_planner_core;
-\c event_planner_core;
+CREATE DATABASE IF NOT EXISTS event_planner_payments;
+\c event_planner_payments;
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -99,6 +100,21 @@ CREATE TABLE IF NOT EXISTS ticket_types (
     updated_by BIGINT
 );
 
+-- Ticket Templates table
+CREATE TABLE IF NOT EXISTS ticket_templates (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    preview_url VARCHAR(500),
+    source_files_path VARCHAR(500),
+    is_customizable BOOLEAN DEFAULT FALSE,
+    uid UUID DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_by BIGINT,
+    updated_by BIGINT
+);
+
 -- Tickets table
 CREATE TABLE IF NOT EXISTS tickets (
     id BIGSERIAL PRIMARY KEY,
@@ -111,21 +127,6 @@ CREATE TABLE IF NOT EXISTS tickets (
     ticket_type_id BIGINT NOT NULL REFERENCES ticket_types(id) ON DELETE CASCADE,
     event_guest_id BIGINT NOT NULL REFERENCES event_guests(id) ON DELETE CASCADE,
     ticket_template_id BIGINT REFERENCES ticket_templates(id) ON DELETE SET NULL,
-    uid UUID DEFAULT uuid_generate_v4(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_by BIGINT,
-    updated_by BIGINT
-);
-
--- Ticket Templates table
-CREATE TABLE IF NOT EXISTS ticket_templates (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    preview_url VARCHAR(500),
-    source_files_path VARCHAR(500),
-    is_customizable BOOLEAN DEFAULT FALSE,
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
