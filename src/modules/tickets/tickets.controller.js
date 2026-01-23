@@ -213,6 +213,39 @@ class TicketsController {
     }
   }
 
+  async getTickets(req, res) {
+    try {
+      const { page, limit, status, ticket_type_id, event_id } = req.query;
+      const options = {
+        page: parseInt(page) || 1,
+        limit: parseInt(limit) || 20,
+        status,
+        ticket_type_id: ticket_type_id ? parseInt(ticket_type_id) : undefined,
+        event_id: event_id ? parseInt(event_id) : undefined
+      };
+
+      const result = await ticketsService.getTickets(options);
+      
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } catch (error) {
+      console.error('Controller error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
+
   async getTicketsByEvent(req, res) {
     try {
       const { eventId } = req.params;
