@@ -91,11 +91,43 @@ CREATE TABLE IF NOT EXISTS tickets (
     ticket_code VARCHAR(255) UNIQUE NOT NULL,
     qr_code_data TEXT,
     ticket_type_id BIGINT NOT NULL REFERENCES ticket_types(id) ON DELETE CASCADE,
+    ticket_template_id BIGINT REFERENCES ticket_templates(id) ON DELETE SET NULL,
     event_guest_id BIGINT NOT NULL REFERENCES event_guests(id) ON DELETE CASCADE,
     is_validated BOOLEAN DEFAULT FALSE,
     validated_at TIMESTAMP WITH TIME ZONE,
     price DECIMAL(10,2) DEFAULT 0,
     currency VARCHAR(3) DEFAULT 'EUR',
+    uid UUID DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_by BIGINT,
+    updated_by BIGINT
+);
+
+-- Ticket Templates table (for ticket design templates)
+CREATE TABLE IF NOT EXISTS ticket_templates (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    preview_url VARCHAR(500),
+    source_files_path VARCHAR(500),
+    is_customizable BOOLEAN DEFAULT FALSE,
+    uid UUID DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_by BIGINT,
+    updated_by BIGINT
+);
+
+-- Ticket Generation Jobs table
+CREATE TABLE IF NOT EXISTS ticket_generation_jobs (
+    id BIGSERIAL PRIMARY KEY,
+    event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+    details JSONB,
+    started_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    error_message TEXT,
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -199,8 +231,15 @@ CREATE INDEX IF NOT EXISTS idx_ticket_types_type ON ticket_types(type);
 
 CREATE INDEX IF NOT EXISTS idx_tickets_ticket_code ON tickets(ticket_code);
 CREATE INDEX IF NOT EXISTS idx_tickets_ticket_type_id ON tickets(ticket_type_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_ticket_template_id ON tickets(ticket_template_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_event_guest_id ON tickets(event_guest_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_is_validated ON tickets(is_validated);
+
+CREATE INDEX IF NOT EXISTS idx_ticket_templates_name ON ticket_templates(name);
+CREATE INDEX IF NOT EXISTS idx_ticket_templates_is_customizable ON ticket_templates(is_customizable);
+CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_event_id ON ticket_generation_jobs(event_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_status ON ticket_generation_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_created_at ON ticket_generation_jobs(created_at);
 
 CREATE INDEX IF NOT EXISTS idx_designers_user_id ON designers(user_id);
 CREATE INDEX IF NOT EXISTS idx_designers_is_verified ON designers(is_verified);
@@ -250,6 +289,12 @@ CREATE TRIGGER update_ticket_types_updated_at BEFORE UPDATE ON ticket_types
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_tickets_updated_at BEFORE UPDATE ON tickets
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_ticket_templates_updated_at BEFORE UPDATE ON ticket_templates
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_ticket_generation_jobs_updated_at BEFORE UPDATE ON ticket_generation_jobs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_designers_updated_at BEFORE UPDATE ON designers

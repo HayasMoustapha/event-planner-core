@@ -2,41 +2,24 @@ const express = require('express');
 const ticketsController = require('./tickets.controller');
 const { authenticate, requirePermission, validate, schemas } = require('../../middleware');
 
+// Import routes
+const ticketTypesRoutes = require('./ticket-types.routes');
+const ticketTemplatesRoutes = require('./ticket-templates.routes');
+const ticketGenerationJobsRoutes = require('./ticket-generation-jobs.routes');
+
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticate);
 
 // Ticket Type Management
-router.post('/types', 
-  requirePermission('tickets.create'),
-  ticketsController.createTicketType
-);
+router.use('/types', ticketTypesRoutes);
 
-router.get('/types/:id', 
-  requirePermission('tickets.read'),
-  validate(schemas.idParam, 'params'),
-  ticketsController.getTicketType
-);
+// Ticket Template Management
+router.use('/templates', ticketTemplatesRoutes);
 
-router.get('/events/:eventId/types', 
-  requirePermission('tickets.read'),
-  validate(schemas.idParam, 'params'),
-  validate(schemas.pagination, 'query'),
-  ticketsController.getTicketTypesByEvent
-);
-
-router.put('/types/:id', 
-  requirePermission('tickets.update'),
-  validate(schemas.idParam, 'params'),
-  ticketsController.updateTicketType
-);
-
-router.delete('/types/:id', 
-  requirePermission('tickets.delete'),
-  validate(schemas.idParam, 'params'),
-  ticketsController.deleteTicketType
-);
+// Ticket Generation Jobs
+router.use('/jobs', ticketGenerationJobsRoutes);
 
 // Ticket Management
 router.post('/', 
@@ -44,10 +27,10 @@ router.post('/',
   ticketsController.generateTicket
 );
 
-router.get('/:id', 
+router.get('/', 
   requirePermission('tickets.read'),
-  validate(schemas.idParam, 'params'),
-  ticketsController.getTicket
+  validate(schemas.pagination, 'query'),
+  ticketsController.getTickets
 );
 
 router.get('/code/:ticketCode', 

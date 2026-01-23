@@ -33,11 +33,12 @@ class TicketsRepository {
     return result.rows[0];
   }
 
-  async createTicket(ticketData) {
+  async create(ticketData) {
     const { 
       ticket_code, 
       qr_code_data, 
       ticket_type_id, 
+      ticket_template_id,
       event_guest_id, 
       price, 
       currency, 
@@ -46,16 +47,16 @@ class TicketsRepository {
     
     const query = `
       INSERT INTO tickets (
-        ticket_code, qr_code_data, ticket_type_id, event_guest_id, 
-        price, currency, created_by, updated_by
+        ticket_code, qr_code_data, ticket_type_id, ticket_template_id,
+        event_guest_id, price, currency, created_by, updated_by
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)
       RETURNING *
     `;
     
     const values = [
-      ticket_code, qr_code_data, ticket_type_id, event_guest_id,
-      price, currency, created_by
+      ticket_code, qr_code_data, ticket_type_id, ticket_template_id,
+      event_guest_id, price, currency, created_by
     ];
     const result = await database.query(query, values);
     

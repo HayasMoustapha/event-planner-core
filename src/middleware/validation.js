@@ -95,10 +95,43 @@ const schemas = {
     available_to: Joi.date().iso().optional()
   }),
 
+  // Ticket Template validations
+  createTicketTemplate: Joi.object({
+    name: Joi.string().min(3).max(255).required(),
+    description: Joi.string().max(2000).optional(),
+    preview_url: Joi.string().uri().optional(),
+    source_files_path: Joi.string().max(500).optional(),
+    is_customizable: Joi.boolean().optional()
+  }),
+
+  updateTicketTemplate: Joi.object({
+    name: Joi.string().min(3).max(255).optional(),
+    description: Joi.string().max(2000).optional(),
+    preview_url: Joi.string().uri().optional(),
+    source_files_path: Joi.string().max(500).optional(),
+    is_customizable: Joi.boolean().optional()
+  }),
+
+  // Ticket Generation Job validations
+  createTicketGenerationJob: Joi.object({
+    event_id: Joi.number().integer().positive().required(),
+    status: Joi.string().valid('pending', 'processing', 'completed', 'failed').optional(),
+    details: Joi.object().optional()
+  }),
+
+  updateTicketGenerationJob: Joi.object({
+    status: Joi.string().valid('pending', 'processing', 'completed', 'failed').optional(),
+    details: Joi.object().optional(),
+    started_at: Joi.date().iso().optional(),
+    completed_at: Joi.date().iso().optional(),
+    error_message: Joi.string().max(1000).optional()
+  }),
+
   // Ticket validations
   generateTicket: Joi.object({
     event_guest_id: Joi.number().integer().positive().required(),
-    ticket_type_id: Joi.number().integer().positive().required()
+    ticket_type_id: Joi.number().integer().positive().required(),
+    ticket_template_id: Joi.number().integer().positive().optional()
   }),
 
   validateTicketByCode: Joi.object({
