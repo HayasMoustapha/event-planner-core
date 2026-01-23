@@ -649,6 +649,57 @@ class TicketsController {
       next(error);
     }
   }
+
+  async getTicketTypesByEvent(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      
+      // Security: Validate event ID
+      if (!eventId || isNaN(parseInt(eventId))) {
+        throw new ValidationError('Invalid event ID provided');
+      }
+
+      const eventIdInt = parseInt(eventId);
+      
+      // Security: Check for potential SQL injection patterns
+      if (eventId.toString().includes(';') || eventId.toString().includes('--') || eventId.toString().includes('/*')) {
+        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in event ID');
+      }
+
+      // Security: Validate query parameters
+      const { page, limit, status } = req.query;
+      
+      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        throw new ValidationError('Invalid page parameter');
+      }
+      
+      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
+      }
+
+      const options = {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20,
+        status
+      };
+
+      const result = await ticketsService.getTicketTypesByEvent(eventIdInt, options, req.user.id);
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('not found')) {
+          throw new NotFoundError('Event');
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new TicketsController();

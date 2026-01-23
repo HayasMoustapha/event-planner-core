@@ -51,7 +51,7 @@ class ApplicationError extends Error {
     this.stack = (new Error()).stack;
     
     // Don't expose stack trace in production
-    if (config.server.env === 'production') {
+    if (config.nodeEnv === 'production') {
       this.stack = undefined;
     }
   }
@@ -65,7 +65,7 @@ class ApplicationError extends Error {
       error: this.getSanitizedMessage(),
       errorId: this.errorId,
       timestamp: this.timestamp,
-      ...(config.server.env === 'development' && { 
+      ...(config.nodeEnv === 'development' && { 
         category: this.category,
         severity: this.severity,
         stack: this.stack 
@@ -78,7 +78,7 @@ class ApplicationError extends Error {
    */
   getSanitizedMessage() {
     // In production, don't expose sensitive error details
-    if (config.server.env === 'production') {
+    if (config.nodeEnv === 'production') {
       if (this.category === ERROR_CATEGORIES.DATABASE || 
           this.category === ERROR_CATEGORIES.SYSTEM) {
         return 'An unexpected error occurred. Please try again later.';
@@ -285,13 +285,13 @@ class ErrorHandler {
       statusCode: err.statusCode || 500,
       timestamp: new Date().toISOString(),
       request: {
-        method: req.method,
-        url: req.url,
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
+        method: req.method || 'N/A',
+        url: req.url || 'N/A',
+        ip: req.ip || 'N/A',
+        userAgent: req.get && req.get('User-Agent') ? req.get('User-Agent') : 'N/A',
         userId: req.user?.id || null
       },
-      ...(config.server.env === 'development' && {
+      ...(config.nodeEnv === 'development' && {
         stack: err.stack,
         body: req.body,
         params: req.params,

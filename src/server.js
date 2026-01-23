@@ -66,14 +66,14 @@ app.use(compression());
 
 // CORS configuration
 app.use(cors({
-  origin: config.server.cors.allowedOrigins || ['http://localhost:3000'],
+  origin: config.corsOrigin || ['http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 // Logging middleware
-if (config.server.env !== 'test') {
+if (config.nodeEnv !== 'test') {
   app.use(morgan('combined'));
 }
 
@@ -83,7 +83,7 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: config.server.env,
+    environment: config.nodeEnv,
     version: process.env.npm_package_version || '1.0.0'
   });
 });
@@ -175,14 +175,14 @@ async function startServer() {
 
     console.log('🚀 Starting Event Planner Core server...');
     
-    const PORT = config.server.port || 3001;
-    const HOST = config.server.host || '0.0.0.0';
+    const PORT = config.port || 3001;
+    const HOST = '0.0.0.0';
     
     server = app.listen(PORT, HOST, () => {
       console.log(`🎉 Server is running on ${HOST}:${PORT}`);
       console.log(`📚 API documentation: http://${HOST}:${PORT}/api`);
       console.log(`💚 Health check: http://${HOST}:${PORT}/health`);
-      console.log(`🌍 Environment: ${config.server.env}`);
+      console.log(`🌍 Environment: ${config.nodeEnv}`);
     });
 
     // Handle server errors

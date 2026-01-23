@@ -602,6 +602,222 @@ class MarketplaceController {
     }
   }
 
+  async getUserPurchases(req, res, next) {
+    try {
+      // Security: Validate user permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('User authentication required');
+      }
+
+      // Security: Validate query parameters
+      const { page, limit, status } = req.query;
+      
+      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        throw new ValidationError('Invalid page parameter');
+      }
+      
+      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
+      }
+
+      if (status && !['pending', 'completed', 'failed'].includes(status)) {
+        throw new ValidationError('Invalid status parameter');
+      }
+
+      const options = {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20,
+        status
+      };
+
+      const result = await marketplaceService.getUserPurchases(req.user.id, options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async approveTemplate(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      // Security: Validate admin permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user approving template');
+      }
+
+      // Security: Validate template ID
+      if (!id || isNaN(parseInt(id))) {
+        throw new ValidationError('Valid template ID is required');
+      }
+
+      const templateId = parseInt(id);
+      
+      // Security: Check for SQL injection
+      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
+        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in template ID');
+      }
+
+      // Security: Log template approval
+      console.warn('Template approved by admin:', {
+        adminId: req.user.id,
+        templateId,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+
+      const result = await marketplaceService.approveTemplate(templateId, req.user.id);
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('not found')) {
+          throw new NotFoundError('Template');
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: 'Template approved successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async rejectTemplate(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      
+      // Security: Validate admin permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user rejecting template');
+      }
+
+      // Security: Validate template ID
+      if (!id || isNaN(parseInt(id))) {
+        throw new ValidationError('Valid template ID is required');
+      }
+
+      const templateId = parseInt(id);
+      
+      // Security: Validate reason
+      if (!reason || reason.length < 10 || reason.length > 1000) {
+        throw new ValidationError('Reason must be between 10 and 1000 characters');
+      }
+
+      // Security: Check for XSS in reason
+      if (reason.includes('<script>') || reason.includes('javascript:') || reason.includes('onload=')) {
+        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in rejection reason');
+      }
+
+      // Security: Check for SQL injection
+      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
+        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in template ID');
+      }
+
+      // Security: Log template rejection
+      console.warn('Template rejected by admin:', {
+        adminId: req.user.id,
+        templateId,
+        reason,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+
+      const result = await marketplaceService.rejectTemplate(templateId, reason, req.user.id);
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('not found')) {
+          throw new NotFoundError('Template');
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: 'Template rejected successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getTemplateReviews(req, res, next) {
+    try {
+      const { templateId } = req.params;
+      
+      // Security: Validate template ID
+      if (!templateId || isNaN(parseInt(templateId))) {
+        throw new ValidationError('Invalid template ID provided');
+      }
+
+      const templateIdInt = parseInt(templateId);
+      
+      // Security: Check for potential SQL injection patterns
+      if (templateId.toString().includes(';') || templateId.toString().includes('--') || templateId.toString().includes('/*')) {
+        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in template ID');
+      }
+
+      // Security: Validate query parameters
+      const { page, limit, rating } = req.query;
+      
+      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        throw new ValidationError('Invalid page parameter');
+      }
+      
+      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
+      }
+
+      if (rating && (isNaN(parseInt(rating)) || parseInt(rating) < 1 || parseInt(rating) > 5)) {
+        throw new ValidationError('Rating must be between 1 and 5');
+      }
+
+      const options = {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20,
+        rating: rating ? parseInt(rating) : undefined
+      };
+
+      const result = await marketplaceService.getTemplateReviews(templateIdInt, options);
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('not found')) {
+          throw new NotFoundError('Template');
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getMarketplaceStats(req, res, next) {
     try {
       // Security: Check user permissions for stats access
@@ -618,6 +834,59 @@ class MarketplaceController {
       res.json({
         success: true,
         data: result.data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyDesigner(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      // Security: Validate admin permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user verifying designer');
+      }
+
+      // Security: Validate designer ID
+      if (!id || isNaN(parseInt(id))) {
+        throw new ValidationError('Valid designer ID is required');
+      }
+
+      const designerId = parseInt(id);
+      
+      // Security: Check for SQL injection
+      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
+        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in designer ID');
+      }
+
+      // Security: Log designer verification
+      console.warn('Designer verified by admin:', {
+        adminId: req.user.id,
+        designerId,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+
+      const result = await marketplaceService.verifyDesigner(designerId, req.user.id);
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('not found')) {
+          throw new NotFoundError('Designer');
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: 'Designer verified successfully'
       });
     } catch (error) {
       next(error);

@@ -588,7 +588,381 @@ class AdminController {
     }
   }
 
-  async healthCheck(req, res, next) {
+  async getRecentActivity(req, res, next) {
+    try {
+      // Security: Validate admin permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user accessing recent activity');
+      }
+
+      // Security: Validate query parameters
+      const { page, limit, activity_type } = req.query;
+      
+      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        throw new ValidationError('Invalid page parameter');
+      }
+      
+      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
+      }
+
+      if (activity_type && !['user', 'event', 'ticket', 'purchase', 'system'].includes(activity_type)) {
+        throw new ValidationError('Invalid activity type');
+      }
+
+      const options = {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20,
+        activity_type
+      };
+
+      const result = await adminService.getRecentActivity(options, req.user.id);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getEvents(req, res, next) {
+    try {
+      // Security: Validate admin permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user accessing admin events');
+      }
+
+      // Security: Validate query parameters
+      const { page, limit, status, search } = req.query;
+      
+      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        throw new ValidationError('Invalid page parameter');
+      }
+      
+      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
+      }
+
+      if (status && !['active', 'inactive', 'suspended', 'pending'].includes(status)) {
+        throw new ValidationError('Invalid status parameter');
+      }
+
+      if (search && search.length > 255) {
+        throw new ValidationError('Search query too long (max 255 characters)');
+      }
+
+      // Security: Check for XSS in search
+      if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onload='))) {
+        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in admin event search');
+      }
+
+      const options = {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20,
+        status,
+        search
+      };
+
+      const result = await adminService.getEvents(options, req.user.id);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getTemplatesPendingApproval(req, res, next) {
+    try {
+      // Security: Validate admin permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user accessing pending templates');
+      }
+
+      // Security: Validate query parameters
+      const { page, limit, search } = req.query;
+      
+      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        throw new ValidationError('Invalid page parameter');
+      }
+      
+      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
+      }
+
+      if (search && search.length > 255) {
+        throw new ValidationError('Search query too long (max 255 characters)');
+      }
+
+      // Security: Check for XSS in search
+      if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onload='))) {
+        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in template search');
+      }
+
+      const options = {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20,
+        search
+      };
+
+      const result = await adminService.getTemplatesPendingApproval(options, req.user.id);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDesignersPendingVerification(req, res, next) {
+    try {
+      // Security: Validate admin permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user accessing pending designers');
+      }
+
+      // Security: Validate query parameters
+      const { page, limit, search } = req.query;
+      
+      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        throw new ValidationError('Invalid page parameter');
+      }
+      
+      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
+      }
+
+      if (search && search.length > 255) {
+        throw new ValidationError('Search query too long (max 255 characters)');
+      }
+
+      // Security: Check for XSS in search
+      if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onload='))) {
+        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in designer search');
+      }
+
+      const options = {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20,
+        search
+      };
+
+      const result = await adminService.getDesignersPendingVerification(options, req.user.id);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getRevenueStats(req, res, next) {
+    try {
+      // Security: Validate admin permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user accessing revenue stats');
+      }
+
+      // Security: Validate query parameters
+      const { period, metric } = req.query;
+      
+      if (period && !['7d', '30d', '90d', '1y'].includes(period)) {
+        throw new ValidationError('Invalid period parameter. Use: 7d, 30d, 90d, 1y');
+      }
+
+      if (metric && !['total', 'by_event', 'by_template', 'by_designer'].includes(metric)) {
+        throw new ValidationError('Invalid metric parameter. Use: total, by_event, by_template, by_designer');
+      }
+
+      // Security: Log revenue stats access
+      console.info('Revenue stats accessed by admin:', {
+        adminId: req.user.id,
+        period: period || '30d',
+        metric,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+
+      const options = {
+        period: period || '30d',
+        metric
+      };
+
+      const result = await adminService.getRevenueStats(options, req.user.id);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getEventsAnalytics(req, res, next) {
+    try {
+      // Security: Validate admin permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user accessing events analytics');
+      }
+
+      // Security: Validate query parameters
+      const { period, metric, group_by } = req.query;
+      
+      if (period && !['7d', '30d', '90d', '1y'].includes(period)) {
+        throw new ValidationError('Invalid period parameter. Use: 7d, 30d, 90d, 1y');
+      }
+
+      if (metric && !['created', 'updated', 'cancelled'].includes(metric)) {
+        throw new ValidationError('Invalid metric parameter. Use: created, updated, cancelled');
+      }
+
+      if (group_by && !['day', 'week', 'month', 'year'].includes(group_by)) {
+        throw new ValidationError('Invalid group_by parameter. Use: day, week, month, year');
+      }
+
+      // Security: Log analytics access
+      console.info('Events analytics accessed by admin:', {
+        adminId: req.user.id,
+        period: period || '30d',
+        metric,
+        group_by,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+
+      const options = {
+        period: period || '30d',
+        metric,
+        group_by
+      };
+
+      const result = await adminService.getEventsAnalytics(options, req.user.id);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getEventGrowthStats(req, res, next) {
+    try {
+      // Security: Validate admin permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user accessing event growth stats');
+      }
+
+      // Security: Validate query parameters
+      const { period, group_by } = req.query;
+      
+      if (period && !['7d', '30d', '90d', '1y'].includes(period)) {
+        throw new ValidationError('Invalid period parameter. Use: 7d, 30d, 90d, 1y');
+      }
+
+      if (group_by && !['day', 'week', 'month', 'year'].includes(group_by)) {
+        throw new ValidationError('Invalid group_by parameter. Use: day, week, month, year');
+      }
+
+      // Security: Log analytics access
+      console.info('Event growth stats accessed by admin:', {
+        adminId: req.user.id,
+        period: period || '30d',
+        group_by,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+
+      const options = {
+        period: period || '30d',
+        group_by
+      };
+
+      const result = await adminService.getEventGrowthStats(options, req.user.id);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getSystemHealth(req, res, next) {
     try {
       // Security: Validate admin permissions
       if (!req.user || !req.user.id) {

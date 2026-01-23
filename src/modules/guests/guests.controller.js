@@ -427,6 +427,128 @@ class GuestsController {
       next(error);
     }
   }
+
+  async getEventGuests(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      
+      // Security: Validate event ID
+      if (!eventId || isNaN(parseInt(eventId))) {
+        throw new ValidationError('Invalid event ID provided');
+      }
+
+      const eventIdInt = parseInt(eventId);
+      
+      // Security: Validate query parameters
+      const { page, limit, status, search } = req.query;
+      
+      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        throw new ValidationError('Invalid page parameter');
+      }
+      
+      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
+      }
+
+      if (search && search.length > 255) {
+        throw new ValidationError('Search query too long (max 255 characters)');
+      }
+
+      // Security: Check for XSS in search
+      if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onload='))) {
+        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in guest search');
+      }
+
+      const options = {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20,
+        status,
+        search
+      };
+
+      const result = await guestsService.getEventGuests(eventIdInt, options, req.user.id);
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('not found')) {
+          throw new NotFoundError('Event');
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bulkAddGuestsToEvent(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      const { guests } = req.body;
+      
+      // Security: Validate event ID
+      if (!eventId || isNaN(parseInt(eventId))) {
+        throw new ValidationError('Invalid event ID provided');
+      }
+
+      const eventIdInt = parseInt(eventId);
+      
+      // Security: Validate guests array
+      if (!guests || !Array.isArray(guests)) {
+        throw new ValidationError('Guests array is required');
+      }
+
+      if (guests.length === 0) {
+        throw new ValidationError('At least one guest must be provided');
+      }
+
+      if (guests.length > 100) {
+        throw new ValidationError('Cannot add more than 100 guests at once');
+      }
+
+      // Security: Validate each guest
+      for (let i = 0; i < guests.length; i++) {
+        const guest = guests[i];
+        
+        if (!guest.guest_id || isNaN(parseInt(guest.guest_id))) {
+          throw new ValidationError(`Invalid guest_id at index ${i}`);
+        }
+
+        if (guest.invitation_code && (guest.invitation_code.length < 6 || guest.invitation_code.length > 255)) {
+          throw new ValidationError(`Invalid invitation code at index ${i}`);
+        }
+
+        // Security: Check for SQL injection
+        if (guest.guest_id.toString().includes(';') || guest.guest_id.toString().includes('--') || guest.guest_id.toString().includes('/*')) {
+          throw SecurityErrorHandler.handleInvalidInput(req, `SQL injection attempt in guest_id at index ${i}`);
+        }
+
+        if (guest.invitation_code && (guest.invitation_code.includes(';') || guest.invitation_code.includes('--') || guest.invitation_code.includes('/*'))) {
+          throw SecurityErrorHandler.handleInvalidInput(req, `SQL injection attempt in invitation code at index ${i}`);
+        }
+      }
+
+      const result = await guestsService.bulkAddGuestsToEvent(eventIdInt, guests, req.user.id);
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('not found')) {
+          throw new NotFoundError('Event');
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.status(201).json({
+        success: true,
+        data: result.data,
+        message: result.message
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new GuestsController();
