@@ -1,4 +1,6 @@
 const adminRepository = require('./admin.repository');
+const serviceClients = require('../../config/clients');
+const db = require('../../config/database');
 
 class AdminService {
   async getGlobalStats() {
@@ -146,8 +148,31 @@ class AdminService {
         new_status: status
       }, adminId);
 
-      // TODO: Send notification to user
-      
+      // Send notification to user about status change
+      try {
+        if (updatedUser.email) {
+          const statusMessages = {
+            active: 'Votre compte a été activé.',
+            inactive: 'Votre compte a été désactivé.',
+            suspended: 'Votre compte a été suspendu. Contactez le support pour plus d\'informations.'
+          };
+
+          await serviceClients.notification.sendEmail({
+            to: updatedUser.email,
+            template: 'account-status-change',
+            data: {
+              firstName: updatedUser.first_name || 'Utilisateur',
+              status: status,
+              message: statusMessages[status],
+              supportEmail: process.env.SUPPORT_EMAIL || 'support@eventplanner.com'
+            }
+          });
+        }
+      } catch (notifError) {
+        // Log but don't fail the operation if notification fails
+        console.error('Failed to send status change notification:', notifError.message);
+      }
+
       return {
         success: true,
         data: updatedUser,
@@ -376,18 +401,79 @@ class AdminService {
 
   async getSystemHealth() {
     try {
-      // This would check various system health indicators
+      const startTime = Date.now();
+
+      // Check database connectivity
+      let databaseStatus = 'unhealthy';
+      let dbResponseTime = 0;
+      try {
+        const dbStart = Date.now();
+        await db.query('SELECT 1');
+        dbResponseTime = Date.now() - dbStart;
+        databaseStatus = dbResponseTime < 1000 ? 'healthy' : 'degraded';
+      } catch (dbError) {
+        console.error('Database health check failed:', dbError.message);
+        databaseStatus = 'unhealthy';
+      }
+
+      // Check all external services health in parallel
+      const servicesHealth = await serviceClients.checkAllServicesHealth();
+
+      // Calculate overall system health
+      const allServicesHealthy = servicesHealth.overall.healthy;
+      const criticalServicesHealthy = servicesHealth.services.auth?.success ?? false;
+
+      let overallStatus = 'healthy';
+      if (!criticalServicesHealthy || databaseStatus === 'unhealthy') {
+        overallStatus = 'unhealthy';
+      } else if (!allServicesHealthy || databaseStatus === 'degraded') {
+        overallStatus = 'degraded';
+      }
+
+      const totalResponseTime = Date.now() - startTime;
+
       const health = {
-        database: 'healthy', // TODO: Implement actual DB health check
-        auth_service: 'healthy', // TODO: Check Auth Service connectivity
+        status: overallStatus,
+        timestamp: new Date().toISOString(),
+        database: {
+          status: databaseStatus,
+          responseTime: dbResponseTime
+        },
         services: {
-          notification: 'healthy', // TODO: Check notification service
-          payment: 'healthy', // TODO: Check payment service
-          ticket_generator: 'healthy' // TODO: Check ticket generator service
+          auth: {
+            status: servicesHealth.services.auth?.status || 'unknown',
+            healthy: servicesHealth.services.auth?.success || false,
+            responseTime: servicesHealth.services.auth?.responseTime
+          },
+          notification: {
+            status: servicesHealth.services.notification?.status || 'unknown',
+            healthy: servicesHealth.services.notification?.success || false,
+            responseTime: servicesHealth.services.notification?.responseTime
+          },
+          payment: {
+            status: servicesHealth.services.payment?.status || 'unknown',
+            healthy: servicesHealth.services.payment?.success || false,
+            responseTime: servicesHealth.services.payment?.responseTime
+          },
+          ticketGenerator: {
+            status: servicesHealth.services.ticketGenerator?.status || 'unknown',
+            healthy: servicesHealth.services.ticketGenerator?.success || false,
+            responseTime: servicesHealth.services.ticketGenerator?.responseTime
+          },
+          scanValidation: {
+            status: servicesHealth.services.scanValidation?.status || 'unknown',
+            healthy: servicesHealth.services.scanValidation?.success || false,
+            responseTime: servicesHealth.services.scanValidation?.responseTime
+          }
         },
         performance: {
-          response_time: 'good', // TODO: Measure actual response times
-          error_rate: 'low' // TODO: Calculate actual error rates
+          totalHealthCheckTime: totalResponseTime,
+          status: totalResponseTime < 3000 ? 'good' : totalResponseTime < 10000 ? 'acceptable' : 'slow'
+        },
+        summary: {
+          totalServices: 5,
+          healthyServices: servicesHealth.overall.healthyCount,
+          unhealthyServices: 5 - servicesHealth.overall.healthyCount
         }
       };
 
@@ -399,7 +485,12 @@ class AdminService {
       console.error('Error checking system health:', error);
       return {
         success: false,
-        error: error.message || 'Failed to check system health'
+        error: error.message || 'Failed to check system health',
+        data: {
+          status: 'error',
+          timestamp: new Date().toISOString(),
+          message: 'Health check encountered an error'
+        }
       };
     }
   }
