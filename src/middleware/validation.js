@@ -71,6 +71,80 @@ const schemas = {
     invitation_code: Joi.string().min(6).max(50).required()
   }),
 
+  // Ticket Type validations
+  createTicketType: Joi.object({
+    event_id: Joi.number().integer().positive().required(),
+    name: Joi.string().min(3).max(255).required(),
+    description: Joi.string().max(2000).optional(),
+    type: Joi.string().valid('free', 'paid', 'donation').required(),
+    quantity: Joi.number().integer().min(0).required(),
+    price: Joi.number().min(0).optional(),
+    currency: Joi.string().length(3).default('EUR'),
+    available_from: Joi.date().iso().optional(),
+    available_to: Joi.date().iso().optional()
+  }),
+
+  updateTicketType: Joi.object({
+    name: Joi.string().min(3).max(255).optional(),
+    description: Joi.string().max(2000).optional(),
+    type: Joi.string().valid('free', 'paid', 'donation').optional(),
+    quantity: Joi.number().integer().min(0).optional(),
+    price: Joi.number().min(0).optional(),
+    currency: Joi.string().length(3).optional(),
+    available_from: Joi.date().iso().optional(),
+    available_to: Joi.date().iso().optional()
+  }),
+
+  // Ticket validations
+  generateTicket: Joi.object({
+    event_guest_id: Joi.number().integer().positive().required(),
+    ticket_type_id: Joi.number().integer().positive().required()
+  }),
+
+  validateTicketByCode: Joi.object({
+    ticket_code: Joi.string().required()
+  }),
+
+  // Marketplace validations
+  createDesigner: Joi.object({
+    user_id: Joi.number().integer().positive().required(),
+    brand_name: Joi.string().min(2).max(255).required(),
+    portfolio_url: Joi.string().uri().optional()
+  }),
+
+  createTemplate: Joi.object({
+    designer_id: Joi.number().integer().positive().required(),
+    name: Joi.string().min(3).max(255).required(),
+    description: Joi.string().max(2000).optional(),
+    preview_url: Joi.string().uri().optional(),
+    source_files_path: Joi.string().max(500).optional(),
+    price: Joi.number().min(0).optional(),
+    currency: Joi.string().length(3).default('EUR')
+  }),
+
+  createReview: Joi.object({
+    rating: Joi.number().integer().min(1).max(5).required(),
+    comment: Joi.string().max(1000).optional()
+  }),
+
+  // Admin validations
+  updateUserStatus: Joi.object({
+    status: Joi.string().valid('active', 'inactive', 'suspended').required()
+  }),
+
+  createSystemLog: Joi.object({
+    level: Joi.string().valid('info', 'warning', 'error').required(),
+    message: Joi.string().required(),
+    context: Joi.object().optional()
+  }),
+
+  moderateContent: Joi.object({
+    contentType: Joi.string().valid('template', 'designer', 'event').required(),
+    contentId: Joi.number().integer().positive().required(),
+    action: Joi.string().valid('approve', 'reject', 'suspend').required(),
+    reason: Joi.string().max(500).optional()
+  }),
+
   // Pagination
   pagination: Joi.object({
     page: Joi.number().integer().min(1).default(1),

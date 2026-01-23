@@ -8,6 +8,10 @@ const { port, corsOrigin, rateLimitWindowMs, rateLimitMaxRequests } = require('.
 
 // Import routes
 const eventsRoutes = require('./modules/events/events.routes');
+const guestsRoutes = require('./modules/guests/guests.routes');
+const ticketsRoutes = require('./modules/tickets/tickets.routes');
+const marketplaceRoutes = require('./modules/marketplace/marketplace.routes');
+const adminRoutes = require('./modules/admin/admin.routes');
 
 const app = express();
 
@@ -52,6 +56,10 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/events', eventsRoutes);
+app.use('/api/guests', guestsRoutes);
+app.use('/api/tickets', ticketsRoutes);
+app.use('/api/marketplace', marketplaceRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
