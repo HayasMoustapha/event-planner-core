@@ -56,6 +56,39 @@ class TicketGeneratorClient {
   }
 
   /**
+   * Génère un QR code pour un ticket
+   * @param {Object} qrData - Données pour la génération du QR code
+   * @returns {Promise<Object>} QR code généré
+   */
+  async generateQRCode(qrData) {
+    try {
+      const response = await this.client.post('/api/tickets/qr/generate', {
+        ticketCode: qrData.ticketCode,
+        ticketId: qrData.ticketId,
+        eventId: qrData.eventId,
+        format: 'base64',
+        size: 'medium'
+      });
+
+      return {
+        success: true,
+        qrCodeData: response.data.qrCodeData,
+        checksum: response.data.checksum,
+        url: response.data.url
+      };
+    } catch (error) {
+      logger.error('QR code generation failed', {
+        ticketCode: qrData.ticketCode,
+        error: error.message
+      });
+      return {
+        success: false,
+        error: error.response?.data?.message || 'QR code generation failed'
+      };
+    }
+  }
+
+  /**
    * Génère un ticket unique
    * @param {Object} ticketData - Données du ticket
    * @param {Object} options - Options de génération

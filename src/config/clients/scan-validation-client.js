@@ -63,18 +63,22 @@ class ScanValidationClient {
    */
   async validateTicket(qrCodeData, scanData = {}) {
     try {
-      const response = await this.client.post('/api/scan/validate', {
-        qrCodeData,
-        scannedAt: new Date().toISOString(),
-        ...scanData
+      const response = await this.client.post('/api/scans/validate', {
+        qrCode: qrCodeData, // Utiliser qrCode au lieu de qrCodeData
+        scanContext: {
+          deviceId: scanData.ticketId || 'unknown',
+          location: scanData.validationTime || new Date().toISOString(),
+          timestamp: scanData.validationTime || new Date().toISOString(),
+          ...scanData
+        }
       });
 
       return {
         success: true,
-        data: response.data,
-        valid: response.data.valid,
-        ticketInfo: response.data.ticketInfo,
-        scanId: response.data.scanId
+        valid: response.data.valid || false,
+        reason: response.data.reason || null,
+        ticketInfo: response.data.ticketInfo || null,
+        scanInfo: response.data.scanInfo || null
       };
     } catch (error) {
       logger.error('Failed to validate ticket scan', {

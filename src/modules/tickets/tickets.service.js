@@ -173,10 +173,13 @@ class TicketsService {
       
       // 3. Call ticket-generator service for QR code generation (APPEL SERVICE TECHNIQUE)
       try {
+        // Récupérer l'event_id depuis le ticket créé via une jointure
+        const ticketWithEvent = await ticketsRepository.findTicketWithEvent(ticket.id);
+        
         const qrResult = await ticketGeneratorClient.generateQRCode({
           ticketCode: ticketCode,
           ticketId: ticket.id,
-          eventId: ticket.event_id // Assuming event_id is available
+          eventId: ticketWithEvent?.event_id || null
         });
         
         if (qrResult.success) {

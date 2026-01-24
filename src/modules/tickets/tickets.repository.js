@@ -313,6 +313,19 @@ class TicketsRepository {
     return result.rows[0] || null;
   }
 
+  async findTicketWithEvent(ticketId) {
+    const query = `
+      SELECT t.*, eg.event_id
+      FROM tickets t
+      INNER JOIN event_guests eg ON t.event_guest_id = eg.id
+      WHERE t.id = $1
+    `;
+    
+    const result = await database.query(query, [ticketId]);
+    
+    return result.rows[0] || null;
+  }
+
   async validateTicket(ticketId) {
     const query = `
       UPDATE tickets 
