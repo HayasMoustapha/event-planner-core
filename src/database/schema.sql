@@ -119,21 +119,7 @@ CREATE TABLE IF NOT EXISTS ticket_templates (
     updated_by BIGINT
 );
 
--- Ticket Generation Jobs table
-CREATE TABLE IF NOT EXISTS ticket_generation_jobs (
-    id BIGSERIAL PRIMARY KEY,
-    event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
-    details JSONB,
-    started_at TIMESTAMP WITH TIME ZONE,
-    completed_at TIMESTAMP WITH TIME ZONE,
-    error_message TEXT,
-    uid UUID DEFAULT uuid_generate_v4(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_by BIGINT,
-    updated_by BIGINT
-);
+
 
 -- Designers table (extends Auth Service users)
 CREATE TABLE IF NOT EXISTS designers (
@@ -237,9 +223,6 @@ CREATE INDEX IF NOT EXISTS idx_tickets_is_validated ON tickets(is_validated);
 
 CREATE INDEX IF NOT EXISTS idx_ticket_templates_name ON ticket_templates(name);
 CREATE INDEX IF NOT EXISTS idx_ticket_templates_is_customizable ON ticket_templates(is_customizable);
-CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_event_id ON ticket_generation_jobs(event_id);
-CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_status ON ticket_generation_jobs(status);
-CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_created_at ON ticket_generation_jobs(created_at);
 
 CREATE INDEX IF NOT EXISTS idx_designers_user_id ON designers(user_id);
 CREATE INDEX IF NOT EXISTS idx_designers_is_verified ON designers(is_verified);
@@ -292,9 +275,6 @@ CREATE TRIGGER update_tickets_updated_at BEFORE UPDATE ON tickets
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_ticket_templates_updated_at BEFORE UPDATE ON ticket_templates
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_ticket_generation_jobs_updated_at BEFORE UPDATE ON ticket_generation_jobs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_designers_updated_at BEFORE UPDATE ON designers

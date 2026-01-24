@@ -3,7 +3,10 @@
 -- Description: Create complete database schema based on event-planner-core-diagram.md
 -- Author: Event Planner Team
 -- Created: 2024-01-24
--- Note: Database 'event_planner_core' should be created manually
+-- Note: Database 'event_planner_core' created automatically
+
+-- Créer la base de données si elle n'existe pas
+CREATE DATABASE IF NOT EXISTS event_planner_core;
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -130,21 +133,6 @@ CREATE TABLE IF NOT EXISTS tickets (
     updated_by BIGINT
 );
 
--- Ticket Generation Jobs table
-CREATE TABLE IF NOT EXISTS ticket_generation_jobs (
-    id BIGSERIAL PRIMARY KEY,
-    event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-    status ticket_status_enum DEFAULT 'pending',
-    details JSONB,
-    started_at TIMESTAMP WITH TIME ZONE,
-    completed_at TIMESTAMP WITH TIME ZONE,
-    error_message TEXT,
-    uid UUID DEFAULT uuid_generate_v4(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_by BIGINT,
-    updated_by BIGINT
-);
 
 -- Designers table
 CREATE TABLE IF NOT EXISTS designers (
@@ -251,9 +239,6 @@ CREATE TRIGGER update_tickets_updated_at BEFORE UPDATE ON tickets
 CREATE TRIGGER update_ticket_templates_updated_at BEFORE UPDATE ON ticket_templates
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_ticket_generation_jobs_updated_at BEFORE UPDATE ON ticket_generation_jobs
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 CREATE TRIGGER update_designers_updated_at BEFORE UPDATE ON designers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -280,7 +265,6 @@ CREATE INDEX idx_ticket_types_event_id ON ticket_types(event_id);
 CREATE INDEX idx_tickets_ticket_code ON tickets(ticket_code);
 CREATE INDEX idx_tickets_event_guest_id ON tickets(event_guest_id);
 CREATE INDEX idx_tickets_ticket_type_id ON tickets(ticket_type_id);
-CREATE INDEX idx_ticket_generation_jobs_event_id ON ticket_generation_jobs(event_id);
 CREATE INDEX idx_designers_user_id ON designers(user_id);
 CREATE INDEX idx_templates_designer_id ON templates(designer_id);
 CREATE INDEX idx_templates_status ON templates(status);
