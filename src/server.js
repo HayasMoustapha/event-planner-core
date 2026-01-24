@@ -170,20 +170,9 @@ process.on('unhandledRejection', (reason, promise) => {
 // Start server function
 async function startServer() {
   try {
-    // Bootstrap automatique de l'application
+    // Bootstrap automatique de l'application (crée la BD et applique les migrations)
     await bootstrap.initialize();
     
-    console.log('🔄 Running database migrations...');
-    
-    // Run database migrations
-    const migrationResult = await migrator.migrate();
-    
-    if (migrationResult.executed > 0) {
-      console.log(`✅ Successfully executed ${migrationResult.executed} migrations`);
-    } else {
-      console.log('✅ Database is up to date');
-    }
-
     console.log('🚀 Starting Event Planner Core server...');
     
     const PORT = config.port || 3001;
