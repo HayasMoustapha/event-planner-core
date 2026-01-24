@@ -270,6 +270,49 @@ class TicketsRepository {
     return result.rows[0] || null;
   }
 
+  async createTicket(ticketData) {
+    const { 
+      ticket_code, 
+      qr_code_data, 
+      ticket_type_id, 
+      event_guest_id, 
+      price, 
+      currency, 
+      created_by 
+    } = ticketData;
+    
+    const query = `
+      INSERT INTO tickets (
+        ticket_code, qr_code_data, ticket_type_id, event_guest_id, 
+        price, currency, created_by, updated_by
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+      RETURNING *
+    `;
+    
+    const values = [
+      ticket_code, qr_code_data, ticket_type_id, event_guest_id,
+      price, currency, created_by
+    ];
+    
+    const result = await database.query(query, values);
+    
+    return result.rows[0];
+  }
+
+  async updateTicketQRCode(ticketId, qrCodeData) {
+    const query = `
+      UPDATE tickets 
+      SET qr_code_data = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING *
+    `;
+    
+    const result = await database.query(query, [qrCodeData, ticketId]);
+    
+    return result.rows[0] || null;
+  }
+
   async validateTicket(ticketId) {
     const query = `
       UPDATE tickets 

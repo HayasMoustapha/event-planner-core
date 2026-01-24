@@ -1,4 +1,6 @@
 const ticketsRepository = require('./tickets.repository');
+const ticketGeneratorClient = require('../config/clients/ticket-generator-client');
+const scanValidationClient = require('../config/clients/scan-validation-client');
 const { v4: uuidv4 } = require('uuid');
 
 class TicketsService {
@@ -153,15 +155,13 @@ class TicketsService {
 
   async generateTicket(eventGuestId, ticketTypeId, userId) {
     try {
-      // Generate unique ticket code
+      // 1. Generate unique ticket code (LOGIQUE MÉTIER)
       const ticketCode = await ticketsRepository.generateTicketCode();
       
-      // TODO: Generate QR code data (integrate with ticket-generator service)
-      const qrCodeData = `TICKET:${ticketCode}:${Date.now()}`;
-      
+      // 2. Create ticket in database (PERSISTANCE MÉTIER)
       const ticketData = {
         ticket_code: ticketCode,
-        qr_code_data: qrCodeData,
+        qr_code_data: null, // Will be populated by ticket-generator service
         ticket_type_id: ticketTypeId,
         event_guest_id: eventGuestId,
         price: 0, // Will be set based on ticket type
@@ -171,7 +171,22 @@ class TicketsService {
 
       const ticket = await ticketsRepository.createTicket(ticketData);
       
-      // TODO: Send ticket notification
+      // 3. Call ticket-generator service for QR code generation (APPEL SERVICE TECHNIQUE)
+      try {
+        const qrResult = await ticketGeneratorClient.generateQRCode({
+          ticketCode: ticketCode,
+          ticketId: ticket.id,
+          eventId: ticket.event_id // Assuming event_id is available
+        });
+        
+        if (qrResult.success) {
+          // Update ticket with QR code data
+          await ticketsRepository.updateTicketQRCode(ticket.id, qrResult.qrCodeData);
+        }
+      } catch (qrError) {
+        console.warn('QR code generation failed, continuing without QR:', qrError.message);
+        // Continue without QR code - ticket is still valid
+      }
       
       return {
         success: true,
@@ -254,6 +269,7 @@ class TicketsService {
 
   async validateTicket(ticketId) {
     try {
+      // 1. Get ticket from database (LOGIQUE MÉTIER)
       const ticket = await ticketsRepository.findTicketById(ticketId);
       
       if (!ticket) {
@@ -270,15 +286,38 @@ class TicketsService {
         };
       }
 
-      const validatedTicket = await ticketsRepository.validateTicket(ticketId);
+      // 2. Call scan-validation service for technical validation (APPEL SERVICE TECHNIQUE)
+      let validationResult = { valid: true, reason: 'No QR code to validate' };
       
-      // TODO: Send validation notification
-      // TODO: Update scan-validation service
+      if (ticket.qr_code_data) {
+        try {
+          validationResult = await scanValidationClient.validateTicket(ticket.qr_code_data, {
+            ticketId: ticket.id,
+            validationTime: new Date().toISOString()
+          });
+        } catch (validationError) {
+          console.warn('Scan validation service unavailable, proceeding with business validation:', validationError.message);
+          // Continue with business validation even if technical validation fails
+        }
+      }
+
+      // 3. Apply business rules based on technical validation (LOGIQUE MÉTIER)
+      if (!validationResult.valid) {
+        return {
+          success: false,
+          error: 'Ticket validation failed',
+          reason: validationResult.reason || 'Technical validation failed'
+        };
+      }
+
+      // 4. Update ticket validation status in database (PERSISTANCE MÉTIER)
+      const validatedTicket = await ticketsRepository.validateTicket(ticketId);
       
       return {
         success: true,
         data: validatedTicket,
-        message: 'Ticket validated successfully'
+        message: 'Ticket validated successfully',
+        technicalValidation: validationResult
       };
     } catch (error) {
       console.error('Error validating ticket:', error);
@@ -291,6 +330,7 @@ class TicketsService {
 
   async validateTicketByCode(ticketCode) {
     try {
+      // 1. Get ticket from database (LOGIQUE MÉTIER)
       const ticket = await ticketsRepository.findTicketByCode(ticketCode);
       
       if (!ticket) {
@@ -307,15 +347,38 @@ class TicketsService {
         };
       }
 
-      const validatedTicket = await ticketsRepository.validateTicketByCode(ticketCode);
+      // 2. Call scan-validation service for technical validation (APPEL SERVICE TECHNIQUE)
+      let validationResult = { valid: true, reason: 'No QR code to validate' };
       
-      // TODO: Send validation notification
-      // TODO: Update scan-validation service
+      if (ticket.qr_code_data) {
+        try {
+          validationResult = await scanValidationClient.validateTicket(ticket.qr_code_data, {
+            ticketId: ticket.id,
+            validationTime: new Date().toISOString()
+          });
+        } catch (validationError) {
+          console.warn('Scan validation service unavailable, proceeding with business validation:', validationError.message);
+          // Continue with business validation even if technical validation fails
+        }
+      }
+
+      // 3. Apply business rules based on technical validation (LOGIQUE MÉTIER)
+      if (!validationResult.valid) {
+        return {
+          success: false,
+          error: 'Ticket validation failed',
+          reason: validationResult.reason || 'Technical validation failed'
+        };
+      }
+
+      // 4. Update ticket validation status in database (PERSISTANCE MÉTIER)
+      const validatedTicket = await ticketsRepository.validateTicketByCode(ticketCode);
       
       return {
         success: true,
         data: validatedTicket,
-        message: 'Ticket validated successfully'
+        message: 'Ticket validated successfully',
+        technicalValidation: validationResult
       };
     } catch (error) {
       console.error('Error validating ticket by code:', error);
