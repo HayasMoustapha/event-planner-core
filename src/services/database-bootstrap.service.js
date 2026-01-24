@@ -1,7 +1,22 @@
 const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
-const { connection } = require('../config/database');
+const { Pool } = require('pg');
+const MigrationCreator = require('../shared/migration-creator');
+
+// Créer une connexion à la base de données (après qu'elle ait été créée)
+const createConnection = () => {
+  return new Pool({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT) || 5432,
+    database: process.env.DB_NAME || 'event_planner_core',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
+  });
+};
+
+const connection = createConnection();
 
 /**
  * Service de Bootstrap de Base de Données
@@ -143,6 +158,12 @@ class DatabaseBootstrap {
   async createSchemaMigrationsTable() {
     // D'abord, créer la base de données si elle n'existe pas
     await this.ensureDatabaseExists();
+    
+    // Créer les migrations de base si nécessaire
+    const serviceName = process.env.SERVICE_NAME || 'event-planner-core';
+    const databaseName = process.env.DB_NAME || 'event_planner_core';
+    const migrationCreator = new MigrationCreator(serviceName, databaseName);
+    await migrationCreator.createBasicMigrations();
     
     // Ensuite, créer la table schema_migrations
     const client = await connection.connect();
