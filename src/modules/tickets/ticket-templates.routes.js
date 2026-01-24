@@ -1,6 +1,6 @@
 const express = require('express');
 const ticketTemplatesController = require('./ticket-templates.controller');
-const { authenticate, requirePermission, validate, schemas } = require('../../middleware');
+const { authenticate, requirePermission, validate, schemas } = require('../../../shared');
 
 const router = express.Router();
 

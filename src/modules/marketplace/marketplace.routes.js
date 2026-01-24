@@ -1,6 +1,6 @@
 const express = require('express');
 const marketplaceController = require('./marketplace.controller');
-const { authenticate, requirePermission, validate, schemas } = require('../../middleware');
+const { authenticate, requirePermission, validate, schemas } = require('../../../shared');
 
 const router = express.Router();
 
