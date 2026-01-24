@@ -1,6 +1,5 @@
 const ticketsRepository = require('./tickets.repository');
-const ticketGeneratorClient = require('../config/clients/ticket-generator-client');
-const scanValidationClient = require('../config/clients/scan-validation-client');
+const { ticketGeneratorClient, scanValidationClient } = require('../../config/clients');
 const { v4: uuidv4 } = require('uuid');
 
 class TicketsService {

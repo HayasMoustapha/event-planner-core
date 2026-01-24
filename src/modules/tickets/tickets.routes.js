@@ -6,7 +6,6 @@ const { validate, schemas } = require("../../middleware/validation");
 // Import routes
 const ticketTypesRoutes = require('./ticket-types.routes');
 const ticketTemplatesRoutes = require('./ticket-templates.routes');
-const ticketGenerationJobsRoutes = require('./ticket-generation-jobs.routes');
 
 const router = express.Router();
 
@@ -18,9 +17,6 @@ router.use('/types', ticketTypesRoutes);
 
 // Ticket Template Management
 router.use('/templates', ticketTemplatesRoutes);
-
-// Ticket Generation Jobs
-router.use('/jobs', ticketGenerationJobsRoutes);
 
 // Ticket Management
 router.post('/', 
