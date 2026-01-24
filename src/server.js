@@ -7,6 +7,7 @@ const morgan = require('morgan');
 
 const config = require('./config');
 const { ErrorHandler } = require('./utils/errors');
+const bootstrap = require('./bootstrap');
 
 // Import routes
 const eventsRoutes = require('./modules/events/events.routes');
@@ -169,6 +170,9 @@ process.on('unhandledRejection', (reason, promise) => {
 // Start server function
 async function startServer() {
   try {
+    // Bootstrap automatique de l'application
+    await bootstrap.initialize();
+    
     console.log('🔄 Running database migrations...');
     
     // Run database migrations
