@@ -5,10 +5,6 @@
 -- Created: 2024-01-24
 -- Note: Database 'event_planner_core' should be created manually
 
--- Create database if not exists
-CREATE DATABASE IF NOT EXISTS event_planner_payments;
-\c event_planner_payments;
-
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
