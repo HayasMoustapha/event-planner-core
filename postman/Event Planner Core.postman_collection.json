@@ -1,0 +1,915 @@
+{
+  "info": {
+    "name": "Event Planner Core API",
+    "description": "Complete API collection for Event Planner Core platform testing. This collection covers all modules: Events, Guests, Tickets, Marketplace, and Admin Dashboard.",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Auto-refresh token if needed",
+          "if (!pm.environment.get('auth_token') || pm.environment.get('token_expires') < Date.now()) {",
+          "    pm.sendRequest({",
+          "        url: pm.environment.get('auth_service_url') + '/api/auth/login',",
+          "        method: 'POST',",
+          "        header: {",
+          "            'Content-Type': 'application/json'",
+          "        },",
+          "        body: {",
+          "            mode: 'raw',",
+          "            raw: JSON.stringify({",
+          "                email: pm.environment.get('test_email'),",
+          "                password: pm.environment.get('test_password')",
+          "            })",
+          "        }",
+          "    }, function (err, res) {",
+          "        if (res.code === 200) {",
+          "            const response = res.json();",
+          "            pm.environment.set('auth_token', response.token);",
+          "            pm.environment.set('token_expires', Date.now() + 3600000); // 1 hour",
+          "        }",
+          "    });",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Events Module",
+      "item": [
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Annual Tech Conference 2024\",\n  \"description\": \"A comprehensive technology conference featuring the latest innovations in AI, cloud computing, and software development.\",\n  \"event_date\": \"2024-06-15T09:00:00Z\",\n  \"location\": \"Paris Convention Center, Paris, France\",\n  \"status\": \"draft\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/events",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/events?page=1&limit=20&status=published",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "published"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/events/{{event_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "{{event_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Event",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Annual Tech Conference 2024 - Updated\",\n  \"description\": \"Updated description with more details about speakers and agenda.\",\n  \"status\": \"published\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/events/{{event_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "{{event_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Publish Event",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/events/{{event_id}}/publish",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "{{event_id}}", "publish"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Archive Event",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/events/{{event_id}}/archive",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "{{event_id}}", "archive"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/events/{{event_id}}/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "{{event_id}}", "stats"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Event",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/events/{{event_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "{{event_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Guests Module",
+      "item": [
+        {
+          "name": "Create Guest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+33612345678\",\n  \"status\": \"pending\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/guests",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Guests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/guests?page=1&limit=20&status=confirmed",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "confirmed"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Guest by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/guests/{{guest_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests", "{{guest_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Guest",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe-Smith\",\n  \"status\": \"confirmed\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/guests/{{guest_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests", "{{guest_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Guest to Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guest_id\": {{guest_id}},\n  \"invitation_code\": \"INV-2024-001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/events/{{event_id}}/guests",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "{{event_id}}", "guests"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Check-in Guest",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/events/{{event_id}}/guests/{{guest_id}}/checkin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "{{event_id}}", "guests", "{{guest_id}}", "checkin"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Add Guests",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guests\": [\n    {\"first_name\": \"Alice\", \"last_name\": \"Smith\", \"email\": \"alice@example.com\"},\n    {\"first_name\": \"Bob\", \"last_name\": \"Johnson\", \"email\": \"bob@example.com\"},\n    {\"first_name\": \"Carol\", \"last_name\": \"Williams\", \"email\": \"carol@example.com\"}\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/events/{{event_id}}/guests/bulk",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "{{event_id}}", "guests", "bulk"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Guest Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/events/{{event_id}}/guests/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "{{event_id}}", "guests", "stats"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tickets Module",
+      "item": [
+        {
+          "name": "Create Ticket Type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": {{event_id}},\n  \"name\": \"VIP Pass\",\n  \"description\": \"Premium access with all benefits included\",\n  \"type\": \"paid\",\n  \"quantity\": 100,\n  \"price\": 299.99,\n  \"currency\": \"EUR\",\n  \"available_from\": \"2024-01-01T00:00:00Z\",\n  \"available_to\": \"2024-06-14T23:59:59Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tickets/types",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets", "types"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ticket Types by Event",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/tickets/events/{{event_id}}/types",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets", "events", "{{event_id}}", "types"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Ticket Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Modern Blue Template\",\n  \"description\": \"Professional blue-themed ticket design with QR code\",\n  \"preview_url\": \"https://example.com/preview/blue-ticket.png\",\n  \"source_files_path\": \"/templates/blue-ticket/\",\n  \"is_customizable\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tickets/templates",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets", "templates"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Popular Templates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/tickets/templates/popular",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets", "templates", "popular"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_guest_id\": {{event_guest_id}},\n  \"ticket_type_id\": {{ticket_type_id}},\n  \"ticket_template_id\": {{ticket_template_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tickets",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Ticket by Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticket_code\": \"TKT-2024-ABC123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tickets/validate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets", "validate"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Ticket Generation Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": {{event_id}},\n  \"status\": \"pending\",\n  \"details\": {\n    \"template_id\": {{ticket_template_id}},\n    \"quantity\": 50,\n    \"ticket_type_id\": {{ticket_type_id}}\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tickets/jobs",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets", "jobs"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Process Ticket Generation Job",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/tickets/jobs/{{job_id}}/process",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets", "jobs", "{{job_id}}", "process"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ticket Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/tickets/events/{{event_id}}/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets", "events", "{{event_id}}", "stats"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Marketplace Module",
+      "item": [
+        {
+          "name": "Register Designer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": {{user_id}},\n  \"brand_name\": \"Creative Designs Studio\",\n  \"portfolio_url\": \"https://creativedesigns.example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/designers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "designers"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"designer_id\": {{designer_id}},\n  \"name\": \"Elegant Wedding Template\",\n  \"description\": \"Beautiful wedding invitation template with floral design\",\n  \"preview_url\": \"https://example.com/preview/wedding.png\",\n  \"source_files_path\": \"/templates/wedding/\",\n  \"price\": 49.99,\n  \"currency\": \"EUR\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/templates",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "templates"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Marketplace Templates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/templates?page=1&limit=20&status=approved",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "templates"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "approved"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Purchase Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"template_id\": {{template_id}},\n  \"amount\": 49.99,\n  \"currency\": \"EUR\",\n  \"transaction_id\": \"TXN-2024-12345\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/purchases",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "purchases"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"template_id\": {{template_id}},\n  \"rating\": 5,\n  \"comment\": \"Excellent template! Very professional and easy to customize.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/reviews",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "reviews"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Marketplace Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "stats"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin Module",
+      "item": [
+        {
+          "name": "Get Dashboard Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "dashboard"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Global Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "stats"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get System Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/logs?page=1&limit=50&level=error",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "logs"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "level",
+                  "value": "error"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create System Log",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"level\": \"info\",\n  \"message\": \"System maintenance completed successfully\",\n  \"context\": {\n    \"maintenance_type\": \"database_optimization\",\n    \"duration\": \"15 minutes\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/logs",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "logs"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users?page=1&limit=20&status=active",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"suspended\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", "{{user_id}}", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Moderate Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentType\": \"template\",\n  \"contentId\": {{template_id}},\n  \"action\": \"approve\",\n  \"reason\": \"Template meets quality standards and guidelines\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/moderate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "moderate"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics?period=30d&metric=events",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "analytics"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30d"
+                },
+                {
+                  "key": "metric",
+                  "value": "events"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Export Data",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataType\": \"events\",\n  \"format\": \"csv\",\n  \"filters\": {\n    \"date_from\": \"2024-01-01\",\n    \"date_to\": \"2024-12-31\",\n    \"status\": \"published\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/export",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "export"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "System Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "health"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "API Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api",
+              "host": ["{{base_url}}"],
+              "path": ["api"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "auth_service_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "test_email",
+      "value": "admin@example.com",
+      "type": "string"
+    },
+    {
+      "key": "test_password",
+      "value": "password123",
+      "type": "string"
+    }
+  ]
+}
