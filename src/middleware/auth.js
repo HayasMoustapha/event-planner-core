@@ -14,10 +14,7 @@ const authenticate = async (req, res, next) => {
 
     const token = authHeader.replace('Bearer ', '');
     
-    // First, validate JWT structure
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_for_validation');
-    
-    // Then, validate with Auth Service
+    // Validate with Auth Service only (no local JWT verification)
     const authResult = await authClient.validateToken(token);
     
     if (!authResult.success) {
@@ -28,29 +25,43 @@ const authenticate = async (req, res, next) => {
     }
 
     // Attach user info to request
-    req.user = authResult.data.user;
+    const user = authResult.data.user;
+    
+    // Ensure user has required fields for downstream middleware
+    if (!user) {
+      return res.status(401).json({
+        error: 'Invalid user data',
+        message: 'User information not available'
+      });
+    }
+
+    // Normalize user ID field (handle both userId and id)
+    if (!user.id && user.userId) {
+      user.id = user.userId;
+    }
+    
+    if (!user.id) {
+      return res.status(401).json({
+        error: 'Invalid user data',
+        message: 'User ID not found'
+      });
+    }
+
+    // Ensure roles array exists
+    if (!user.roles || !Array.isArray(user.roles)) {
+      user.roles = [];
+    }
+
+    req.user = user;
     req.token = token;
     
     next();
   } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        error: 'Invalid token',
-        message: 'Token is malformed or expired'
-      });
-    }
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        error: 'Token expired',
-        message: 'Please refresh your token'
-      });
-    }
-
     console.error('Authentication error:', error);
     return res.status(500).json({
       error: 'Authentication error',
-      message: 'Internal server error during authentication'
+      message: 'Internal server error during authentication',
+      requestId: req.id || 'unknown'
     });
   }
 };

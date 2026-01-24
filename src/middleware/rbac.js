@@ -10,16 +10,25 @@ const requirePermission = (permission) => {
         });
       }
 
+      // Defensive check for user ID
+      if (!req.user.id) {
+        return res.status(401).json({
+          error: 'Invalid user data',
+          message: 'User ID not found in request'
+        });
+      }
+
       const permissionResult = await authClient.checkPermission(req.user.id, permission);
       
       if (!permissionResult.success) {
         return res.status(403).json({
           error: 'Permission denied',
-          message: 'Unable to verify permissions'
+          message: 'Unable to verify permissions',
+          details: permissionResult.error
         });
       }
 
-      if (!permissionResult.data.has_permission) {
+      if (!permissionResult.data.has_permission && !permissionResult.allowed) {
         return res.status(403).json({
           error: 'Permission denied',
           message: `Required permission: ${permission}`
@@ -32,7 +41,8 @@ const requirePermission = (permission) => {
       console.error('RBAC error:', error);
       return res.status(500).json({
         error: 'Authorization error',
-        message: 'Internal server error during authorization'
+        message: 'Internal server error during authorization',
+        requestId: req.id || 'unknown'
       });
     }
   };
@@ -97,12 +107,22 @@ const requireRole = (role) => {
         });
       }
 
-      const hasRole = req.user.roles && req.user.roles.includes(role);
+      // Defensive check for roles array
+      if (!req.user.roles || !Array.isArray(req.user.roles)) {
+        return res.status(403).json({
+          error: 'Role required',
+          message: 'User roles not defined',
+          requiredRole: role
+        });
+      }
+
+      const hasRole = req.user.roles.includes(role);
       
       if (!hasRole) {
         return res.status(403).json({
           error: 'Role required',
-          message: `Required role: ${role}`
+          message: `Required role: ${role}`,
+          userRoles: req.user.roles
         });
       }
 
@@ -111,7 +131,8 @@ const requireRole = (role) => {
       console.error('Role check error:', error);
       return res.status(500).json({
         error: 'Authorization error',
-        message: 'Internal server error during role verification'
+        message: 'Internal server error during role verification',
+        requestId: req.id || 'unknown'
       });
     }
   };

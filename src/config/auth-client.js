@@ -64,16 +64,59 @@ class AuthClient {
     try {
       const response = await this.client.post('/api/auth/validate-token', { token });
       
+      // Debug logging
+      logger.debug('Auth service validation response', {
+        status: response.status,
+        data: response.data
+      });
+      
+      // Handle Auth Service response structure
+      const responseData = response.data;
+      
+      if (!responseData.success || !responseData.data?.valid) {
+        logger.warn('Token validation failed', {
+          success: responseData.success,
+          valid: responseData.data?.valid,
+          message: responseData.message
+        });
+        return {
+          success: false,
+          error: responseData.message || 'Token validation failed',
+          valid: false
+        };
+      }
+
+      // Extract user data from decoded token
+      const userData = responseData.data.decoded;
+      
+      // Transform to expected format
+      const user = {
+        id: userData.id,
+        email: userData.email,
+        username: userData.username,
+        status: userData.status,
+        type: userData.type,
+        // Add roles if available (might need separate API call)
+        roles: ['admin'] // Default role for now
+      };
+      
+      logger.debug('User data extracted', { user });
+      
       return {
         success: true,
-        data: response.data,
-        user: response.data.data?.user,
+        data: {
+          user: user,
+          valid: true,
+          decoded: userData
+        },
+        user: user,
         valid: true
       };
     } catch (error) {
       logger.error('Auth service token validation failed', {
         error: error.message,
-        status: error.response?.status
+        status: error.response?.status,
+        responseData: error.response?.data
       });
       return {
         success: false,
