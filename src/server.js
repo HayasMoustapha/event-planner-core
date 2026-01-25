@@ -8,6 +8,7 @@ const morgan = require('morgan');
 const config = require('./config');
 const { ErrorHandler } = require('./utils/errors');
 const bootstrap = require('./bootstrap');
+const { specs, swaggerUi } = require('./config/swagger');
 
 // Import routes
 const eventsRoutes = require('./modules/events/events.routes');
@@ -97,6 +98,24 @@ app.get('/health', (req, res) => {
 });
 
 // API info endpoint
+app.get('/api/info', (req, res) => {
+  res.json({
+    name: 'Event Planner Core API',
+    version: process.env.npm_package_version || '1.0.0',
+    description: 'API pour la gestion des événements, invités et tickets',
+    environment: config.nodeEnv,
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    documentation: '/api-docs'
+  });
+});
+
+// Swagger documentation endpoint
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Event Planner Core API Documentation'
+}));
 app.get('/api', (req, res) => {
   res.json({
     name: 'Event Planner Core API',

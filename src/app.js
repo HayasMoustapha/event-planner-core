@@ -116,7 +116,9 @@ app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/admin', adminRoutes);
 
 // 404 handler
-app.use('*', ErrorHandler.notFoundHandler);
+app.use((req, res, next) => {
+  ErrorHandler.notFoundHandler(req, res, next);
+});
 
 // Global error handler
 app.use(ErrorHandler.globalHandler);

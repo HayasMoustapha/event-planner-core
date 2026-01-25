@@ -2,47 +2,60 @@ const ticketsRepository = require('./tickets.repository');
 const { ticketGeneratorClient, scanValidationClient } = require('../../config/clients');
 const { v4: uuidv4 } = require('uuid');
 
+// Custom error classes for better error handling
+class ValidationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ValidationError';
+    this.statusCode = 400;
+  }
+}
+
+class NotFoundError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'NotFoundError';
+    this.statusCode = 404;
+  }
+}
+
+class AuthorizationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'AuthorizationError';
+    this.statusCode = 403;
+  }
+}
+
+class ConflictError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ConflictError';
+    this.statusCode = 409;
+  }
+}
+
 class TicketsService {
   async createTicketType(ticketTypeData, userId) {
-    try {
-      // Validate ticket type
-      const validTypes = ['free', 'paid', 'donation'];
-      if (!validTypes.includes(ticketTypeData.type)) {
-        return {
-          success: false,
-          error: 'Invalid ticket type. Must be free, paid, or donation'
-        };
-      }
-
-      // Validate availability dates
-      if (ticketTypeData.available_from && ticketTypeData.available_to) {
-        if (new Date(ticketTypeData.available_from) >= new Date(ticketTypeData.available_to)) {
-          return {
-            success: false,
-            error: 'Available from date must be before available to date'
-          };
-        }
-      }
-
-      const ticketTypeDataWithCreator = {
-        ...ticketTypeData,
-        created_by: userId
-      };
-
-      const ticketType = await ticketsRepository.createTicketType(ticketTypeDataWithCreator);
-      
-      return {
-        success: true,
-        data: ticketType,
-        message: 'Ticket type created successfully'
-      };
-    } catch (error) {
-      console.error('Error creating ticket type:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to create ticket type'
-      };
+    // Validate ticket type
+    const validTypes = ['free', 'paid', 'donation'];
+    if (!validTypes.includes(ticketTypeData.type)) {
+      throw new ValidationError('Invalid ticket type. Must be free, paid, or donation');
     }
+
+    // Validate availability dates
+    if (ticketTypeData.available_from && ticketTypeData.available_to) {
+      if (new Date(ticketTypeData.available_from) >= new Date(ticketTypeData.available_to)) {
+        throw new ValidationError('Available from date must be before available to date');
+      }
+    }
+
+    const ticketTypeDataWithCreator = {
+      ...ticketTypeData,
+      created_by: userId
+    };
+
+    return await ticketsRepository.createTicketType(ticketTypeDataWithCreator);
   }
 
   async getTicketTypeById(ticketTypeId) {
