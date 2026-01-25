@@ -181,7 +181,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Annual Tech Conference 2026\",\n  \"description\": \"A comprehensive technology conference featuring the latest innovations in AI, cloud computing, and software development.\",\n  \"event_date\": \"2026-06-15T09:00:00.000Z\",\n  \"location\": \"Paris Convention Center, Paris, France\"\n}"
+              "raw": "{\n  \"title\": \"Annual Tech Conference 2026\",\n  \"description\": \"A comprehensive technology conference featuring the latest innovations in AI, cloud computing, and software development.\",\n  \"event_date\": \"2026-06-15T09:00:00.000Z\",\n  \"location\": \"Paris Convention Center, Paris, France\",\n  \"organizer_id\": \"{{organizerId}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/events",
@@ -294,7 +294,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Annual Tech Conference 2026 - Updated\",\n  \"description\": \"Updated description with more details about speakers and agenda.\",\n  \"event_date\": \"2026-07-20T10:00:00.000Z\",\n  \"location\": \"Lyon Convention Center, France\"\n}"
+              "raw": "{\n  \"title\": \"Annual Tech Conference 2026 - Updated\",\n  \"description\": \"Updated description with more details about speakers and agenda.\",\n  \"event_date\": \"2026-07-20T10:00:00.000Z\",\n  \"location\": \"Lyon Convention Center, France\",\n  \"organizer_id\": \"{{organizerId}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/events/{{event_id}}",
@@ -443,7 +443,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+33612345678\"\n}"
+              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+33612345678\",\n  \"created_by\": \"{{currentUserId}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/guests",
@@ -506,7 +506,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe-Smith\",\n  \"status\": \"confirmed\"\n}"
+              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe-Smith\",\n  \"status\": \"confirmed\",\n  \"updated_by\": \"{{currentUserId}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/guests/{{guest_id}}",
@@ -592,7 +592,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"guests\": [\n    {\"first_name\": \"Alice\", \"last_name\": \"Smith\", \"email\": \"alice@example.com\"},\n    {\"first_name\": \"Bob\", \"last_name\": \"Johnson\", \"email\": \"bob@example.com\"},\n    {\"first_name\": \"Carol\", \"last_name\": \"Williams\", \"email\": \"carol@example.com\"}\n  ]\n}"
+              "raw": "{\n  \"guests\": [\n    {\"first_name\": \"Alice\", \"last_name\": \"Smith\", \"email\": \"alice@example.com\"},\n    {\"first_name\": \"Bob\", \"last_name\": \"Johnson\", \"email\": \"bob@example.com\"},\n    {\"first_name\": \"Carol\", \"last_name\": \"Williams\", \"email\": \"carol@example.com\"}\n  ],\n  \"created_by\": \"{{currentUserId}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/events/{{event_id}}/guests/bulk",
@@ -771,7 +771,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"event_guest_id\": {{event_guest_id}},\n  \"ticket_type_id\": {{ticket_type_id}},\n  \"ticket_template_id\": {{ticket_template_id}}\n}"
+              "raw": "{\n  \"event_guest_id\": {{event_guest_id}},\n  \"ticket_type_id\": {{ticket_type_id}},\n  \"ticket_template_id\": {{ticket_template_id}},\n  \"created_by\": \"{{currentUserId}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/tickets",
@@ -835,7 +835,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"event_id\": {{event_id}},\n  \"status\": \"pending\",\n  \"details\": {\n    \"template_id\": {{ticket_template_id}},\n    \"quantity\": 50,\n    \"ticket_type_id\": {{ticket_type_id}}\n  }\n}"
+              "raw": "{\n  \"event_id\": {{event_id}},\n  \"status\": \"pending\",\n  \"details\": {\n    \"template_id\": {{ticket_template_id}},\n    \"quantity\": 50,\n    \"ticket_type_id\": {{ticket_type_id}}\n  },\n  \"created_by\": \"{{currentUserId}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/tickets/jobs",

@@ -113,12 +113,7 @@ POST /api/events
   "description": "Une conférence sur les dernières technologies",
   "event_date": "2025-06-15T10:00:00.000Z",
   "location": "Paris Expo Porte de Versailles",
-  "capacity": 500,
-  "ticket_types": ["standard", "vip", "premium"],
-  "metadata": {
-    "category": "technology",
-    "tags": ["tech", "conference", "2025"]
-  }
+  "organizer_id": 123
 }
 ```
 - **Response**:
@@ -235,6 +230,16 @@ POST /api/guests
 - **Description**: Créer un invité
 - **Authentification**: Requise
 - **Permissions**: `guests.create`
+- **Request Body**:
+```json
+{
+  "first_name": "John",
+  "last_name": "Doe",
+  "email": "john.doe@example.com",
+  "phone": "+33612345678",
+  "created_by": 123
+}
+```
 
 ### Get Guests
 ```
