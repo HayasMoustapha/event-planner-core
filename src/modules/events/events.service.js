@@ -42,7 +42,7 @@ class EventsService {
       }
 
       // Check if user is the organizer or has admin permissions
-      if (event.organizer_id !== userId) {
+      if (event.organizer_id !== userId && String(event.organizer_id) !== String(userId)) {
         // TODO: Add admin permission check here
         return {
           success: false,
@@ -92,7 +92,7 @@ class EventsService {
         };
       }
 
-      if (existingEvent.organizer_id !== userId) {
+      if (existingEvent.organizer_id !== userId && String(existingEvent.organizer_id) !== String(userId)) {
         return {
           success: false,
           error: 'Access denied'
@@ -132,7 +132,7 @@ class EventsService {
         };
       }
 
-      if (existingEvent.organizer_id !== userId) {
+      if (existingEvent.organizer_id !== userId && String(existingEvent.organizer_id) !== String(userId)) {
         return {
           success: false,
           error: 'Access denied'
@@ -244,7 +244,7 @@ class EventsService {
         };
       }
 
-      if (event.organizer_id !== userId) {
+      if (event.organizer_id !== userId && String(event.organizer_id) !== String(userId)) {
         return {
           success: false,
           error: 'Access denied'

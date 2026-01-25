@@ -25,45 +25,46 @@ const { recordSecurityEvent, recordBusinessOperation } = require('../../middlewa
 class EventsController {
   async createEvent(req, res, next) {
     try {
-      // Validation des entrées
+      // Validation des entrées - utilise event_date conformément au schéma BDD
       const { title, description, event_date, location } = req.body;
-      
+
       if (!title || typeof title !== 'string' || title.trim().length < 3) {
         return res.status(400).json(validationErrorResponse({
           field: 'title',
           message: 'Le titre est requis et doit contenir au moins 3 caractères'
         }));
       }
-      
+
       if (!event_date) {
         return res.status(400).json(validationErrorResponse({
           field: 'event_date',
           message: 'La date de l\'événement est requise'
         }));
       }
-      
+
       if (!location || typeof location !== 'string' || location.trim().length < 3) {
         return res.status(400).json(validationErrorResponse({
           field: 'location',
           message: 'Le lieu est requis et doit contenir au moins 3 caractères'
         }));
       }
-      
+
       // Validation de la date
       const eventDate = new Date(event_date);
+
       if (isNaN(eventDate.getTime())) {
         return res.status(400).json(validationErrorResponse({
           field: 'event_date',
           message: 'La date de l\'événement est invalide'
         }));
       }
-      
+
       if (eventDate < new Date()) {
         return res.status(400).json(badRequestResponse(
           'La date de l\'événement ne peut pas être dans le passé'
         ));
       }
-      
+
       // Validation de la description si présente
       if (description && (typeof description !== 'string' || description.length > 2000)) {
         return res.status(400).json(validationErrorResponse({
@@ -71,7 +72,7 @@ class EventsController {
           message: 'La description doit être une chaîne de caractères de maximum 2000 caractères'
         }));
       }
-      
+
       // Sécurité: Validation utilisateur
       if (!req.user || !req.user.id) {
         recordSecurityEvent('unauthorized_access_attempt', 'high');

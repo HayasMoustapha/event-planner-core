@@ -22,5 +22,6 @@ CREATE INDEX IF NOT EXISTS idx_schema_migrations_executed_at ON schema_migration
 -- Commentaires pour documentation
 COMMENT ON TABLE schema_migrations IS 'Table de suivi des migrations de base de données';
 COMMENT ON COLUMN schema_migrations.migration_name IS 'Nom du fichier de migration';
-COMMENT ON COLUMN schema_migrations.checksum IS 'Checksum SHA256 pour verifier l''integrite';
-COMMENT ON COLUMN schema_migrations.execution_time_ms IS 'Temps d''execution en millisecondes';
+COMMENT ON COLUMN schema_migrations.checksum IS 'SHA256 du contenu du fichier pour détecter les modifications';
+COMMENT ON COLUMN schema_migrations.file_size IS 'Taille du fichier en octets';
+COMMENT ON COLUMN schema_migrations.execution_time_ms IS 'Temps d''exécution en millisecondes';

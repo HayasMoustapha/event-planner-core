@@ -18,7 +18,7 @@ const { database } = require('../config');
  */
 class DatabaseMigrator {
   constructor() {
-    this.migrationsPath = path.join(__dirname, 'migrations');
+    this.migrationsPath = path.join(__dirname, './migrations');
     this.migrationTable = 'migrations';
   }
 

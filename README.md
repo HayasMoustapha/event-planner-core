@@ -2,9 +2,23 @@
 
 Service cœur métier de Event Planner - Orchestration des événements et gestion des règles métier.
 
-## Architecture
+## 🏗️ Architecture Overview
 
-- Node.js + Express
+Event Planner Core est le service central de l'architecture microservices qui gère :
+
+- **Gestion des événements** (CRUD, états, permissions)
+- **Gestion des participants** (invitations, check-in, statuts)
+- **Gestion des billets** (types, génération, validation)
+- **Marketplace** (templates, designers, achats)
+- **Administration** (stats, modération, logs)
+
+### Stack Technique
+- **Runtime**: Node.js 18+
+- **Framework**: Express.js
+- **Base de données**: PostgreSQL 12+
+- **ORM**: SQL natif (performance et contrôle maximal)
+- **Container**: Docker & Docker Compose
+- **Monitoring**: Prometheus + Health checks
 
 ### 🛡️ **Sécurité Avancée**
 - **Détection d'attaques** en temps réel (SQL injection, XSS, command injection)
@@ -21,12 +35,6 @@ Service cœur métier de Event Planner - Orchestration des événements et gesti
 - **Logging structuré** avec niveaux de sévérité
 - **Error tracking** avec IDs uniques
 
-### 🔧 **Infrastructure**
-- **Configuration validation** au démarrage
-- **Error handling** centralisé et sécurisé
-- **Docker optimisé** pour production
-- **Environment validation** complète
-
 ---
 
 ## 📋 Prérequis
@@ -38,38 +46,64 @@ Service cœur métier de Event Planner - Orchestration des événements et gesti
 
 ---
 
-## 🚀 Installation
+## 🚀 Quick Start
 
-### 1. Cloner le projet
+### 1. Installation
 ```bash
 git clone <repository-url>
 cd event-planner-core
-```
-
-### 2. Installer les dépendances
-```bash
 npm install
-```
-
-### 3. Configurer l'environnement
-```bash
 cp .env.example .env
+```
+
+### 2. Configuration
+```bash
 # Éditer .env avec votre configuration
+PORT=3001
+DB_HOST=localhost
+DB_NAME=event_planner_core
+AUTH_SERVICE_URL=http://localhost:3000
 ```
 
-### 4. Démarrer avec Docker
+### 3. Démarrage
 ```bash
+# Avec Docker (recommandé)
 docker-compose up -d
+
+# En développement
+npm run dev
+
+# En production
+npm start
 ```
 
-### 5. Démarrer en développement
+### 4. Vérification
 ```bash
-npm run dev
+# Health check
+curl http://localhost:3001/health
+
+# API documentation
+curl http://localhost:3001/docs
 ```
 
 ---
 
-## ⚙️ Configuration
+## 📚 Documentation Complète
+
+Pour une documentation détaillée, consultez le dossier `/docs` :
+
+- **[API Reference](./docs/api-reference.md)** - Documentation complète des endpoints
+- **[Guide Développeur](./docs/developer-guide.md)** - Guide pour contribuer au code
+- **[Schéma de Données](./docs/database-schema.md)** - Structure complète de la base de données
+- **[Déploiement](./docs/deployment.md)** - Guide de déploiement en production
+- **[Sécurité](./docs/security.md)** - Détails sur l'implémentation sécurité
+- **[Monitoring](./docs/monitoring.md)** - Configuration monitoring et alerting
+- **[Testing](./docs/testing.md)** - Guide pour les tests
+- **[Dépannage](./docs/troubleshooting.md)** - Problèmes communs et solutions
+
+---
+
+## ⚙️ Configuration Essentielle
 
 ### Variables d'Environnement Requises
 
@@ -87,131 +121,33 @@ DB_PASSWORD=postgres
 
 # Service d'authentification
 AUTH_SERVICE_URL=http://localhost:3000
-AUTH_SERVICE_TOKEN=your_auth_service_token
 JWT_SECRET=your_jwt_secret_for_validation
 
 # CORS
 CORS_ORIGIN=http://localhost:3000
-
-# Logging
-LOG_LEVEL=info
-LOG_FILE_PATH=logs
 
 # Rate limiting
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
 ```
 
-### Variables Optionnelles
-
-```bash
-# Sécurité
-ENABLE_SECURITY_MIDDLEWARE=true
-BLOCK_ON_HIGH_RISK=true
-SANITIZE_INPUT=true
-
-# Monitoring
-ENABLE_METRICS=true
-METRICS_PORT=9090
-
-# Docker
-DB_SSL=false
-DB_MAX_CONNECTIONS=20
-```
-
 ---
 
-## 🔌 API Endpoints
+## 🔌 API Endpoints Principaux
 
-### Health Checks
+### Health & Monitoring
 - `GET /health` - Health check simple
-- `GET /health/detailed` - Health check complet de tous les composants
-- `GET /health/ready` - Readiness probe (Kubernetes)
-- `GET /health/live` - Liveness probe (Kubernetes)
-- `GET /health/components/:component` - Health check d'un composant spécifique
-
-### Métriques
+- `GET /health/detailed` - Health check complet
 - `GET /metrics` - Métriques Prometheus
 
-### API Routes
-- `GET /api/events` - Lister les événements
-- `POST /api/events` - Créer un événement
-- `GET /api/guests` - Gérer les participants
+### Modules Métier
+- `GET /api/events` - Gestion des événements
+- `GET /api/guests` - Gestion des participants
 - `GET /api/tickets` - Gestion des billets
-- `GET /api/marketplace` - Marketplace de templates
+- `GET /api/marketplace` - Marketplace
 - `GET /api/admin` - Administration
 
----
-
-## 🛡️ Sécurité
-
-### Middleware de Sécurité
-
-Le service inclut plusieurs couches de protection :
-
-1. **Security Middleware** - Analyse toutes les requêtes pour détecter :
-   - SQL injection
-   - XSS attacks
-   - Command injection
-   - Path traversal
-   - LDAP injection
-
-2. **Brute Force Protection** - Protège contre :
-   - Tentatives de connexion répétées
-   - Lockout automatique (30 minutes par défaut)
-   - Rate limiting spécifique à l'auth
-
-3. **IP Blacklist** - Gestion dynamique des IPs malveillantes
-
-4. **Input Validation** - Validation et sanitization des entrées
-
-### Configuration Sécurité
-
-```javascript
-// Dans app.js
-app.use(securityMiddleware.security({
-  enabled: true,
-  logLevel: 'warn',
-  blockOnHighRisk: true,
-  sanitizeInput: true
-}));
-
-// Protection brute force
-app.use('/api/auth', securityMiddleware.bruteForceProtection({
-  identifier: 'email',
-  maxAttempts: 5,
-  windowMs: 900000,
-  lockoutMs: 1800000
-}));
-```
-
----
-
-## 📊 Monitoring
-
-### Métriques Prometheus
-
-Les métriques suivantes sont disponibles :
-
-- `http_request_duration_seconds` - Durée des requêtes HTTP
-- `http_requests_total` - Nombre total de requêtes
-- `active_connections` - Connexions actives
-- `security_events_total` - Événements de sécurité
-- `authentication_attempts_total` - Tentatives d'authentification
-- `database_operations_total` - Opérations base de données
-- `business_operations_total` - Opérations métier
-- `errors_total` - Erreurs par type et sévérité
-
-### Health Checks
-
-Le service vérifie automatiquement :
-
-- **Base de données** - Connexion et temps de réponse
-- **Service Auth** - Disponibilité et temps de réponse
-- **Système de fichiers** - Lecture/écriture
-- **Mémoire** - Utilisation heap et système
-- **CPU** - Load average
-- **Disque** - Espace disponible
+> **Note**: Pour la documentation complète des API avec exemples et schémas, voir [API Reference](./docs/api-reference.md)
 
 ---
 
@@ -258,109 +194,55 @@ docker-compose logs -f event-planner-core
 
 ---
 
-## 🔧 Développement
-
-### Scripts Disponibles
+## 🧪 Testing
 
 ```bash
-npm start          # Production
-npm run dev        # Développement avec nodemon
-npm test           # Tests
-npm run test:watch # Tests en continu
-npm run test:coverage # Tests avec couverture
-```
+# Tous les tests
+npm test
 
-### Structure du Projet
+# Tests en continu
+npm run test:watch
 
-```
-src/
-├── config/          # Configuration et validation
-├── middleware/      # Middlewares (sécurité, auth, etc.)
-├── modules/         # Modules métier
-├── security/        # Services de sécurité
-├── health/          # Health checks
-├── utils/           # Utilitaires (erreurs, etc.)
-└── app.js           # Application principale
+# Couverture de code
+npm run test:coverage
+
+# Tests d'intégration
+npm run test:integration
 ```
 
 ---
 
-## 🚨 Production
+## 🚨 Production Checklist
 
-### Checklist de déploiement
+### Configuration
+- [ ] `NODE_ENV=production`
+- [ ] `JWT_SECRET` fort (32+ caractères)
+- [ ] `DB_PASSWORD` sécurisé
+- [ ] `AUTH_SERVICE_TOKEN` configuré
 
-1. **Configuration**
-   - [ ] `NODE_ENV=production`
-   - [ ] `JWT_SECRET` fort (32+ caractères)
-   - [ ] `DB_PASSWORD` sécurisé
-   - [ ] `AUTH_SERVICE_TOKEN` configuré
+### Sécurité
+- [ ] HTTPS activé
+- [ ] Firewall configuré
+- [ ] Rate limiting activé
+- [ ] Monitoring activé
 
-2. **Sécurité**
-   - [ ] HTTPS activé
-   - [ ] Firewall configuré
-   - [ ] Rate limiting activé
-   - [ ] Monitoring activé
-
-3. **Monitoring**
-   - [ ] Prometheus configuré
-   - [ ] Health checks activés
-   - [ ] Logs configurés
-   - [ ] Alertes configurées
-
-4. **Performance**
-   - [ ] Connection pooling configuré
-   - [ ] Cache activé si nécessaire
-   - [ ] Load testing effectué
-
----
-
-## 🐛 Dépannage
-
-### Problèmes Communs
-
-1. **Configuration invalide**
-   ```bash
-   # Vérifier la configuration
-   npm run validate-config
-   ```
-
-2. **Service Auth inaccessible**
-   ```bash
-   # Vérifier la connexion
-   curl http://localhost:3000/health
-   ```
-
-3. **Base de données inaccessible**
-   ```bash
-   # Vérifier la connexion DB
-   psql -h localhost -U postgres -d event_planner_core
-   ```
-
-### Logs
-
-```bash
-# Logs de l'application
-docker-compose logs event-planner-core
-
-# Logs de santé
-curl http://localhost:3001/health/detailed
-```
-
----
-
-## 📝 Licence
-
-MIT License - voir fichier LICENSE
+### Monitoring
+- [ ] Prometheus configuré
+- [ ] Health checks activés
+- [ ] Logs configurés
+- [ ] Alertes configurées
 
 ---
 
 ## 🤝 Contributing
 
 1. Fork le projet
-2. Créer une feature branch
-3. Commit les changements
-4. Push vers la branch
+2. Créer une feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit les changements (`git commit -m 'Add amazing feature'`)
+4. Push vers la branch (`git push origin feature/amazing-feature`)
 5. Ouvrir une Pull Request
+
+> **Important**: Consultez le [Guide Développeur](./docs/developer-guide.md) avant de contribuer
 
 ---
 
@@ -368,8 +250,9 @@ MIT License - voir fichier LICENSE
 
 Pour toute question ou problème :
 - Créer une issue sur GitHub
+- Consulter le [guide de dépannage](./docs/troubleshooting.md)
 - Contacter l'équipe de développement
 
 ---
 
-**Event Planner Core** - Service robuste et sécurisé pour la gestion d'événements 🎉r
+**Event Planner Core** - Service robuste et sécurisé pour la gestion d'événements 🎉
