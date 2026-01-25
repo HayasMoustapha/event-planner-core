@@ -66,10 +66,51 @@ class EventsService {
   async getEventsByOrganizer(organizerId, options = {}) {
     try {
       const result = await eventsRepository.findByOrganizer(organizerId, options);
-      
+
       return {
         success: true,
         data: result
+      };
+    } catch (error) {
+      console.error('Error getting events:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get events'
+      };
+    }
+  }
+
+  /**
+   * Get events with pagination and filters
+   * @param {Object} options - Query options
+   * @param {number} options.page - Page number
+   * @param {number} options.limit - Items per page
+   * @param {string} options.status - Filter by status
+   * @param {string} options.search - Search term
+   * @param {number} options.userId - User ID (organizer)
+   */
+  async getEvents(options = {}) {
+    try {
+      const { userId, page, limit, status, search } = options;
+
+      if (!userId) {
+        return {
+          success: false,
+          error: 'User ID is required'
+        };
+      }
+
+      const result = await eventsRepository.findByOrganizer(userId, {
+        page,
+        limit,
+        status,
+        search
+      });
+
+      return {
+        success: true,
+        data: result.events,
+        pagination: result.pagination
       };
     } catch (error) {
       console.error('Error getting events:', error);

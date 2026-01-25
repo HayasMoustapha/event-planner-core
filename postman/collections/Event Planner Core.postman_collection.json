@@ -1,8 +1,8 @@
 {
   "info": {
     "name": "Event Planner Core API",
-    "description": "Complete API collection for Event Planner Core platform testing. This collection covers all modules: Events, Guests, Tickets, Marketplace, and Admin Dashboard.",
-    "version": "1.0.0",
+    "description": "Complete API collection for Event Planner Core platform testing. This collection covers all modules: Events, Guests, Tickets, Marketplace, and Admin Dashboard.\n\nAligned with 001_initial_schema.sql - Uses event_date (not start_date/end_date)",
+    "version": "2.0.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -21,7 +21,11 @@
       "script": {
         "exec": [
           "// Auto-refresh token if needed",
-          "if (!pm.environment.get('auth_token') || pm.environment.get('token_expires') < Date.now()) {",
+          "const authToken = pm.environment.get('auth_token');",
+          "const tokenExpires = pm.environment.get('token_expires') || 0;",
+          "",
+          "if (!authToken || tokenExpires < Date.now()) {",
+          "    console.log('Token missing or expired, refreshing...');",
           "    pm.sendRequest({",
           "        url: pm.environment.get('auth_service_url') + '/api/auth/login',",
           "        method: 'POST',",
@@ -36,10 +40,23 @@
           "            })",
           "        }",
           "    }, function (err, res) {",
+          "        if (err) {",
+          "            console.error('Login error:', err);",
+          "            return;",
+          "        }",
           "        if (res.code === 200) {",
           "            const response = res.json();",
-          "            pm.environment.set('auth_token', response.token);",
-          "            pm.environment.set('token_expires', Date.now() + 3600000); // 1 hour",
+          "            // Auth service returns token in data.token or directly in response",
+          "            const token = response.data?.token || response.token;",
+          "            if (token) {",
+          "                pm.environment.set('auth_token', token);",
+          "                pm.environment.set('token_expires', Date.now() + 3600000);",
+          "                console.log('Token refreshed successfully');",
+          "            } else {",
+          "                console.error('No token in response:', JSON.stringify(response));",
+          "            }",
+          "        } else {",
+          "            console.error('Login failed with status:', res.code, res.json());",
           "        }",
           "    });",
           "}"
@@ -50,10 +67,59 @@
   ],
   "item": [
     {
-      "name": "Events Module",
+      "name": "Authentication",
       "item": [
         {
-          "name": "Create Event",
+          "name": "Login (Get Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "if (response.success && response.data && response.data.token) {",
+                  "    pm.environment.set('auth_token', response.data.token);",
+                  "    pm.environment.set('token_expires', Date.now() + 3600000);",
+                  "    pm.environment.set('user_id', response.data.user.id);",
+                  "    console.log('Token saved successfully');",
+                  "}",
+                  "",
+                  "pm.test('Login successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "    pm.expect(response.data.token).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{auth_service_url}}/api/auth/login",
+              "host": ["{{auth_service_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Token",
           "request": {
             "method": "POST",
             "header": [
@@ -64,7 +130,58 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Annual Tech Conference 2024\",\n  \"description\": \"A comprehensive technology conference featuring the latest innovations in AI, cloud computing, and software development.\",\n  \"event_date\": \"2024-06-15T09:00:00Z\",\n  \"location\": \"Paris Convention Center, Paris, France\",\n  \"status\": \"draft\"\n}"
+              "raw": "{\n  \"token\": \"{{auth_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{auth_service_url}}/api/auth/validate-token",
+              "host": ["{{auth_service_url}}"],
+              "path": ["api", "auth", "validate-token"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Events Module",
+      "item": [
+        {
+          "name": "Create Event",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "if (response.success && response.data) {",
+                  "    pm.environment.set('event_id', response.data.id);",
+                  "    console.log('Event created with ID:', response.data.id);",
+                  "}",
+                  "",
+                  "pm.test('Event created successfully', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "    pm.expect(response.data).to.have.property('id');",
+                  "    pm.expect(response.data).to.have.property('title');",
+                  "    pm.expect(response.data).to.have.property('event_date');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Annual Tech Conference 2026\",\n  \"description\": \"A comprehensive technology conference featuring the latest innovations in AI, cloud computing, and software development.\",\n  \"event_date\": \"2026-06-15T09:00:00.000Z\",\n  \"location\": \"Paris Convention Center, Paris, France\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/events",
@@ -76,11 +193,28 @@
         },
         {
           "name": "Get All Events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Events retrieved successfully', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "    pm.expect(response.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/events?page=1&limit=20&status=published",
+              "raw": "{{base_url}}/api/events?page=1&limit=20",
               "host": ["{{base_url}}"],
               "path": ["api", "events"],
               "query": [
@@ -94,7 +228,8 @@
                 },
                 {
                   "key": "status",
-                  "value": "published"
+                  "value": "draft",
+                  "disabled": true
                 }
               ]
             }
@@ -103,6 +238,23 @@
         },
         {
           "name": "Get Event by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Event retrieved successfully', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "    pm.expect(response.data).to.have.property('id');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -116,6 +268,22 @@
         },
         {
           "name": "Update Event",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Event updated successfully', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "PUT",
             "header": [
@@ -126,7 +294,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Annual Tech Conference 2024 - Updated\",\n  \"description\": \"Updated description with more details about speakers and agenda.\",\n  \"status\": \"published\"\n}"
+              "raw": "{\n  \"title\": \"Annual Tech Conference 2026 - Updated\",\n  \"description\": \"Updated description with more details about speakers and agenda.\",\n  \"event_date\": \"2026-07-20T10:00:00.000Z\",\n  \"location\": \"Lyon Convention Center, France\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/events/{{event_id}}",
@@ -138,6 +306,23 @@
         },
         {
           "name": "Publish Event",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Event published successfully', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "    pm.expect(response.data.status).to.equal('published');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [],
@@ -151,6 +336,23 @@
         },
         {
           "name": "Archive Event",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Event archived successfully', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "    pm.expect(response.data.status).to.equal('archived');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [],
@@ -168,15 +370,31 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/events/{{event_id}}/stats",
+              "raw": "{{base_url}}/api/events/stats",
               "host": ["{{base_url}}"],
-              "path": ["api", "events", "{{event_id}}", "stats"]
+              "path": ["api", "events", "stats"]
             }
           },
           "response": []
         },
         {
           "name": "Delete Event",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Event deleted successfully', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "DELETE",
             "header": [],
@@ -195,6 +413,26 @@
       "item": [
         {
           "name": "Create Guest",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "if (response.success && response.data) {",
+                  "    pm.environment.set('guest_id', response.data.id);",
+                  "}",
+                  "",
+                  "pm.test('Guest created successfully', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -205,7 +443,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+33612345678\",\n  \"status\": \"pending\"\n}"
+              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+33612345678\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/guests",
@@ -221,7 +459,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/guests?page=1&limit=20&status=confirmed",
+              "raw": "{{base_url}}/api/guests?page=1&limit=20",
               "host": ["{{base_url}}"],
               "path": ["api", "guests"],
               "query": [
@@ -235,7 +473,8 @@
                 },
                 {
                   "key": "status",
-                  "value": "confirmed"
+                  "value": "confirmed",
+                  "disabled": true
                 }
               ]
             }
@@ -279,6 +518,26 @@
         },
         {
           "name": "Add Guest to Event",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "if (response.success && response.data) {",
+                  "    pm.environment.set('event_guest_id', response.data.id);",
+                  "}",
+                  "",
+                  "pm.test('Guest added to event successfully', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -289,7 +548,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"guest_id\": {{guest_id}},\n  \"invitation_code\": \"INV-2024-001\"\n}"
+              "raw": "{\n  \"guest_id\": {{guest_id}},\n  \"invitation_code\": \"INV-2026-001\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/events/{{event_id}}/guests",
@@ -303,7 +562,16 @@
           "name": "Check-in Guest",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invitation_code\": \"INV-2026-001\"\n}"
+            },
             "url": {
               "raw": "{{base_url}}/api/events/{{event_id}}/guests/{{guest_id}}/checkin",
               "host": ["{{base_url}}"],
@@ -335,6 +603,35 @@
           "response": []
         },
         {
+          "name": "Delete Guest",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Guest deleted successfully', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/guests/{{guest_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests", "{{guest_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Get Guest Statistics",
           "request": {
             "method": "GET",
@@ -354,6 +651,26 @@
       "item": [
         {
           "name": "Create Ticket Type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "if (response.success && response.data) {",
+                  "    pm.environment.set('ticket_type_id', response.data.id);",
+                  "}",
+                  "",
+                  "pm.test('Ticket type created successfully', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -364,7 +681,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"event_id\": {{event_id}},\n  \"name\": \"VIP Pass\",\n  \"description\": \"Premium access with all benefits included\",\n  \"type\": \"paid\",\n  \"quantity\": 100,\n  \"price\": 299.99,\n  \"currency\": \"EUR\",\n  \"available_from\": \"2024-01-01T00:00:00Z\",\n  \"available_to\": \"2024-06-14T23:59:59Z\"\n}"
+              "raw": "{\n  \"event_id\": {{event_id}},\n  \"name\": \"VIP Pass\",\n  \"description\": \"Premium access with all benefits included\",\n  \"type\": \"paid\",\n  \"quantity\": 100,\n  \"price\": 299.99,\n  \"currency\": \"EUR\",\n  \"available_from\": \"2026-01-01T00:00:00.000Z\",\n  \"available_to\": \"2026-06-14T23:59:59.000Z\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/tickets/types",
@@ -389,6 +706,26 @@
         },
         {
           "name": "Create Ticket Template",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "if (response.success && response.data) {",
+                  "    pm.environment.set('ticket_template_id', response.data.id);",
+                  "}",
+                  "",
+                  "pm.test('Ticket template created successfully', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -456,7 +793,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ticket_code\": \"TKT-2024-ABC123\"\n}"
+              "raw": "{\n  \"ticket_code\": \"TKT-2026-ABC123\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/tickets/validate",
@@ -468,6 +805,26 @@
         },
         {
           "name": "Create Ticket Generation Job",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "if (response.success && response.data) {",
+                  "    pm.environment.set('job_id', response.data.id);",
+                  "}",
+                  "",
+                  "pm.test('Job created successfully', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -513,6 +870,77 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Get All Tickets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/tickets?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ticket by Code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/tickets/code/{{ticket_code}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets", "code", "{{ticket_code}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event Tickets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/tickets/events/{{event_id}}/tickets",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets", "events", "{{event_id}}", "tickets"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Ticket by ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"validation_method\": \"qr_scan\", \"location\": \"Main Entrance\"}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tickets/{{ticket_id}}/validate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tickets", "{{ticket_id}}", "validate"]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -521,6 +949,26 @@
       "item": [
         {
           "name": "Register Designer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "if (response.success && response.data) {",
+                  "    pm.environment.set('designer_id', response.data.id);",
+                  "}",
+                  "",
+                  "pm.test('Designer registered successfully', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -543,6 +991,26 @@
         },
         {
           "name": "Create Template",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "",
+                  "if (response.success && response.data) {",
+                  "    pm.environment.set('template_id', response.data.id);",
+                  "}",
+                  "",
+                  "pm.test('Template created successfully', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -569,7 +1037,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/marketplace/templates?page=1&limit=20&status=approved",
+              "raw": "{{base_url}}/api/marketplace/templates?page=1&limit=20",
               "host": ["{{base_url}}"],
               "path": ["api", "marketplace", "templates"],
               "query": [
@@ -583,7 +1051,8 @@
                 },
                 {
                   "key": "status",
-                  "value": "approved"
+                  "value": "approved",
+                  "disabled": true
                 }
               ]
             }
@@ -602,7 +1071,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"template_id\": {{template_id}},\n  \"amount\": 49.99,\n  \"currency\": \"EUR\",\n  \"transaction_id\": \"TXN-2024-12345\"\n}"
+              "raw": "{\n  \"template_id\": {{template_id}},\n  \"amount\": 49.99,\n  \"currency\": \"EUR\",\n  \"transaction_id\": \"TXN-2026-12345\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/marketplace/purchases",
@@ -684,7 +1153,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/admin/logs?page=1&limit=50&level=error",
+              "raw": "{{base_url}}/api/admin/logs?page=1&limit=50",
               "host": ["{{base_url}}"],
               "path": ["api", "admin", "logs"],
               "query": [
@@ -698,7 +1167,8 @@
                 },
                 {
                   "key": "level",
-                  "value": "error"
+                  "value": "error",
+                  "disabled": true
                 }
               ]
             }
@@ -733,7 +1203,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/admin/users?page=1&limit=20&status=active",
+              "raw": "{{base_url}}/api/admin/users?page=1&limit=20",
               "host": ["{{base_url}}"],
               "path": ["api", "admin", "users"],
               "query": [
@@ -747,7 +1217,8 @@
                 },
                 {
                   "key": "status",
-                  "value": "active"
+                  "value": "active",
+                  "disabled": true
                 }
               ]
             }
@@ -833,7 +1304,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"dataType\": \"events\",\n  \"format\": \"csv\",\n  \"filters\": {\n    \"date_from\": \"2024-01-01\",\n    \"date_to\": \"2024-12-31\",\n    \"status\": \"published\"\n  }\n}"
+              "raw": "{\n  \"dataType\": \"events\",\n  \"format\": \"csv\",\n  \"filters\": {\n    \"date_from\": \"2026-01-01\",\n    \"date_to\": \"2026-12-31\",\n    \"status\": \"published\"\n  }\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/admin/export",
@@ -864,6 +1335,9 @@
         {
           "name": "Health Check",
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -877,6 +1351,9 @@
         {
           "name": "API Info",
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -899,16 +1376,6 @@
     {
       "key": "auth_service_url",
       "value": "http://localhost:3000",
-      "type": "string"
-    },
-    {
-      "key": "test_email",
-      "value": "admin@example.com",
-      "type": "string"
-    },
-    {
-      "key": "test_password",
-      "value": "password123",
       "type": "string"
     }
   ]

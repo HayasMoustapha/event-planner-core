@@ -67,6 +67,12 @@ router.post('/check-in',
   guestsController.checkInGuest
 );
 
+router.post('/events/:eventId/guests/:guestId/checkin', 
+  requirePermission('guests.update'),
+  validate(schemas.idParam, 'params'),
+  guestsController.checkInGuestById
+);
+
 // Statistics
 router.get('/events/:eventId/stats', 
   requirePermission('guests.read'),

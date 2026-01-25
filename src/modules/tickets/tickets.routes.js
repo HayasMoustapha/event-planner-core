@@ -60,6 +60,17 @@ router.post('/bulk/generate',
   ticketsController.bulkGenerateTickets
 );
 
+router.post('/jobs', 
+  requirePermission('tickets.create'),
+  ticketsController.createJob
+);
+
+router.post('/jobs/:jobId/process', 
+  requirePermission('tickets.update'),
+  validate(schemas.idParam, 'params'),
+  ticketsController.processJob
+);
+
 // Statistics
 router.get('/events/:eventId/stats', 
   requirePermission('tickets.read'),
