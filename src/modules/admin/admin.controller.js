@@ -294,7 +294,9 @@ class AdminController {
         adminId: req.user.id
       };
 
-      const result = await adminService.getUsers(options);
+      // Appel à l'Auth Service pour récupérer la liste des utilisateurs
+      const authClient = require('../../config/auth-client');
+      const result = await authClient.getUsers(options);
       
       if (!result.success) {
         throw new ValidationError(result.error, result.details);
@@ -989,47 +991,6 @@ class AdminController {
     }
   }
 
-  async deleteUser(req, res, next) {
-    try {
-      const { id } = req.params;
-      
-      // Security: Validate ID and admin permissions
-      if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid user ID provided');
-      }
-
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('Admin authentication required');
-      }
-
-      // Security: Check if user has admin role
-      if (!req.user.roles || !req.user.roles.includes('admin')) {
-        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user attempting to delete user');
-      }
-
-      const userId = parseInt(id);
-      const result = await adminService.deleteUser(userId, req.user.id);
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('User');
-        }
-        if (result.error && result.error.includes('Cannot delete')) {
-          throw new ValidationError(result.error);
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data,
-        message: 'User deleted successfully'
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
   async createBackup(req, res, next) {
     try {
       // Security: Validate admin permissions
@@ -1069,63 +1030,8 @@ class AdminController {
     }
   }
 
-  async createUser(req, res, next) {
-    try {
-      // Security: Validate admin permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('Admin authentication required');
-      }
 
-      // Security: Check if user has admin role
-      if (!req.user.roles || !req.user.roles.includes('admin')) {
-        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user attempting user creation');
-      }
-
-      const { email, password, first_name, last_name, role = 'user' } = req.body;
-      
-      // Security: Validate required fields
-      if (!email || !password || !first_name || !last_name) {
-        throw new ValidationError('Email, password, first_name, and last_name are required');
-      }
-
-      // Security: Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        throw new ValidationError('Invalid email format');
-      }
-
-      // Security: Validate role
-      if (!['user', 'admin', 'event_manager'].includes(role)) {
-        throw new ValidationError('Invalid role. Must be: user, admin, or event_manager');
-      }
-
-      const result = await adminService.createUser({
-        email,
-        password,
-        first_name,
-        last_name,
-        role,
-        created_by: req.user.id
-      });
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('already exists')) {
-          throw new ConflictError(result.error);
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.status(201).json({
-        success: true,
-        data: result.data,
-        message: 'User created successfully'
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async updateUser(req, res, next) {
+  async getUserById(req, res, next) {
     try {
       const { id } = req.params;
       
@@ -1140,45 +1046,25 @@ class AdminController {
 
       // Security: Check if user has admin role
       if (!req.user.roles || !req.user.roles.includes('admin')) {
-        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user attempting user update');
-      }
-
-      const { email, first_name, last_name, role, status } = req.body;
-      
-      // Security: Validate role if provided
-      if (role && !['user', 'admin', 'event_manager'].includes(role)) {
-        throw new ValidationError('Invalid role. Must be: user, admin, or event_manager');
-      }
-
-      // Security: Validate status if provided
-      if (status && !['active', 'inactive', 'suspended'].includes(status)) {
-        throw new ValidationError('Invalid status. Must be: active, inactive, or suspended');
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user attempting to access user data');
       }
 
       const userId = parseInt(id);
-      const result = await adminService.updateUser(userId, {
-        email,
-        first_name,
-        last_name,
-        role,
-        status,
-        updated_by: req.user.id
-      });
+      
+      // Appel à l'Auth Service pour récupérer les détails de l'utilisateur
+      const authClient = require('../../config/auth-client');
+      const result = await authClient.getUserById(userId);
       
       if (!result.success) {
         if (result.error && result.error.includes('not found')) {
           throw new NotFoundError('User');
-        }
-        if (result.error && result.error.includes('already exists')) {
-          throw new ConflictError(result.error);
         }
         throw new ValidationError(result.error, result.details);
       }
 
       res.json({
         success: true,
-        data: result.data,
-        message: 'User updated successfully'
+        data: result.data
       });
     } catch (error) {
       next(error);

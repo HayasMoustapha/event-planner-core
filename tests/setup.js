@@ -58,8 +58,8 @@ beforeAll(async () => {
     await testDb.query('SELECT NOW()');
     console.log('✅ Base de données de test connectée');
     
-    // Créer les tables nécessaires pour les tests
-    await createTestTables();
+    // Créer les tables nécessaires en dehors des transactions
+    await createPersistentTestTables();
   } catch (error) {
     console.error('❌ Erreur de connexion à la base de test:', error.message);
     // Ne pas quitter le processus, juste logger l'erreur
@@ -67,28 +67,18 @@ beforeAll(async () => {
   }
 });
 
-// Créer les tables de test nécessaires
-async function createTestTables() {
+// Créer les tables de test persistantes
+async function setupTestDatabase() {
+  const { Pool } = require('pg');
+  
   try {
-    // Table users pour les tests admin
-    await testDb.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id BIGSERIAL PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        first_name VARCHAR(255) NOT NULL,
-        last_name VARCHAR(255) NOT NULL,
-        role VARCHAR(50) DEFAULT 'user' CHECK (role IN ('user', 'admin', 'event_manager')),
-        status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        created_by BIGINT,
-        updated_by BIGINT
-      )
-    `);
+    // Créer une connexion dédiée pour la configuration
+    const setupDb = new Pool({
+      connectionString: process.env.TEST_DATABASE_URL || process.env.DATABASE_URL,
+    });
     
-    // Table system_backups pour les tests de backup
-    await testDb.query(`
+    // Créer uniquement les tables nécessaires pour le core business
+    await setupDb.query(`
       CREATE TABLE IF NOT EXISTS system_backups (
         id VARCHAR(255) PRIMARY KEY,
         type VARCHAR(50) NOT NULL,
@@ -102,9 +92,10 @@ async function createTestTables() {
       )
     `);
     
-    console.log('✅ Tables de test créées avec succès');
+    await setupDb.end();
+    console.log('✅ Tables de test configurées avec succès (sans table users)');
   } catch (error) {
-    console.error('❌ Erreur lors de la création des tables de test:', error.message);
+    console.error('❌ Erreur lors de la configuration des tables de test:', error.message);
   }
 }
 
@@ -117,12 +108,13 @@ afterEach(async () => {
   }
 });
 
-// Avant chaque test, créer les tables nécessaires
+// Avant chaque test, nettoyer les données mais garder les tables
 beforeEach(async () => {
   try {
-    await createTestTables();
+    // Nettoyer uniquement les données des tables core (pas de table users)
+    await testDb.query('DELETE FROM system_backups');
   } catch (error) {
-    console.error('❌ Erreur lors de la création des tables de test:', error.message);
+    console.error('❌ Erreur lors du nettoyage des tables de test:', error.message);
   }
 });
 

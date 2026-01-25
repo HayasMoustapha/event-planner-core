@@ -38,35 +38,24 @@ router.post('/logs',
   adminController.createSystemLog
 );
 
-// User Management
+// User Management (via Auth Service)
 router.get('/users', 
   requirePermission('admin.read'),
   validate(schemas.pagination, 'query'),
   adminController.getUsers
 );
 
-router.post('/users', 
-  requirePermission('admin.create'),
-  adminController.createUser
+router.get('/users/:id', 
+  requirePermission('admin.read'),
+  validate(schemas.idParam, 'params'),
+  adminController.getUserById
 );
 
-router.put('/users/:id', 
-  requirePermission('admin.update'),
-  validate(schemas.idParam, 'params'),
-  adminController.updateUser
-);
-
-router.put('/users/:id/status', 
-  requirePermission('admin.update'),
-  validate(schemas.idParam, 'params'),
-  adminController.updateUserStatus
-);
-
-router.delete('/users/:id', 
-  requirePermission('admin.delete'),
-  validate(schemas.idParam, 'params'),
-  adminController.deleteUser
-);
+// Note: Les routes de modification d'utilisateurs sont gérées par l'Auth Service
+// POST /api/auth/users (création)
+// PUT /api/auth/users/:id (mise à jour)
+// DELETE /api/auth/users/:id (suppression)
+// PUT /api/auth/users/:id/status (changement statut)
 
 // Event Management
 router.get('/events', 
