@@ -57,6 +57,9 @@ beforeAll(async () => {
     // Test simple de connexion sans quitter le processus
     await testDb.query('SELECT NOW()');
     console.log('✅ Base de données de test connectée');
+    
+    // Créer les tables nécessaires pour les tests
+    await createTestTables();
   } catch (error) {
     console.error('❌ Erreur de connexion à la base de test:', error.message);
     // Ne pas quitter le processus, juste logger l'erreur
@@ -64,12 +67,62 @@ beforeAll(async () => {
   }
 });
 
+// Créer les tables de test nécessaires
+async function createTestTables() {
+  try {
+    // Table users pour les tests admin
+    await testDb.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id BIGSERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        first_name VARCHAR(255) NOT NULL,
+        last_name VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'user' CHECK (role IN ('user', 'admin', 'event_manager')),
+        status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        created_by BIGINT,
+        updated_by BIGINT
+      )
+    `);
+    
+    // Table system_backups pour les tests de backup
+    await testDb.query(`
+      CREATE TABLE IF NOT EXISTS system_backups (
+        id VARCHAR(255) PRIMARY KEY,
+        type VARCHAR(50) NOT NULL,
+        status VARCHAR(50) DEFAULT 'started',
+        include_data BOOLEAN DEFAULT true,
+        created_by BIGINT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        estimated_size VARCHAR(50),
+        details JSONB
+      )
+    `);
+    
+    console.log('✅ Tables de test créées avec succès');
+  } catch (error) {
+    console.error('❌ Erreur lors de la création des tables de test:', error.message);
+  }
+}
+
 // Après chaque test
 afterEach(async () => {
   try {
     await testDb.query('ROLLBACK');
   } catch (error) {
     // Ignorer les erreurs de rollback si la connexion n'est pas établie
+  }
+});
+
+// Avant chaque test, créer les tables nécessaires
+beforeEach(async () => {
+  try {
+    await createTestTables();
+  } catch (error) {
+    console.error('❌ Erreur lors de la création des tables de test:', error.message);
   }
 });
 

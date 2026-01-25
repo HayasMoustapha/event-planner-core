@@ -1068,6 +1068,122 @@ class AdminController {
       next(error);
     }
   }
+
+  async createUser(req, res, next) {
+    try {
+      // Security: Validate admin permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user attempting user creation');
+      }
+
+      const { email, password, first_name, last_name, role = 'user' } = req.body;
+      
+      // Security: Validate required fields
+      if (!email || !password || !first_name || !last_name) {
+        throw new ValidationError('Email, password, first_name, and last_name are required');
+      }
+
+      // Security: Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new ValidationError('Invalid email format');
+      }
+
+      // Security: Validate role
+      if (!['user', 'admin', 'event_manager'].includes(role)) {
+        throw new ValidationError('Invalid role. Must be: user, admin, or event_manager');
+      }
+
+      const result = await adminService.createUser({
+        email,
+        password,
+        first_name,
+        last_name,
+        role,
+        created_by: req.user.id
+      });
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('already exists')) {
+          throw new ConflictError(result.error);
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.status(201).json({
+        success: true,
+        data: result.data,
+        message: 'User created successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateUser(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      // Security: Validate ID and admin permissions
+      if (!id || isNaN(parseInt(id))) {
+        throw new ValidationError('Invalid user ID provided');
+      }
+
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user attempting user update');
+      }
+
+      const { email, first_name, last_name, role, status } = req.body;
+      
+      // Security: Validate role if provided
+      if (role && !['user', 'admin', 'event_manager'].includes(role)) {
+        throw new ValidationError('Invalid role. Must be: user, admin, or event_manager');
+      }
+
+      // Security: Validate status if provided
+      if (status && !['active', 'inactive', 'suspended'].includes(status)) {
+        throw new ValidationError('Invalid status. Must be: active, inactive, or suspended');
+      }
+
+      const userId = parseInt(id);
+      const result = await adminService.updateUser(userId, {
+        email,
+        first_name,
+        last_name,
+        role,
+        status,
+        updated_by: req.user.id
+      });
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('not found')) {
+          throw new NotFoundError('User');
+        }
+        if (result.error && result.error.includes('already exists')) {
+          throw new ConflictError(result.error);
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: 'User updated successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new AdminController();

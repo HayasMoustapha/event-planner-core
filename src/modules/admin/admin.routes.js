@@ -45,6 +45,17 @@ router.get('/users',
   adminController.getUsers
 );
 
+router.post('/users', 
+  requirePermission('admin.create'),
+  adminController.createUser
+);
+
+router.put('/users/:id', 
+  requirePermission('admin.update'),
+  validate(schemas.idParam, 'params'),
+  adminController.updateUser
+);
+
 router.put('/users/:id/status', 
   requirePermission('admin.update'),
   validate(schemas.idParam, 'params'),
