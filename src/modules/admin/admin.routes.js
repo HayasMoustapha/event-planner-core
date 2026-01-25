@@ -1,6 +1,6 @@
 const express = require('express');
 const adminController = require('./admin.controller');
-const { authenticate, requirePermission } = require("../../../../shared/");
+const { authenticate, requirePermission } = require("../../../../shared");
 const { validate, schemas } = require("../../middleware/validation");
 
 const router = express.Router();

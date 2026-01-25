@@ -1,6 +1,6 @@
 const express = require('express');
 const ticketsController = require('./tickets.controller');
-const { authenticate, requirePermission } = require("../../../../shared/");
+const { authenticate, requirePermission } = require("../../../../shared");
 const { validate, schemas } = require("../../middleware/validation");
 
 // Import routes

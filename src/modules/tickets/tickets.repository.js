@@ -67,8 +67,8 @@ class TicketsRepository {
     const query = `
       SELECT tt.*, e.title as event_title, e.organizer_id
       FROM ticket_types tt
-      INNER JOIN events e ON tt.event_id = e.id
-      WHERE tt.id = $1
+      INNER JOIN events e ON tt.event_id = e.id AND e.deleted_at IS NULL
+      WHERE tt.id = $1 AND tt.deleted_at IS NULL
     `;
     const result = await database.query(query, [id]);
     
@@ -81,11 +81,11 @@ class TicketsRepository {
              eg.event_id, eg.guest_id, g.first_name, g.last_name, g.email,
              e.title as event_title, e.organizer_id
       FROM tickets t
-      INNER JOIN ticket_types tt ON t.ticket_type_id = tt.id
-      INNER JOIN event_guests eg ON t.event_guest_id = eg.id
-      INNER JOIN guests g ON eg.guest_id = g.id
-      INNER JOIN events e ON eg.event_id = e.id
-      WHERE t.id = $1
+      INNER JOIN ticket_types tt ON t.ticket_type_id = tt.id AND tt.deleted_at IS NULL
+      INNER JOIN event_guests eg ON t.event_guest_id = eg.id AND eg.deleted_at IS NULL
+      INNER JOIN guests g ON eg.guest_id = g.id AND g.deleted_at IS NULL
+      INNER JOIN events e ON eg.event_id = e.id AND e.deleted_at IS NULL
+      WHERE t.id = $1 AND t.deleted_at IS NULL
     `;
     const result = await database.query(query, [id]);
     
@@ -98,11 +98,11 @@ class TicketsRepository {
              eg.event_id, eg.guest_id, g.first_name, g.last_name, g.email,
              e.title as event_title, e.organizer_id, e.event_date
       FROM tickets t
-      INNER JOIN ticket_types tt ON t.ticket_type_id = tt.id
-      INNER JOIN event_guests eg ON t.event_guest_id = eg.id
-      INNER JOIN guests g ON eg.guest_id = g.id
-      INNER JOIN events e ON eg.event_id = e.id
-      WHERE t.ticket_code = $1
+      INNER JOIN ticket_types tt ON t.ticket_type_id = tt.id AND tt.deleted_at IS NULL
+      INNER JOIN event_guests eg ON t.event_guest_id = eg.id AND eg.deleted_at IS NULL
+      INNER JOIN guests g ON eg.guest_id = g.id AND g.deleted_at IS NULL
+      INNER JOIN events e ON eg.event_id = e.id AND e.deleted_at IS NULL
+      WHERE t.ticket_code = $1 AND t.deleted_at IS NULL
     `;
     const result = await database.query(query, [ticketCode]);
     
@@ -118,8 +118,8 @@ class TicketsRepository {
              COUNT(t.id) as sold_tickets,
              COUNT(CASE WHEN t.is_validated = true THEN 1 END) as validated_tickets
       FROM ticket_types tt
-      LEFT JOIN tickets t ON tt.id = t.ticket_type_id
-      WHERE tt.event_id = $1
+      LEFT JOIN tickets t ON tt.id = t.ticket_type_id AND t.deleted_at IS NULL
+      WHERE tt.event_id = $1 AND tt.deleted_at IS NULL
     `;
     
     const values = [eventId];
@@ -142,7 +142,7 @@ class TicketsRepository {
     const result = await database.query(query, values);
     
     // Get total count
-    let countQuery = 'SELECT COUNT(*) as total FROM ticket_types WHERE event_id = $1';
+    let countQuery = 'SELECT COUNT(*) as total FROM ticket_types WHERE event_id = $1 AND deleted_at IS NULL';
     const countValues = [eventId];
     
     if (type) {
@@ -172,10 +172,10 @@ class TicketsRepository {
       SELECT t.*, tt.name as ticket_type_name, tt.type as ticket_type,
              g.first_name, g.last_name, g.email
       FROM tickets t
-      INNER JOIN ticket_types tt ON t.ticket_type_id = tt.id
-      INNER JOIN event_guests eg ON t.event_guest_id = eg.id
-      INNER JOIN guests g ON eg.guest_id = g.id
-      WHERE eg.event_id = $1
+      INNER JOIN ticket_types tt ON t.ticket_type_id = tt.id AND tt.deleted_at IS NULL
+      INNER JOIN event_guests eg ON t.event_guest_id = eg.id AND eg.deleted_at IS NULL
+      INNER JOIN guests g ON eg.guest_id = g.id AND g.deleted_at IS NULL
+      WHERE eg.event_id = $1 AND t.deleted_at IS NULL
     `;
     
     const values = [eventId];
@@ -201,7 +201,7 @@ class TicketsRepository {
     const result = await database.query(query, values);
     
     // Get total count
-    let countQuery = 'SELECT COUNT(*) as total FROM tickets t WHERE t.event_id = $1';
+    let countQuery = 'SELECT COUNT(*) as total FROM tickets t INNER JOIN event_guests eg ON t.event_guest_id = eg.id WHERE eg.event_id = $1 AND t.deleted_at IS NULL';
     const countValues = [eventId];
     let countParamCount = 1;
     
@@ -249,12 +249,12 @@ class TicketsRepository {
       throw new Error('No valid fields to update');
     }
     
-    values.push(updatedBy, updatedBy, id);
+    values.push(updatedBy, id);
     
     const query = `
       UPDATE ticket_types 
       SET ${updates.join(', ')}, updated_by = $${values.length - 1}, updated_at = NOW()
-      WHERE id = $${values.length}
+      WHERE id = $${values.length} AND deleted_at IS NULL
       RETURNING *
     `;
     
@@ -263,9 +263,14 @@ class TicketsRepository {
     return result.rows[0] || null;
   }
 
-  async deleteTicketType(id) {
-    const query = 'DELETE FROM ticket_types WHERE id = $1 RETURNING *';
-    const result = await database.query(query, [id]);
+  async deleteTicketType(id, deletedBy) {
+    const query = `
+      UPDATE ticket_types
+      SET deleted_at = NOW(), deleted_by = $2, updated_at = NOW(), updated_by = $2
+      WHERE id = $1 AND deleted_at IS NULL
+      RETURNING *
+    `;
+    const result = await database.query(query, [id, deletedBy]);
     
     return result.rows[0] || null;
   }
@@ -304,7 +309,7 @@ class TicketsRepository {
     const query = `
       UPDATE tickets 
       SET qr_code_data = $1, updated_at = NOW()
-      WHERE id = $2
+      WHERE id = $2 AND deleted_at IS NULL
       RETURNING *
     `;
     
@@ -317,8 +322,8 @@ class TicketsRepository {
     const query = `
       SELECT t.*, eg.event_id
       FROM tickets t
-      INNER JOIN event_guests eg ON t.event_guest_id = eg.id
-      WHERE t.id = $1
+      INNER JOIN event_guests eg ON t.event_guest_id = eg.id AND eg.deleted_at IS NULL
+      WHERE t.id = $1 AND t.deleted_at IS NULL
     `;
     
     const result = await database.query(query, [ticketId]);
@@ -330,7 +335,7 @@ class TicketsRepository {
     const query = `
       UPDATE tickets 
       SET is_validated = true, validated_at = NOW(), updated_at = NOW()
-      WHERE id = $1 AND is_validated = false
+      WHERE id = $1 AND is_validated = false AND deleted_at IS NULL
       RETURNING *
     `;
     
@@ -343,7 +348,7 @@ class TicketsRepository {
     const query = `
       UPDATE tickets 
       SET is_validated = true, validated_at = NOW(), updated_at = NOW()
-      WHERE ticket_code = $1 AND is_validated = false
+      WHERE ticket_code = $1 AND is_validated = false AND deleted_at IS NULL
       RETURNING *
     `;
     
@@ -363,9 +368,9 @@ class TicketsRepository {
         COUNT(CASE WHEN tt.type = 'paid' THEN 1 END) as paid_tickets,
         COUNT(CASE WHEN tt.type = 'donation' THEN 1 END) as donation_tickets
       FROM tickets t
-      INNER JOIN ticket_types tt ON t.ticket_type_id = tt.id
-      INNER JOIN event_guests eg ON t.event_guest_id = eg.id
-      WHERE eg.event_id = $1
+      INNER JOIN ticket_types tt ON t.ticket_type_id = tt.id AND tt.deleted_at IS NULL
+      INNER JOIN event_guests eg ON t.event_guest_id = eg.id AND eg.deleted_at IS NULL
+      WHERE eg.event_id = $1 AND t.deleted_at IS NULL
     `;
     
     const result = await database.query(query, [eventId]);

@@ -32,7 +32,7 @@ class EventsRepository {
   }
 
   async findById(id) {
-    const query = 'SELECT * FROM events WHERE id = $1';
+    const query = 'SELECT * FROM events WHERE id = $1 AND deleted_at IS NULL';
     const result = await database.query(query, [id]);
     
     return result.rows[0] || null;
@@ -47,8 +47,8 @@ class EventsRepository {
              COUNT(eg.id) as guest_count,
              COUNT(CASE WHEN eg.is_present = true THEN 1 END) as checked_in_count
       FROM events e
-      LEFT JOIN event_guests eg ON e.id = eg.event_id
-      WHERE e.organizer_id = $1
+      LEFT JOIN event_guests eg ON e.id = eg.event_id AND eg.deleted_at IS NULL
+      WHERE e.organizer_id = $1 AND e.deleted_at IS NULL
     `;
 
     const values = [organizerId];
@@ -71,7 +71,7 @@ class EventsRepository {
     const result = await database.query(query, values);
 
     // Get total count
-    let countQuery = 'SELECT COUNT(*) as total FROM events WHERE organizer_id = $1';
+    let countQuery = 'SELECT COUNT(*) as total FROM events WHERE organizer_id = $1 AND deleted_at IS NULL';
     const countValues = [organizerId];
     
     if (status) {
@@ -114,7 +114,7 @@ class EventsRepository {
     const query = `
       UPDATE events 
       SET ${updates.join(', ')}, updated_by = $${values.length - 1}, updated_at = NOW()
-      WHERE id = $${values.length}
+      WHERE id = $${values.length} AND deleted_at IS NULL
       RETURNING *
     `;
     
@@ -123,9 +123,14 @@ class EventsRepository {
     return result.rows[0] || null;
   }
 
-  async delete(id) {
-    const query = 'DELETE FROM events WHERE id = $1 RETURNING *';
-    const result = await database.query(query, [id]);
+  async delete(id, deletedBy) {
+    const query = `
+      UPDATE events
+      SET deleted_at = NOW(), deleted_by = $2, updated_at = NOW(), updated_by = $2
+      WHERE id = $1 AND deleted_at IS NULL
+      RETURNING *
+    `;
+    const result = await database.query(query, [id, deletedBy]);
     
     return result.rows[0] || null;
   }
@@ -134,7 +139,7 @@ class EventsRepository {
     const query = `
       UPDATE events
       SET status = 'published', updated_by = $2, updated_at = NOW()
-      WHERE id = $1 AND organizer_id = $2
+      WHERE id = $1 AND organizer_id = $2 AND deleted_at IS NULL
       RETURNING *
     `;
 
@@ -147,7 +152,7 @@ class EventsRepository {
     const query = `
       UPDATE events
       SET status = 'archived', updated_by = $2, updated_at = NOW()
-      WHERE id = $1 AND organizer_id = $2
+      WHERE id = $1 AND organizer_id = $2 AND deleted_at IS NULL
       RETURNING *
     `;
 
@@ -166,7 +171,7 @@ class EventsRepository {
         COUNT(CASE WHEN event_date >= NOW() THEN 1 END) as upcoming_events,
         COUNT(CASE WHEN event_date < NOW() THEN 1 END) as past_events
       FROM events
-      WHERE organizer_id = $1
+      WHERE organizer_id = $1 AND deleted_at IS NULL
     `;
     
     const result = await database.query(query, [organizerId]);

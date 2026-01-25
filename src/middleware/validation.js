@@ -258,6 +258,58 @@ const schemas = {
   // ID parameter
   idParam: Joi.object({
     id: Joi.number().integer().positive().required()
+  }),
+
+  // Event-specific parameter
+  eventIdParam: Joi.object({
+    eventId: Joi.number().integer().positive().required()
+  }),
+
+  // Guest-specific parameter
+  guestIdParam: Joi.object({
+    guestId: Joi.number().integer().positive().required()
+  }),
+
+  // Ticket-specific parameter
+  ticketIdParam: Joi.object({
+    ticketId: Joi.number().integer().positive().required()
+  }),
+
+  // Ticket type parameter
+  ticketTypeIdParam: Joi.object({
+    ticketTypeId: Joi.number().integer().positive().required()
+  }),
+
+  // Template-specific parameter
+  templateIdParam: Joi.object({
+    templateId: Joi.number().integer().positive().required()
+  }),
+
+  // Designer-specific parameter
+  designerIdParam: Joi.object({
+    designerId: Joi.number().integer().positive().required()
+  }),
+
+  // Purchase-specific parameter
+  purchaseIdParam: Joi.object({
+    purchaseId: Joi.number().integer().positive().required()
+  }),
+
+  // Review-specific parameter
+  reviewIdParam: Joi.object({
+    reviewId: Joi.number().integer().positive().required()
+  }),
+
+  // Check-in parameter
+  checkInParam: Joi.object({
+    eventId: Joi.number().integer().positive().required(),
+    guestId: Joi.number().integer().positive().required()
+  }),
+
+  // Event guest parameter
+  eventGuestParam: Joi.object({
+    eventId: Joi.number().integer().positive().required(),
+    guestId: Joi.number().integer().positive().required()
   })
 };
 

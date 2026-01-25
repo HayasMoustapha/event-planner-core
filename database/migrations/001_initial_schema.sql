@@ -1,6 +1,6 @@
 -- Migration initiale pour Event Planner Core
 -- RESPECT STRICTEMENT le diagramme event-planner-core-diagram.md
--- Ajout des champs d'audit : created_at, created_by, deleted_at, deleted_by
+-- Ajout des champs d'audit complets : created_at, updated_at, deleted_at, created_by, updated_by, deleted_by
 
 -- Extension UUID pour gen_random_uuid()
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -9,22 +9,26 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- Module Events & Guests (Section 5.2)
 -- ========================================
 
--- Table Event (conforme exactement au diagramme + champs audit)
+-- Table Event (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS events (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     title VARCHAR NOT NULL,
     description TEXT,
-    event_date DATETIME NOT NULL,
+    event_date TIMESTAMP WITH TIME ZONE NOT NULL,
     location VARCHAR NOT NULL,
     status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
-    -- Champs d'audit
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Organizer selon diagramme: User "1" -- "*" Event
+    organizer_id BIGINT NOT NULL,
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
     created_by BIGINT,
-    deleted_at TIMESTAMP,
+    updated_by BIGINT,
     deleted_by BIGINT
 );
 
--- Table Guest (conforme exactement au diagramme + champs audit)
+-- Table Guest (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS guests (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     first_name VARCHAR NOT NULL,
@@ -32,42 +36,48 @@ CREATE TABLE IF NOT EXISTS guests (
     email VARCHAR,
     phone VARCHAR,
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled')),
-    -- Champs d'audit
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
     created_by BIGINT,
-    deleted_at TIMESTAMP,
+    updated_by BIGINT,
     deleted_by BIGINT
 );
 
--- Table EventGuest (conforme exactement au diagramme + champs audit)
+-- Table EventGuest (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS event_guests (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     is_present BOOLEAN DEFAULT FALSE,
-    check_in_time TIMESTAMP,
+    check_in_time TIMESTAMP WITH TIME ZONE,
     -- Foreign keys selon les relations du diagramme
     event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     guest_id BIGINT NOT NULL REFERENCES guests(id) ON DELETE CASCADE,
-    -- Champs d'audit
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
     created_by BIGINT,
-    deleted_at TIMESTAMP,
+    updated_by BIGINT,
     deleted_by BIGINT,
     -- Contrainte unique
     UNIQUE(event_id, guest_id)
 );
 
--- Table Invitation (conforme exactement au diagramme + champs audit)
+-- Table Invitation (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS invitations (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     invitation_code VARCHAR UNIQUE NOT NULL,
-    sent_at TIMESTAMP,
+    sent_at TIMESTAMP WITH TIME ZONE,
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('sent', 'opened', 'failed')),
     -- Foreign key vers EventGuest selon le diagramme
     event_guest_id BIGINT NOT NULL REFERENCES event_guests(id) ON DELETE CASCADE,
-    -- Champs d'audit
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
     created_by BIGINT,
-    deleted_at TIMESTAMP,
+    updated_by BIGINT,
     deleted_by BIGINT
 );
 
@@ -75,47 +85,50 @@ CREATE TABLE IF NOT EXISTS invitations (
 -- Module Tickets Management (Section 5.3)
 -- ========================================
 
--- Table Ticket (conforme exactement au diagramme + champs audit)
-CREATE TABLE IF NOT EXISTS tickets (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    ticket_code VARCHAR UNIQUE NOT NULL,
-    qr_code_data TEXT,
-    is_validated BOOLEAN DEFAULT FALSE,
-    validated_at TIMESTAMP,
-    price DECIMAL(10,2),
-    currency VARCHAR(3) DEFAULT 'EUR',
-    -- Relations selon le diagramme
-    ticket_type_id BIGINT NOT NULL REFERENCES ticket_types(id) ON DELETE CASCADE,
-    event_guest_id BIGINT NOT NULL REFERENCES event_guests(id) ON DELETE CASCADE,
-    -- Champs d'audit
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT,
-    deleted_at TIMESTAMP,
-    deleted_by BIGINT,
-    -- Champs spécifiques à l'action
-    validated_at TIMESTAMP,
-    validated_by BIGINT
-);
-
--- Table TicketType (conforme exactement au diagramme + champs audit)
+-- Table TicketType (créée AVANT tickets pour éviter les erreurs de foreign key)
 CREATE TABLE IF NOT EXISTS ticket_types (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name VARCHAR NOT NULL,
     description TEXT,
     type VARCHAR(20) NOT NULL CHECK (type IN ('free', 'paid', 'donation')),
     quantity INT NOT NULL DEFAULT 0,
-    available_from TIMESTAMP,
-    available_to TIMESTAMP,
+    available_from TIMESTAMP WITH TIME ZONE,
+    available_to TIMESTAMP WITH TIME ZONE,
     -- Relation avec Event
     event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-    -- Champs d'audit
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
     created_by BIGINT,
-    deleted_at TIMESTAMP,
+    updated_by BIGINT,
     deleted_by BIGINT
 );
 
--- Table TicketTemplate (conforme exactement au diagramme + champs audit)
+-- Table Ticket (conforme exactement au diagramme + champs audit complets)
+CREATE TABLE IF NOT EXISTS tickets (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    ticket_code VARCHAR UNIQUE NOT NULL,
+    qr_code_data TEXT,
+    is_validated BOOLEAN DEFAULT FALSE,
+    validated_at TIMESTAMP WITH TIME ZONE,
+    price DECIMAL(10,2),
+    currency VARCHAR(3) DEFAULT 'EUR',
+    -- Relations selon le diagramme (ticket_types existe maintenant)
+    ticket_type_id BIGINT NOT NULL REFERENCES ticket_types(id) ON DELETE CASCADE,
+    event_guest_id BIGINT NOT NULL REFERENCES event_guests(id) ON DELETE CASCADE,
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    created_by BIGINT,
+    updated_by BIGINT,
+    deleted_by BIGINT,
+    -- Champs spécifiques à l'action
+    validated_by BIGINT
+);
+
+-- Table TicketTemplate (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS ticket_templates (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name VARCHAR NOT NULL,
@@ -123,10 +136,12 @@ CREATE TABLE IF NOT EXISTS ticket_templates (
     preview_url VARCHAR,
     source_files_path VARCHAR,
     is_customizable BOOLEAN DEFAULT FALSE,
-    -- Champs d'audit
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
     created_by BIGINT,
-    deleted_at TIMESTAMP,
+    updated_by BIGINT,
     deleted_by BIGINT
 );
 
@@ -134,7 +149,7 @@ CREATE TABLE IF NOT EXISTS ticket_templates (
 -- Module Marketplace (Section 5.4)
 -- ========================================
 
--- Table Template (conforme exactement au diagramme + champs audit)
+-- Table Template (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS templates (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name VARCHAR NOT NULL,
@@ -144,69 +159,79 @@ CREATE TABLE IF NOT EXISTS templates (
     price DECIMAL(10,2),
     currency VARCHAR(3) DEFAULT 'EUR',
     status VARCHAR(20) DEFAULT 'pending_review' CHECK (status IN ('pending_review', 'approved', 'rejected')),
-    -- Champs d'audit
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Designer selon diagramme: Designer "1" -- "*" Template
+    designer_id BIGINT NOT NULL REFERENCES designers(id) ON DELETE CASCADE,
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
     created_by BIGINT,
-    deleted_at TIMESTAMP,
+    updated_by BIGINT,
     deleted_by BIGINT,
     -- Champs spécifiques aux actions
-    approved_at TIMESTAMP,
+    approved_at TIMESTAMP WITH TIME ZONE,
     approved_by BIGINT,
-    rejected_at TIMESTAMP,
+    rejected_at TIMESTAMP WITH TIME ZONE,
     rejected_by BIGINT
 );
 
--- Table Designer (conforme exactement au diagramme + champs audit)
+-- Table Designer (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS designers (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     brand_name VARCHAR NOT NULL,
     portfolio_url VARCHAR,
     -- Relation avec User (héritage)
     user_id BIGINT UNIQUE NOT NULL,
-    -- Champs d'audit
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
     created_by BIGINT,
-    deleted_at TIMESTAMP,
+    updated_by BIGINT,
     deleted_by BIGINT,
     -- Champs spécifiques aux actions
-    verified_at TIMESTAMP,
+    verified_at TIMESTAMP WITH TIME ZONE,
     verified_by BIGINT
 );
 
--- Table Purchase (conforme exactement au diagramme + champs audit)
+-- Table Purchase (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS purchases (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    purchase_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    purchase_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     amount DECIMAL(10,2) NOT NULL,
     currency VARCHAR(3) DEFAULT 'EUR',
     transaction_id VARCHAR UNIQUE,
     -- Relations selon le diagramme
     user_id BIGINT NOT NULL,
     template_id BIGINT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
-    -- Champs d'audit
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
     created_by BIGINT,
-    deleted_at TIMESTAMP,
+    updated_by BIGINT,
     deleted_by BIGINT,
     -- Champs spécifiques aux actions
-    completed_at TIMESTAMP,
+    completed_at TIMESTAMP WITH TIME ZONE,
     completed_by BIGINT,
-    refunded_at TIMESTAMP,
+    refunded_at TIMESTAMP WITH TIME ZONE,
     refunded_by BIGINT
 );
 
--- Table Review (conforme exactement au diagramme + champs audit)
+-- Table Review (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS reviews (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
     comment TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     -- Relations selon le diagramme
     user_id BIGINT NOT NULL,
     template_id BIGINT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
-    -- Champs d'audit
+    -- Champs d'audit complets
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
     created_by BIGINT,
-    deleted_at TIMESTAMP,
+    updated_by BIGINT,
     deleted_by BIGINT,
     -- Contrainte unique
     UNIQUE(user_id, template_id)
@@ -216,13 +241,13 @@ CREATE TABLE IF NOT EXISTS reviews (
 -- Module Admin Dashboard (Section 5.8)
 -- ========================================
 
--- Table SystemLog (conforme exactement au diagramme + champs audit)
+-- Table SystemLog (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS system_logs (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     level VARCHAR(20) NOT NULL CHECK (level IN ('info', 'warning', 'error')),
     message TEXT NOT NULL,
     context JSON,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     -- Champ d'audit
     created_by BIGINT
 );
@@ -232,58 +257,59 @@ CREATE TABLE IF NOT EXISTS system_logs (
 -- ========================================
 
 -- Index pour Events & Guests
-CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
-CREATE INDEX IF NOT EXISTS idx_events_event_date ON events(event_date);
-CREATE INDEX IF NOT EXISTS idx_events_created_at ON events(created_at);
-CREATE INDEX IF NOT EXISTS idx_events_created_by ON events(created_by);
+CREATE INDEX IF NOT EXISTS idx_events_status ON events(status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_events_event_date ON events(event_date) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_events_created_at ON events(created_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_events_created_by ON events(created_by) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_events_organizer_id ON events(organizer_id) WHERE deleted_at IS NULL;
 
-CREATE INDEX IF NOT EXISTS idx_guests_email ON guests(email);
-CREATE INDEX IF NOT EXISTS idx_guests_status ON guests(status);
-CREATE INDEX IF NOT EXISTS idx_guests_created_at ON guests(created_at);
-CREATE INDEX IF NOT EXISTS idx_guests_created_by ON guests(created_by);
+CREATE INDEX IF NOT EXISTS idx_guests_email ON guests(email) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_guests_status ON guests(status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_guests_created_at ON guests(created_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_guests_created_by ON guests(created_by) WHERE deleted_at IS NULL;
 
-CREATE INDEX IF NOT EXISTS idx_event_guests_event_id ON event_guests(event_id);
-CREATE INDEX IF NOT EXISTS idx_event_guests_guest_id ON event_guests(guest_id);
-CREATE INDEX IF NOT EXISTS idx_event_guests_created_at ON event_guests(created_at);
-CREATE INDEX IF NOT EXISTS idx_event_guests_created_by ON event_guests(created_by);
+CREATE INDEX IF NOT EXISTS idx_event_guests_event_id ON event_guests(event_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_event_guests_guest_id ON event_guests(guest_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_event_guests_created_at ON event_guests(created_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_event_guests_created_by ON event_guests(created_by) WHERE deleted_at IS NULL;
 
-CREATE INDEX IF NOT EXISTS idx_invitations_invitation_code ON invitations(invitation_code);
-CREATE INDEX IF NOT EXISTS idx_invitations_status ON invitations(status);
-CREATE INDEX IF NOT EXISTS idx_invitations_created_at ON invitations(created_at);
-CREATE INDEX IF NOT EXISTS idx_invitations_created_by ON invitations(created_by);
+CREATE INDEX IF NOT EXISTS idx_invitations_invitation_code ON invitations(invitation_code) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_invitations_status ON invitations(status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_invitations_created_at ON invitations(created_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_invitations_created_by ON invitations(created_by) WHERE deleted_at IS NULL;
 
 -- Index pour Tickets
-CREATE INDEX IF NOT EXISTS idx_tickets_ticket_code ON tickets(ticket_code);
-CREATE INDEX IF NOT EXISTS idx_tickets_ticket_type_id ON tickets(ticket_type_id);
-CREATE INDEX IF NOT EXISTS idx_tickets_event_guest_id ON tickets(event_guest_id);
-CREATE INDEX IF NOT EXISTS idx_tickets_is_validated ON tickets(is_validated);
-CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(created_at);
-CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by);
+CREATE INDEX IF NOT EXISTS idx_tickets_ticket_code ON tickets(ticket_code) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_tickets_ticket_type_id ON tickets(ticket_type_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_tickets_event_guest_id ON tickets(event_guest_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_tickets_is_validated ON tickets(is_validated) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(created_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by) WHERE deleted_at IS NULL;
 
-CREATE INDEX IF NOT EXISTS idx_ticket_types_event_id ON ticket_types(event_id);
-CREATE INDEX IF NOT EXISTS idx_ticket_types_type ON ticket_types(type);
-CREATE INDEX IF NOT EXISTS idx_ticket_types_created_at ON ticket_types(created_at);
-CREATE INDEX IF NOT EXISTS idx_ticket_types_created_by ON ticket_types(created_by);
+CREATE INDEX IF NOT EXISTS idx_ticket_types_event_id ON ticket_types(event_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ticket_types_type ON ticket_types(type) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ticket_types_created_at ON ticket_types(created_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ticket_types_created_by ON ticket_types(created_by) WHERE deleted_at IS NULL;
 
 -- Index pour Marketplace
-CREATE INDEX IF NOT EXISTS idx_templates_designer_id ON templates(designer_id);
-CREATE INDEX IF NOT EXISTS idx_templates_status ON templates(status);
-CREATE INDEX IF NOT EXISTS idx_templates_created_at ON templates(created_at);
-CREATE INDEX IF NOT EXISTS idx_templates_created_by ON templates(created_by);
+CREATE INDEX IF NOT EXISTS idx_templates_designer_id ON templates(designer_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_templates_status ON templates(status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_templates_created_at ON templates(created_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_templates_created_by ON templates(created_by) WHERE deleted_at IS NULL;
 
-CREATE INDEX IF NOT EXISTS idx_designers_user_id ON designers(user_id);
-CREATE INDEX IF NOT EXISTS idx_designers_created_at ON designers(created_at);
-CREATE INDEX IF NOT EXISTS idx_designers_created_by ON designers(created_by);
+CREATE INDEX IF NOT EXISTS idx_designers_user_id ON designers(user_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_designers_created_at ON designers(created_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_designers_created_by ON designers(created_by) WHERE deleted_at IS NULL;
 
-CREATE INDEX IF NOT EXISTS idx_purchases_user_id ON purchases(user_id);
-CREATE INDEX IF NOT EXISTS idx_purchases_template_id ON purchases(template_id);
-CREATE INDEX IF NOT EXISTS idx_purchases_created_at ON purchases(created_at);
-CREATE INDEX IF NOT EXISTS idx_purchases_created_by ON purchases(created_by);
+CREATE INDEX IF NOT EXISTS idx_purchases_user_id ON purchases(user_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_purchases_template_id ON purchases(template_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_purchases_created_at ON purchases(created_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_purchases_created_by ON purchases(created_by) WHERE deleted_at IS NULL;
 
-CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id);
-CREATE INDEX IF NOT EXISTS idx_reviews_template_id ON reviews(template_id);
-CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at);
-CREATE INDEX IF NOT EXISTS idx_reviews_created_by ON reviews(created_by);
+CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_reviews_template_id ON reviews(template_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_reviews_created_by ON reviews(created_by) WHERE deleted_at IS NULL;
 
 -- Index pour System Logs
 CREATE INDEX IF NOT EXISTS idx_system_logs_level ON system_logs(level);

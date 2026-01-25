@@ -17,14 +17,14 @@ class GuestsRepository {
   }
 
   async findById(id) {
-    const query = 'SELECT * FROM guests WHERE id = $1';
+    const query = 'SELECT * FROM guests WHERE id = $1 AND deleted_at IS NULL';
     const result = await database.query(query, [id]);
     
     return result.rows[0] || null;
   }
 
   async findByEmail(email) {
-    const query = 'SELECT * FROM guests WHERE email = $1';
+    const query = 'SELECT * FROM guests WHERE email = $1 AND deleted_at IS NULL';
     const result = await database.query(query, [email]);
     
     return result.rows[0] || null;
@@ -34,7 +34,7 @@ class GuestsRepository {
     const { page = 1, limit = 20, status, search } = options;
     const offset = (page - 1) * limit;
     
-    let query = 'SELECT * FROM guests WHERE 1=1';
+    let query = 'SELECT * FROM guests WHERE deleted_at IS NULL';
     const values = [];
     let paramCount = 0;
     
@@ -56,7 +56,7 @@ class GuestsRepository {
     const result = await database.query(query, values);
     
     // Get total count
-    let countQuery = 'SELECT COUNT(*) as total FROM guests WHERE 1=1';
+    let countQuery = 'SELECT COUNT(*) as total FROM guests WHERE deleted_at IS NULL';
     const countValues = [];
     let countParamCount = 0;
     
@@ -102,12 +102,12 @@ class GuestsRepository {
       throw new Error('No valid fields to update');
     }
     
-    values.push(updatedBy, updatedBy, id);
+    values.push(updatedBy, id);
     
     const query = `
       UPDATE guests 
       SET ${updates.join(', ')}, updated_by = $${values.length - 1}, updated_at = NOW()
-      WHERE id = $${values.length}
+      WHERE id = $${values.length} AND deleted_at IS NULL
       RETURNING *
     `;
     
@@ -116,9 +116,14 @@ class GuestsRepository {
     return result.rows[0] || null;
   }
 
-  async delete(id) {
-    const query = 'DELETE FROM guests WHERE id = $1 RETURNING *';
-    const result = await database.query(query, [id]);
+  async delete(id, deletedBy) {
+    const query = `
+      UPDATE guests
+      SET deleted_at = NOW(), deleted_by = $2, updated_at = NOW(), updated_by = $2
+      WHERE id = $1 AND deleted_at IS NULL
+      RETURNING *
+    `;
+    const result = await database.query(query, [id, deletedBy]);
     
     return result.rows[0] || null;
   }
@@ -130,8 +135,8 @@ class GuestsRepository {
     let query = `
       SELECT g.*, eg.is_present, eg.check_in_time, eg.invitation_code, eg.status as event_guest_status
       FROM guests g
-      INNER JOIN event_guests eg ON g.id = eg.guest_id
-      WHERE eg.event_id = $1
+      INNER JOIN event_guests eg ON g.id = eg.guest_id AND eg.deleted_at IS NULL
+      WHERE eg.event_id = $1 AND g.deleted_at IS NULL
     `;
     
     const values = [eventId];
@@ -149,7 +154,7 @@ class GuestsRepository {
     const result = await database.query(query, values);
     
     // Get total count
-    let countQuery = 'SELECT COUNT(*) as total FROM event_guests WHERE event_id = $1';
+    let countQuery = 'SELECT COUNT(*) as total FROM event_guests eg WHERE eg.event_id = $1 AND eg.deleted_at IS NULL';
     const countValues = [eventId];
     
     if (status) {
@@ -188,7 +193,7 @@ class GuestsRepository {
     const query = `
       UPDATE event_guests 
       SET is_present = true, check_in_time = NOW(), updated_at = NOW()
-      WHERE invitation_code = $1 AND is_present = false
+      WHERE invitation_code = $1 AND is_present = false AND deleted_at IS NULL
       RETURNING *
     `;
     
@@ -206,7 +211,7 @@ class GuestsRepository {
         COUNT(CASE WHEN eg.status = 'pending' THEN 1 END) as pending_guests,
         COUNT(CASE WHEN eg.status = 'cancelled' THEN 1 END) as cancelled_guests
       FROM event_guests eg
-      WHERE eg.event_id = $1
+      WHERE eg.event_id = $1 AND eg.deleted_at IS NULL
     `;
     
     const result = await database.query(query, [eventId]);
