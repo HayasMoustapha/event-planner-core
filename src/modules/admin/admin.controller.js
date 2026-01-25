@@ -988,6 +988,86 @@ class AdminController {
       next(error);
     }
   }
+
+  async deleteUser(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      // Security: Validate ID and admin permissions
+      if (!id || isNaN(parseInt(id))) {
+        throw new ValidationError('Invalid user ID provided');
+      }
+
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user attempting to delete user');
+      }
+
+      const userId = parseInt(id);
+      const result = await adminService.deleteUser(userId, req.user.id);
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('not found')) {
+          throw new NotFoundError('User');
+        }
+        if (result.error && result.error.includes('Cannot delete')) {
+          throw new ValidationError(result.error);
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: 'User deleted successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createBackup(req, res, next) {
+    try {
+      // Security: Validate admin permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('Admin authentication required');
+      }
+
+      // Security: Check if user has admin role
+      if (!req.user.roles || !req.user.roles.includes('admin')) {
+        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user attempting backup');
+      }
+
+      const { backup_type, include_data } = req.body;
+      
+      // Security: Validate backup parameters
+      if (backup_type && !['full', 'incremental', 'database_only'].includes(backup_type)) {
+        throw new ValidationError('Invalid backup type');
+      }
+
+      const result = await adminService.createBackup({
+        backup_type: backup_type || 'full',
+        include_data: include_data !== false,
+        created_by: req.user.id
+      });
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.status(202).json({
+        success: true,
+        data: result.data,
+        message: 'Backup started successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new AdminController();

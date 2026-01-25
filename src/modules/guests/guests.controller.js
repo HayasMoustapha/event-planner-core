@@ -644,6 +644,52 @@ class GuestsController {
     }
   }
 
+  async checkInGuestById(req, res, next) {
+    try {
+      const { eventId, guestId } = req.params;
+      
+      // Security: Validate IDs
+      if (!eventId || isNaN(parseInt(eventId))) {
+        throw new ValidationError('Invalid event ID provided');
+      }
+      
+      if (!guestId || isNaN(parseInt(guestId))) {
+        throw new ValidationError('Invalid guest ID provided');
+      }
+
+      const eventIdInt = parseInt(eventId);
+      const guestIdInt = parseInt(guestId);
+      
+      // Security: Validate request data
+      const { invitation_code } = req.body;
+      
+      if (!invitation_code || invitation_code.length < 6) {
+        throw new ValidationError('Valid invitation code is required');
+      }
+
+      const result = await guestsService.checkInGuest(eventIdInt, guestIdInt, invitation_code, req.user.id);
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('not found')) {
+          throw new NotFoundError('Event guest');
+        }
+        if (result.error && result.error.includes('already checked in')) {
+          throw new ConflictError(result.error);
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      recordBusinessOperation('guest_checked_in', 'success');
+      res.json(successResponse(
+        'Guest checked in successfully',
+        result.data
+      ));
+    } catch (error) {
+      recordBusinessOperation('guest_checked_in', 'error');
+      next(error);
+    }
+  }
+
   async bulkAddGuestsToEvent(req, res, next) {
     try {
       const { eventId } = req.params;

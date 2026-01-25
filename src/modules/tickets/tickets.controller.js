@@ -700,6 +700,88 @@ class TicketsController {
       next(error);
     }
   }
+
+  async createJob(req, res, next) {
+    try {
+      // Security: Validate user permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('User authentication required');
+      }
+
+      // Security: Validate job data
+      const { event_id, status, details } = req.body;
+      
+      if (!event_id || isNaN(parseInt(event_id))) {
+        throw new ValidationError('Valid event ID is required');
+      }
+
+      if (!status || !['pending', 'processing', 'completed', 'failed'].includes(status)) {
+        throw new ValidationError('Valid job status is required');
+      }
+
+      if (!details || typeof details !== 'object') {
+        throw new ValidationError('Job details are required');
+      }
+
+      const result = await ticketsService.createTicketGenerationJob({
+        event_id: parseInt(event_id),
+        status,
+        details,
+        created_by: req.user.id
+      });
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('not found')) {
+          throw new NotFoundError('Event');
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.status(201).json({
+        success: true,
+        data: result.data,
+        message: result.message || 'Job created successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async processJob(req, res, next) {
+    try {
+      const { jobId } = req.params;
+      
+      // Security: Validate job ID
+      if (!jobId || isNaN(parseInt(jobId))) {
+        throw new ValidationError('Valid job ID is required');
+      }
+
+      // Security: Check user permissions
+      if (!req.user || !req.user.id) {
+        throw new AuthorizationError('User authentication required');
+      }
+
+      const result = await ticketsService.processTicketGenerationJob(parseInt(jobId), req.user.id);
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('not found')) {
+          throw new NotFoundError('Job');
+        }
+        if (result.error && result.error.includes('already processed')) {
+          throw new ConflictError(result.error);
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: result.message || 'Job processed successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new TicketsController();

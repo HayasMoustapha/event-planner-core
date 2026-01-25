@@ -1,4 +1,4 @@
-const authClient = require('../config/clients/auth-client');
+const authClient = require('../config/auth-client');
 const logger = require('../utils/logger');
 const { errorResponse, forbiddenResponse } = require('../utils/response');
 

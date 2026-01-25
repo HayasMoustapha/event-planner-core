@@ -1,4 +1,4 @@
-const { request, testDb } = require('./setup');
+const { request, testDb, createMockToken } = require('./setup');
 const app = require('../src/app');
 
 describe('Admin API', () => {
@@ -7,31 +7,20 @@ describe('Admin API', () => {
   let testUserId;
 
   beforeAll(async () => {
-    // Créer un utilisateur normal
-    const userResponse = await request(app)
-      .post('/api/auth/register')
-      .send({
-        email: 'user@example.com',
-        password: 'userpassword',
-        first_name: 'User',
-        last_name: 'Normal'
-      });
-    
-    authToken = userResponse.body.data.token;
+    // Créer des tokens JWT mockés avec la bonne structure
+    authToken = createMockToken({
+      id: 1,
+      email: 'user@example.com',
+      roles: ['user']
+    });
 
-    // Créer un utilisateur admin
-    const adminResponse = await request(app)
-      .post('/api/auth/register')
-      .send({
-        email: 'admin@example.com',
-        password: 'adminpassword',
-        first_name: 'Admin',
-        last_name: 'User',
-        role: 'admin'
-      });
-    
-    adminToken = adminResponse.body.data.token;
-    testUserId = adminResponse.body.data.user.id;
+    adminToken = createMockToken({
+      id: 2,
+      email: 'admin@example.com',
+      roles: ['admin']
+    });
+
+    testUserId = 1;
   });
 
   describe('GET /api/admin/dashboard', () => {

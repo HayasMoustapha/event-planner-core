@@ -51,6 +51,12 @@ router.put('/users/:id/status',
   adminController.updateUserStatus
 );
 
+router.delete('/users/:id', 
+  requirePermission('admin.delete'),
+  validate(schemas.idParam, 'params'),
+  adminController.deleteUser
+);
+
 // Event Management
 router.get('/events', 
   requirePermission('admin.read'),
@@ -97,6 +103,12 @@ router.get('/export',
 router.get('/health', 
   requirePermission('admin.read'),
   adminController.getSystemHealth
+);
+
+// Backup
+router.post('/backup', 
+  requirePermission('admin.backup'),
+  adminController.createBackup
 );
 
 module.exports = router;
