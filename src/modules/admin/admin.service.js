@@ -191,7 +191,16 @@ class AdminService {
     try {
       const validLevels = ['info', 'warning', 'error'];
       if (!validLevels.includes(level)) {
-        throw new Error('Invalid log level. Must be info, warning, or error');
+        return {
+          success: false,
+          error: 'Invalid log level',
+          details: {
+            field: 'level',
+            message: 'Invalid log level. Must be info, warning, or error',
+            allowedLevels: validLevels,
+            providedLevel: level
+          }
+        };
       }
 
       const logData = {

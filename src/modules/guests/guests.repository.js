@@ -99,21 +99,43 @@ class GuestsRepository {
     });
     
     if (updates.length === 0) {
-      throw new Error('No valid fields to update');
+      return {
+        success: false,
+        error: 'No valid fields to update',
+        details: {
+          message: 'At least one valid field must be provided for update',
+          allowedFields,
+          providedFields: Object.keys(updateData)
+        }
+      };
     }
     
-    values.push(updatedBy, id);
+    values.push(updatedBy, updatedBy, id);
     
     const query = `
       UPDATE guests 
       SET ${updates.join(', ')}, updated_by = $${values.length - 1}, updated_at = NOW()
-      WHERE id = $${values.length} AND deleted_at IS NULL
+      WHERE id = $${values.length}
       RETURNING *
     `;
     
-    const result = await database.query(query, values);
-    
-    return result.rows[0] || null;
+    try {
+      const result = await database.query(query, values);
+      return {
+        success: true,
+        data: result.rows[0],
+        message: 'Guest updated successfully'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Failed to update guest',
+        details: {
+          message: error.message,
+          id
+        }
+      };
+    }
   }
 
   async delete(id, deletedBy) {
