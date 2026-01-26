@@ -78,34 +78,8 @@ class EventsController {
     try {
       const { id } = req.params;
       
-      // Validation du paramètre ID
-      if (!id) {
-        return res.status(400).json(badRequestResponse(
-          'L\'ID de l\'événement est requis'
-        ));
-      }
-      
-      const eventId = parseInt(id);
-      
-      if (isNaN(eventId) || eventId <= 0) {
-        return res.status(400).json(validationErrorResponse({
-          field: 'id',
-          message: 'L\'ID de l\'événement doit être un nombre entier positif'
-        }));
-      }
-
-      // Sécurité: Détection de tentatives d'injection
-      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*') || id.toString().includes('DROP') || id.toString().includes('DELETE')) {
-        recordSecurityEvent('sql_injection_attempt', 'critical');
-        const securityError = SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in event ID');
-        return res.status(403).json(errorResponse(
-          securityError.message,
-          null,
-          'SECURITY_VIOLATION'
-        ));
-      }
-
-      const result = await eventsService.getEventById(eventId, req.user.id);
+      // Le contexte est déjà normalisé et validé par les middlewares
+      const result = await eventsService.getEventById(id, req.user.id);
       
       if (!result.success) {
         if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
@@ -120,7 +94,7 @@ class EventsController {
       // Sécurité: Log accès aux données sensibles
       if (result.data && result.data.organizer_id !== req.user.id) {
         console.warn('Access to non-owned event:', {
-          eventId,
+          eventId: id,
           userId: req.user.id,
           organizerId: result.data.organizer_id,
           ip: req.ip,
@@ -142,58 +116,12 @@ class EventsController {
 
   async getEvents(req, res, next) {
     try {
-      // Validation des paramètres de requête
-      const { page, limit, status, search } = req.query;
-      
-      // Validation du paramètre page
-      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
-        return res.status(400).json(validationErrorResponse({
-          field: 'page',
-          message: 'Le numéro de page doit être un entier positif'
-        }));
-      }
-      
-      // Validation du paramètre limit
-      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
-        return res.status(400).json(validationErrorResponse({
-          field: 'limit',
-          message: 'La limite doit être un entier entre 1 et 100'
-        }));
-      }
-
-      // Validation du paramètre search
-      if (search && search.length > 255) {
-        return res.status(400).json(validationErrorResponse({
-          field: 'search',
-          message: 'La recherche ne peut pas dépasser 255 caractères'
-        }));
-      }
-
-      // Sécurité: Détection XSS dans la recherche
-      if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onerror=') || search.includes('onclick='))) {
-        recordSecurityEvent('xss_attempt', 'high');
-        const securityError = SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in search query');
-        return res.status(403).json(errorResponse(
-          securityError.message,
-          null,
-          'SECURITY_VIOLATION'
-        ));
-      }
-
-      // Validation du statut si fourni
-      const validStatuses = ['draft', 'published', 'archived'];
-      if (status && !validStatuses.includes(status)) {
-        return res.status(400).json(validationErrorResponse({
-          field: 'status',
-          message: `Le statut doit être l'une des valeurs suivantes: ${validStatuses.join(', ')}`
-        }));
-      }
-
+      // Le contexte est déjà normalisé et validé par les middlewares
       const options = {
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 20,
-        status,
-        search,
+        page: req.query.page || 1,
+        limit: req.query.limit || 20,
+        status: req.query.status,
+        search: req.query.search,
         userId: req.user.id
       };
 
