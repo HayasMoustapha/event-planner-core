@@ -36,9 +36,86 @@ class ConflictError extends Error {
 
 class EventsService {
   async createEvent(eventData, organizerId) {
-    // Validate event date is in the future
-    if (new Date(eventData.event_date) <= new Date()) {
-      throw new ValidationError('Event date must be in the future');
+    // Validation des données d'entrée
+    if (!eventData.title || typeof eventData.title !== 'string' || eventData.title.trim().length < 3) {
+      return {
+        success: false,
+        error: 'Le titre est requis et doit contenir au moins 3 caractères',
+        details: {
+          field: 'title',
+          message: 'Le titre est requis et doit contenir au moins 3 caractères'
+        }
+      };
+    }
+
+    if (!eventData.event_date) {
+      return {
+        success: false,
+        error: 'La date de l\'événement est requise',
+        details: {
+          field: 'event_date',
+          message: 'La date de l\'événement est requise'
+        }
+      };
+    }
+
+    if (!eventData.location || typeof eventData.location !== 'string' || eventData.location.trim().length < 3) {
+      return {
+        success: false,
+        error: 'Le lieu est requis et doit contenir au moins 3 caractères',
+        details: {
+          field: 'location',
+          message: 'Le lieu est requis et doit contenir au moins 3 caractères'
+        }
+      };
+    }
+
+    // Validation de la date
+    const eventDate = new Date(eventData.event_date);
+    if (isNaN(eventDate.getTime())) {
+      return {
+        success: false,
+        error: 'La date de l\'événement est invalide',
+        details: {
+          field: 'event_date',
+          message: 'La date de l\'événement est invalide'
+        }
+      };
+    }
+
+    if (eventDate <= new Date()) {
+      return {
+        success: false,
+        error: 'La date de l\'événement ne peut pas être dans le passé',
+        details: {
+          field: 'event_date',
+          message: 'La date de l\'événement ne peut pas être dans le passé'
+        }
+      };
+    }
+
+    // Validation de la description si présente
+    if (eventData.description && (typeof eventData.description !== 'string' || eventData.description.length > 2000)) {
+      return {
+        success: false,
+        error: 'La description doit être une chaîne de caractères de maximum 2000 caractères',
+        details: {
+          field: 'description',
+          message: 'La description doit être une chaîne de caractères de maximum 2000 caractères'
+        }
+      };
+    }
+
+    // Validation de l'organizer_id
+    if (!organizerId || organizerId <= 0) {
+      return {
+        success: false,
+        error: 'ID d\'organisateur invalide',
+        details: {
+          field: 'organizer_id',
+          message: 'L\'ID de l\'organisateur doit être un nombre entier positif'
+        }
+      };
     }
 
     const eventDataWithOrganizer = {
@@ -46,7 +123,15 @@ class EventsService {
       organizer_id: organizerId
     };
 
-    return await eventsRepository.create(eventDataWithOrganizer);
+    try {
+      return await eventsRepository.create(eventDataWithOrganizer);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Erreur lors de la création de l\'événement',
+        details: error.message
+      };
+    }
   }
 
   async getEventById(eventId, userId) {

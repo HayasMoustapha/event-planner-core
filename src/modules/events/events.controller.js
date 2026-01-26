@@ -25,83 +25,34 @@ const { recordSecurityEvent, recordBusinessOperation } = require('../../middlewa
 class EventsController {
   async createEvent(req, res, next) {
     try {
-      // Validation des entrées - utilise event_date conformément au schéma BDD
-      const { title, description, event_date, location } = req.body;
+      // Extraction des données avec fallback pour organizer_id
+      const { title, description, event_date, location, organizer_id } = req.body;
+      
+      // Utiliser l'ID de l'utilisateur connecté si organizer_id n'est pas fourni
+      const finalOrganizerId = organizer_id || req.user.id;
 
-      if (!title || typeof title !== 'string' || title.trim().length < 3) {
-        return res.status(400).json(validationErrorResponse({
-          field: 'title',
-          message: 'Le titre est requis et doit contenir au moins 3 caractères'
-        }));
-      }
-
-      if (!event_date) {
-        return res.status(400).json(validationErrorResponse({
-          field: 'event_date',
-          message: 'La date de l\'événement est requise'
-        }));
-      }
-
-      if (!location || typeof location !== 'string' || location.trim().length < 3) {
-        return res.status(400).json(validationErrorResponse({
-          field: 'location',
-          message: 'Le lieu est requis et doit contenir au moins 3 caractères'
-        }));
-      }
-
-      // Validation de la date
-      const eventDate = new Date(event_date);
-
-      if (isNaN(eventDate.getTime())) {
-        return res.status(400).json(validationErrorResponse({
-          field: 'event_date',
-          message: 'La date de l\'événement est invalide'
-        }));
-      }
-
-      if (eventDate < new Date()) {
-        return res.status(400).json(badRequestResponse(
-          'La date de l\'événement ne peut pas être dans le passé'
-        ));
-      }
-
-      // Validation de la description si présente
-      if (description && (typeof description !== 'string' || description.length > 2000)) {
-        return res.status(400).json(validationErrorResponse({
-          field: 'description',
-          message: 'La description doit être une chaîne de caractères de maximum 2000 caractères'
-        }));
-      }
-
-      // Sécurité: Validation utilisateur
-      if (!req.user || !req.user.id) {
-        recordSecurityEvent('unauthorized_access_attempt', 'high');
-        return res.status(401).json(unauthorizedResponse(
-          'Utilisateur non authentifié'
-        ));
-      }
-
-      // Sécurité: Vérification rate limiting
-      if (req.rateLimit && req.rateLimit.remaining === 0) {
-        recordSecurityEvent('rate_limit_exceeded', 'medium');
-        const rateLimitError = SecurityErrorHandler.handleRateLimit(req);
-        return res.status(429).json(errorResponse(
-          rateLimitError.message,
-          null,
-          'RATE_LIMIT_EXCEEDED'
-        ));
-      }
-
-      const result = await eventsService.createEvent(req.body, req.user.id);
+      const result = await eventsService.createEvent({
+        title,
+        description,
+        event_date,
+        location
+      }, finalOrganizerId);
       
       if (!result.success) {
-        if (result.error && result.error.includes('déjà existe')) {
+        // Gérer les différents types d'erreurs
+        if (result.error && result.error.includes('existe déjà')) {
           return res.status(409).json(conflictResponse(result.error));
         }
-        if (result.error && result.error.includes('validation')) {
-          return res.status(400).json(validationErrorResponse(result.details || result.error));
+        
+        // Erreur de validation
+        if (result.details) {
+          return res.status(400).json(validationErrorResponse(result.details));
         }
-        throw new ValidationError(result.error, result.details);
+        
+        // Autre erreur
+        return res.status(400).json(badRequestResponse(
+          result.error || 'Erreur lors de la création de l\'événement'
+        ));
       }
 
       recordBusinessOperation('event_created', 'success');
@@ -111,6 +62,14 @@ class EventsController {
       ));
     } catch (error) {
       recordBusinessOperation('event_created', 'error');
+      
+      // Ne pas lancer de ValidationError avec message vide
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
+      
       next(error);
     }
   }

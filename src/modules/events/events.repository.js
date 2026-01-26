@@ -26,9 +26,45 @@ class EventsRepository {
       location,
       organizer_id
     ];
-    const result = await database.query(query, values);
-
-    return result.rows[0];
+    
+    try {
+      const result = await database.query(query, values);
+      const createdEvent = result.rows[0];
+      
+      return {
+        success: true,
+        message: 'Événement créé avec succès',
+        data: createdEvent
+      };
+    } catch (error) {
+      // Gérer les erreurs de contrainte (doublons, etc.)
+      if (error.code === '23505') { // unique_violation
+        return {
+          success: false,
+          error: 'Un événement avec ces informations existe déjà',
+          details: {
+            field: 'title',
+            message: 'Ce titre est déjà utilisé pour un événement à cette date'
+          }
+        };
+      }
+      
+      // Gérer les erreurs de validation
+      if (error.code === '23514') { // check_violation
+        return {
+          success: false,
+          error: 'Erreur de validation des données',
+          details: error.message
+        };
+      }
+      
+      // Erreur inattendue
+      return {
+        success: false,
+        error: 'Erreur lors de la création de l\'événement',
+        details: error.message
+      };
+    }
   }
 
   async findById(id) {

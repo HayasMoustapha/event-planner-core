@@ -40,13 +40,27 @@ class TicketsService {
     // Validate ticket type
     const validTypes = ['free', 'paid', 'donation'];
     if (!validTypes.includes(ticketTypeData.type)) {
-      throw new ValidationError('Invalid ticket type. Must be free, paid, or donation');
+      return {
+        success: false,
+        error: 'Invalid ticket type. Must be free, paid, or donation',
+        details: {
+          field: 'type',
+          message: 'Invalid ticket type. Must be free, paid, or donation'
+        }
+      };
     }
 
     // Validate availability dates
     if (ticketTypeData.available_from && ticketTypeData.available_to) {
       if (new Date(ticketTypeData.available_from) >= new Date(ticketTypeData.available_to)) {
-        throw new ValidationError('Available from date must be before available to date');
+        return {
+          success: false,
+          error: 'Available from date must be before available to date',
+          details: {
+            field: 'available_from',
+            message: 'Available from date must be before available to date'
+          }
+        };
       }
     }
 
@@ -55,7 +69,15 @@ class TicketsService {
       created_by: userId
     };
 
-    return await ticketsRepository.createTicketType(ticketTypeDataWithCreator);
+    try {
+      return await ticketsRepository.createTicketType(ticketTypeDataWithCreator);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Error creating ticket type',
+        details: error.message
+      };
+    }
   }
 
   async getTicketTypeById(ticketTypeId) {
