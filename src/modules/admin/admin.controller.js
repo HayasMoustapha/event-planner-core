@@ -12,18 +12,30 @@ const {
 class AdminController {
   async getDashboard(req, res, next) {
     try {
+      console.log('🧪 [TEST LOG] AdminController.getDashboard - ENTRY POINT');
+      console.log('🧪 [TEST LOG] AdminController.getDashboard - User context:', { 
+        id: req.user?.id, 
+        roles: req.user?.roles,
+        ip: req.ip 
+      });
+      
       // Security: Validate admin permissions
       if (!req.user || !req.user.id) {
+        console.log('🧪 [TEST LOG] AdminController.getDashboard - ERROR: Missing user authentication');
         throw new AuthorizationError('Admin authentication required');
       }
 
       // Security: Check if user has admin role
       if (!req.user.roles || !req.user.roles.includes('admin')) {
+        console.log('🧪 [TEST LOG] AdminController.getDashboard - ERROR: Non-admin user attempting access');
         throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user accessing admin dashboard');
       }
 
+      console.log('🧪 [TEST LOG] AdminController.getDashboard - Admin validation passed');
+
       // Security: Rate limiting check for sensitive admin operations
       if (req.rateLimit && req.rateLimit.remaining === 0) {
+        console.log('🧪 [TEST LOG] AdminController.getDashboard - ERROR: Rate limit exceeded');
         throw SecurityErrorHandler.handleRateLimit(req);
       }
 
@@ -35,43 +47,64 @@ class AdminController {
         timestamp: new Date().toISOString()
       });
 
+      console.log('🧪 [TEST LOG] AdminController.getDashboard - Calling adminService.getDashboardData...');
       const result = await adminService.getDashboardData(req.user.id);
+      console.log('🧪 [TEST LOG] AdminController.getDashboard - Service result:', result);
       
       if (!result.success) {
+        console.log('🧪 [TEST LOG] AdminController.getDashboard - ERROR: Service failed:', result.error);
         throw new ValidationError(result.error, result.details);
       }
 
+      console.log('🧪 [TEST LOG] AdminController.getDashboard - SUCCESS PATH');
       res.json({
         success: true,
         data: result.data
       });
     } catch (error) {
+      console.log('🧪 [TEST LOG] AdminController.getDashboard - ERROR PATH:', error.message);
+      console.log('🧪 [TEST LOG] AdminController.getDashboard - ERROR STACK:', error.stack);
       next(error);
     }
   }
 
   async getGlobalStats(req, res, next) {
     try {
+      console.log('🧪 [TEST LOG] AdminController.getGlobalStats - ENTRY POINT');
+      console.log('🧪 [TEST LOG] AdminController.getGlobalStats - Request query:', req.query);
+      console.log('🧪 [TEST LOG] AdminController.getGlobalStats - User context:', { 
+        id: req.user?.id, 
+        roles: req.user?.roles 
+      });
+      
       // Security: Validate admin permissions
       if (!req.user || !req.user.id) {
+        console.log('🧪 [TEST LOG] AdminController.getGlobalStats - ERROR: Missing user authentication');
         throw new AuthorizationError('Admin authentication required');
       }
 
       // Security: Check if user has admin role
       if (!req.user.roles || !req.user.roles.includes('admin')) {
+        console.log('🧪 [TEST LOG] AdminController.getGlobalStats - ERROR: Non-admin user attempting access');
         throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user accessing global stats');
       }
+
+      console.log('🧪 [TEST LOG] AdminController.getGlobalStats - Admin validation passed');
 
       // Security: Validate query parameters
       const { period, metric } = req.query;
       
       if (period && !['7d', '30d', '90d', '1y'].includes(period)) {
+        console.log('🧪 [TEST LOG] AdminController.getGlobalStats - ERROR: Invalid period parameter:', period);
         throw new ValidationError('Invalid period parameter. Use: 7d, 30d, 90d, 1y');
       }
 
       if (metric && !['events', 'users', 'tickets', 'revenue'].includes(metric)) {
+        console.log('🧪 [TEST LOG] AdminController.getGlobalStats - ERROR: Invalid metric parameter:', metric);
         throw new ValidationError('Invalid metric parameter. Use: events, users, tickets, revenue');
       }
+
+      console.log('🧪 [TEST LOG] AdminController.getGlobalStats - Parameters validated:', { period, metric });
 
       // Security: Log stats access
       console.info('Admin global stats accessed:', {
@@ -82,21 +115,27 @@ class AdminController {
         timestamp: new Date().toISOString()
       });
 
+      console.log('🧪 [TEST LOG] AdminController.getGlobalStats - Calling adminService.getGlobalStats...');
       const result = await adminService.getGlobalStats({
         period: period || '30d',
         metric,
         adminId: req.user.id
       });
+      console.log('🧪 [TEST LOG] AdminController.getGlobalStats - Service result:', result);
       
       if (!result.success) {
+        console.log('🧪 [TEST LOG] AdminController.getGlobalStats - ERROR: Service failed:', result.error);
         throw new ValidationError(result.error, result.details);
       }
 
+      console.log('🧪 [TEST LOG] AdminController.getGlobalStats - SUCCESS PATH');
       res.json({
         success: true,
         data: result.data
       });
     } catch (error) {
+      console.log('🧪 [TEST LOG] AdminController.getGlobalStats - ERROR PATH:', error.message);
+      console.log('🧪 [TEST LOG] AdminController.getGlobalStats - ERROR STACK:', error.stack);
       next(error);
     }
   }

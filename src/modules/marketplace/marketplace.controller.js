@@ -12,13 +12,22 @@ const {
 class MarketplaceController {
   async becomeDesigner(req, res, next) {
     try {
+      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ENTRY POINT');
+      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - Request body:', req.body);
+      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - User context:', { 
+        id: req.user?.id, 
+        ip: req.ip 
+      });
+      
       // Security: Validate user permissions
       if (!req.user || !req.user.id) {
+        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Missing user authentication');
         throw new AuthorizationError('User authentication required');
       }
 
       // Security: Rate limiting check
       if (req.rateLimit && req.rateLimit.remaining === 0) {
+        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Rate limit exceeded');
         throw SecurityErrorHandler.handleRateLimit(req);
       }
 
@@ -26,74 +35,97 @@ class MarketplaceController {
       const { user_id, brand_name, portfolio_url } = req.body;
       
       if (!user_id || isNaN(parseInt(user_id))) {
+        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Invalid user ID:', user_id);
         throw new ValidationError('Valid user ID is required');
       }
 
       if (!brand_name || brand_name.length < 2 || brand_name.length > 255) {
+        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Invalid brand name:', brand_name);
         throw new ValidationError('Brand name must be between 2 and 255 characters');
       }
 
       // Security: Check for suspicious patterns in brand name
       if (brand_name.includes('<script>') || brand_name.includes('javascript:') || brand_name.includes('onload=')) {
+        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: XSS attempt in brand name');
         throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in brand name');
       }
 
       if (portfolio_url && !/^https?:\/\/.+/.test(portfolio_url)) {
+        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Invalid portfolio URL:', portfolio_url);
         throw new ValidationError('Portfolio URL must be a valid HTTP/HTTPS URL');
       }
 
       // Security: Check for SQL injection in user ID
       if (user_id.toString().includes(';') || user_id.toString().includes('--') || user_id.toString().includes('/*')) {
+        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: SQL injection attempt in user ID');
         throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in user ID');
       }
 
+      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - Validation passed, calling service...');
       const result = await marketplaceService.becomeDesigner(parseInt(user_id), { brand_name, portfolio_url }, req.user.id);
+      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - Service result:', result);
       
       if (!result.success) {
         if (result.error && result.error.includes('already exists')) {
+          console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Conflict - designer already exists');
           throw new ConflictError(result.error);
         }
         if (result.error && result.error.includes('not found')) {
+          console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: User not found');
           throw new NotFoundError('User');
         }
+        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Validation failed:', result.error);
         throw new ValidationError(result.error, result.details);
       }
 
+      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - SUCCESS PATH');
       res.status(201).json({
         success: true,
         data: result.data,
         message: result.message
       });
     } catch (error) {
+      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR PATH:', error.message);
+      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR STACK:', error.stack);
       next(error);
     }
   }
 
   async getDesigners(req, res, next) {
     try {
+      console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - ENTRY POINT');
+      console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - Request query:', req.query);
+      
       // Security: Validate query parameters
       const { page, limit, is_verified, search } = req.query;
       
       if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - ERROR: Invalid page parameter:', page);
         throw new ValidationError('Invalid page parameter');
       }
       
       if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - ERROR: Invalid limit parameter:', limit);
         throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
       }
 
       if (search && search.length > 255) {
+        console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - ERROR: Search query too long:', search.length);
         throw new ValidationError('Search query too long (max 255 characters)');
       }
 
       // Security: Check for XSS patterns in search
       if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onload='))) {
+        console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - ERROR: XSS attempt in search query');
         throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in search query');
       }
 
       if (is_verified !== undefined && !['true', 'false'].includes(is_verified)) {
+        console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - ERROR: Invalid is_verified parameter:', is_verified);
         throw new ValidationError('Invalid is_verified parameter');
       }
+
+      console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - Parameters validated:', { page, limit, is_verified, search });
 
       const options = {
         page: page ? parseInt(page) : 1,
@@ -102,17 +134,24 @@ class MarketplaceController {
         search
       };
 
+      console.log(' [TEST LOG] MarketplaceController.getDesigners - Calling marketplaceService.getDesigners...');
       const result = await marketplaceService.getDesigners(options);
+      console.log(' [TEST LOG] MarketplaceController.getDesigners - Service result:', result);
       
       if (!result.success) {
+        console.log(' [TEST LOG] MarketplaceController.getDesigners - ERROR: Service failed:', result.error);
         throw new ValidationError(result.error, result.details);
       }
 
+      console.log(' [TEST LOG] MarketplaceController.getDesigners - SUCCESS PATH');
       res.json({
         success: true,
-        data: result.data
+        data: result.data,
+        pagination: result.pagination
       });
     } catch (error) {
+      console.log(' [TEST LOG] MarketplaceController.getDesigners - ERROR PATH:', error.message);
+      console.log(' [TEST LOG] MarketplaceController.getDesigners - ERROR STACK:', error.stack);
       next(error);
     }
   }

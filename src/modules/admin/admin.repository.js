@@ -2,6 +2,8 @@ const { database } = require('../../config');
 
 class AdminRepository {
   async getGlobalStats() {
+    console.log('🧪 [TEST LOG] AdminRepository.getGlobalStats - ENTRY');
+    
     const query = `
       SELECT 
         -- Events Stats
@@ -31,8 +33,16 @@ class AdminRepository {
         COALESCE((SELECT AVG(rating) FROM reviews), 0) as average_rating
     `;
     
-    const result = await database.query(query);
-    return result.rows[0];
+    console.log('🧪 [TEST LOG] AdminRepository.getGlobalStats - Executing complex stats query...');
+    try {
+      const result = await database.query(query);
+      console.log('🧪 [TEST LOG] AdminRepository.getGlobalStats - Query result:', result.rows[0]);
+      return result.rows[0];
+    } catch (error) {
+      console.log('🧪 [TEST LOG] AdminRepository.getGlobalStats - DATABASE ERROR:', error.message);
+      console.log('🧪 [TEST LOG] AdminRepository.getGlobalStats - DATABASE ERROR STACK:', error.stack);
+      throw error;
+    }
   }
 
   async getRecentActivity(limit = 50) {

@@ -5,13 +5,19 @@ const db = require('../../config/database');
 class AdminService {
   async getGlobalStats() {
     try {
+      console.log('🧪 [TEST LOG] AdminService.getGlobalStats - ENTRY');
+      
+      console.log('🧪 [TEST LOG] AdminService.getGlobalStats - Calling adminRepository.getGlobalStats...');
       const stats = await adminRepository.getGlobalStats();
+      console.log('🧪 [TEST LOG] AdminService.getGlobalStats - Repository result:', stats);
       
       return {
         success: true,
         data: stats
       };
     } catch (error) {
+      console.log('🧪 [TEST LOG] AdminService.getGlobalStats - ERROR:', error.message);
+      console.log('🧪 [TEST LOG] AdminService.getGlobalStats - ERROR STACK:', error.stack);
       console.error('Error getting global stats:', error);
       return {
         success: false,
@@ -22,13 +28,20 @@ class AdminService {
 
   async getRecentActivity(limit = 50) {
     try {
+      console.log('🧪 [TEST LOG] AdminService.getRecentActivity - ENTRY');
+      console.log('🧪 [TEST LOG] AdminService.getRecentActivity - Limit:', limit);
+      
+      console.log('🧪 [TEST LOG] AdminService.getRecentActivity - Calling adminRepository.getRecentActivity...');
       const activity = await adminRepository.getRecentActivity(limit);
+      console.log('🧪 [TEST LOG] AdminService.getRecentActivity - Repository result:', activity);
       
       return {
         success: true,
         data: activity
       };
     } catch (error) {
+      console.log('🧪 [TEST LOG] AdminService.getRecentActivity - ERROR:', error.message);
+      console.log('🧪 [TEST LOG] AdminService.getRecentActivity - ERROR STACK:', error.stack);
       console.error('Error getting recent activity:', error);
       return {
         success: false,
@@ -39,13 +52,20 @@ class AdminService {
 
   async getSystemLogs(options = {}) {
     try {
+      console.log('🧪 [TEST LOG] AdminService.getSystemLogs - ENTRY');
+      console.log('🧪 [TEST LOG] AdminService.getSystemLogs - Options:', options);
+      
+      console.log('🧪 [TEST LOG] AdminService.getSystemLogs - Calling adminRepository.getSystemLogs...');
       const logs = await adminRepository.getSystemLogs(options);
+      console.log('🧪 [TEST LOG] AdminService.getSystemLogs - Repository result:', logs);
       
       return {
         success: true,
         data: logs
       };
     } catch (error) {
+      console.log('🧪 [TEST LOG] AdminService.getSystemLogs - ERROR:', error.message);
+      console.log('🧪 [TEST LOG] AdminService.getSystemLogs - ERROR STACK:', error.stack);
       console.error('Error getting system logs:', error);
       return {
         success: false,

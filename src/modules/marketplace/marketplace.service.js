@@ -3,15 +3,26 @@ const marketplaceRepository = require('./marketplace.repository');
 class MarketplaceService {
   async becomeDesigner(userId, designerData, currentUserId) {
     try {
+      console.log('🧪 [TEST LOG] MarketplaceService.becomeDesigner - ENTRY');
+      console.log('🧪 [TEST LOG] MarketplaceService.becomeDesigner - userId:', userId);
+      console.log('🧪 [TEST LOG] MarketplaceService.becomeDesigner - designerData:', designerData);
+      console.log('🧪 [TEST LOG] MarketplaceService.becomeDesigner - currentUserId:', currentUserId);
+      
       // Check if user is already a designer
+      console.log('🧪 [TEST LOG] MarketplaceService.becomeDesigner - Checking if user already designer...');
       const existingDesigner = await marketplaceRepository.findDesignerByUserId(userId);
+      console.log('🧪 [TEST LOG] MarketplaceService.becomeDesigner - Existing designer check:', existingDesigner);
+      
       if (existingDesigner) {
+        console.log('🧪 [TEST LOG] MarketplaceService.becomeDesigner - ERROR: User already designer');
         return {
           success: false,
           error: 'User is already registered as a designer'
         };
       }
 
+      console.log('🧪 [TEST LOG] MarketplaceService.becomeDesigner - User not designer, proceeding...');
+      
       const designerDataWithCreator = {
         user_id: userId,
         brand_name: designerData.brand_name,
@@ -19,7 +30,11 @@ class MarketplaceService {
         created_by: currentUserId
       };
 
+      console.log('🧪 [TEST LOG] MarketplaceService.becomeDesigner - Prepared data:', designerDataWithCreator);
+      console.log('🧪 [TEST LOG] MarketplaceService.becomeDesigner - Calling repository.createDesigner...');
+      
       const designer = await marketplaceRepository.createDesigner(designerDataWithCreator);
+      console.log('🧪 [TEST LOG] MarketplaceService.becomeDesigner - Repository result:', designer);
       
       return {
         success: true,
@@ -27,6 +42,8 @@ class MarketplaceService {
         message: 'Designer profile created successfully'
       };
     } catch (error) {
+      console.log('🧪 [TEST LOG] MarketplaceService.becomeDesigner - ERROR:', error.message);
+      console.log('🧪 [TEST LOG] MarketplaceService.becomeDesigner - ERROR STACK:', error.stack);
       console.error('Error creating designer:', error);
       return {
         success: false,
@@ -37,13 +54,20 @@ class MarketplaceService {
 
   async getDesigners(options = {}) {
     try {
+      console.log('🧪 [TEST LOG] MarketplaceService.getDesigners - ENTRY');
+      console.log('🧪 [TEST LOG] MarketplaceService.getDesigners - Options:', options);
+      
+      console.log('🧪 [TEST LOG] MarketplaceService.getDesigners - Calling repository.getDesigners...');
       const result = await marketplaceRepository.getDesigners(options);
+      console.log('🧪 [TEST LOG] MarketplaceService.getDesigners - Repository result:', result);
       
       return {
         success: true,
         data: result
       };
     } catch (error) {
+      console.log('🧪 [TEST LOG] MarketplaceService.getDesigners - ERROR:', error.message);
+      console.log('🧪 [TEST LOG] MarketplaceService.getDesigners - ERROR STACK:', error.stack);
       console.error('Error getting designers:', error);
       return {
         success: false,

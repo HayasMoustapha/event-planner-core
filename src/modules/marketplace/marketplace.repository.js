@@ -2,6 +2,9 @@ const { database } = require('../../config');
 
 class MarketplaceRepository {
   async createDesigner(designerData) {
+    console.log('🧪 [TEST LOG] MarketplaceRepository.createDesigner - ENTRY');
+    console.log('🧪 [TEST LOG] MarketplaceRepository.createDesigner - designerData:', designerData);
+    
     const { user_id, brand_name, portfolio_url, created_by } = designerData;
     
     const query = `
@@ -11,9 +14,22 @@ class MarketplaceRepository {
     `;
     
     const values = [user_id, brand_name, portfolio_url, created_by];
-    const result = await database.query(query, values);
     
-    return result.rows[0];
+    console.log('🧪 [TEST LOG] MarketplaceRepository.createDesigner - SQL Query:', query);
+    console.log('🧪 [TEST LOG] MarketplaceRepository.createDesigner - SQL Values:', values);
+    
+    try {
+      console.log('🧪 [TEST LOG] MarketplaceRepository.createDesigner - Executing database query...');
+      const result = await database.query(query, values);
+      console.log('🧪 [TEST LOG] MarketplaceRepository.createDesigner - Database result:', result);
+      console.log('🧪 [TEST LOG] MarketplaceRepository.createDesigner - Created designer:', result.rows[0]);
+      
+      return result.rows[0];
+    } catch (error) {
+      console.log('🧪 [TEST LOG] MarketplaceRepository.createDesigner - DATABASE ERROR:', error.message);
+      console.log('🧪 [TEST LOG] MarketplaceRepository.createDesigner - DATABASE ERROR STACK:', error.stack);
+      throw error;
+    }
   }
 
   async createTemplate(templateData) {
@@ -108,15 +124,86 @@ class MarketplaceRepository {
   }
 
   async findDesignerByUserId(userId) {
+    console.log('🧪 [TEST LOG] MarketplaceRepository.findDesignerByUserId - ENTRY');
+    console.log('🧪 [TEST LOG] MarketplaceRepository.findDesignerByUserId - userId:', userId);
+    
     const query = `
       SELECT d.*, u.email, u.first_name, u.last_name
       FROM designers d
       INNER JOIN users u ON d.user_id = u.id
       WHERE d.user_id = $1
     `;
-    const result = await database.query(query, [userId]);
     
-    return result.rows[0] || null;
+    console.log('🧪 [TEST LOG] MarketplaceRepository.findDesignerByUserId - SQL Query:', query);
+    
+    try {
+      console.log('🧪 [TEST LOG] MarketplaceRepository.findDesignerByUserId - Executing database query...');
+      const result = await database.query(query, [userId]);
+      console.log('🧪 [TEST LOG] MarketplaceRepository.findDesignerByUserId - Database result:', result);
+      console.log('🧪 [TEST LOG] MarketplaceRepository.findDesignerByUserId - Found designer:', result.rows[0]);
+      
+      return result.rows[0] || null;
+    } catch (error) {
+      console.log('🧪 [TEST LOG] MarketplaceRepository.findDesignerByUserId - DATABASE ERROR:', error.message);
+      console.log('🧪 [TEST LOG] MarketplaceRepository.findDesignerByUserId - DATABASE ERROR STACK:', error.stack);
+      throw error;
+    }
+  }
+
+  async getDesigners(options = {}) {
+    console.log('🧪 [TEST LOG] MarketplaceRepository.getDesigners - ENTRY');
+    console.log('🧪 [TEST LOG] MarketplaceRepository.getDesigners - Options:', options);
+    
+    const { page = 1, limit = 20, is_verified, search } = options;
+    const offset = (page - 1) * limit;
+
+    let query = `
+      SELECT d.*, u.email, u.first_name, u.last_name,
+             COUNT(t.id) as template_count
+      FROM designers d
+      INNER JOIN users u ON d.user_id = u.id
+      LEFT JOIN templates t ON d.id = t.designer_id AND t.deleted_at IS NULL
+      WHERE d.deleted_at IS NULL
+    `;
+
+    const values = [];
+    let paramCount = 0;
+
+    if (is_verified !== undefined) {
+      paramCount++;
+      query += ` AND d.is_verified = $${paramCount}`;
+      values.push(is_verified);
+    }
+
+    if (search) {
+      paramCount++;
+      query += ` AND (d.brand_name ILIKE $${paramCount} OR u.first_name ILIKE $${paramCount} OR u.last_name ILIKE $${paramCount})`;
+      values.push(`%${search}%`);
+    }
+
+    query += `
+      GROUP BY d.id, u.email, u.first_name, u.last_name
+      ORDER BY d.created_at DESC
+      LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+    `;
+
+    values.push(limit, offset);
+
+    console.log('🧪 [TEST LOG] MarketplaceRepository.getDesigners - SQL Query:', query);
+    console.log('🧪 [TEST LOG] MarketplaceRepository.getDesigners - SQL Values:', values);
+    
+    try {
+      console.log('🧪 [TEST LOG] MarketplaceRepository.getDesigners - Executing database query...');
+      const result = await database.query(query, values);
+      console.log('🧪 [TEST LOG] MarketplaceRepository.getDesigners - Database result:', result);
+      console.log('🧪 [TEST LOG] MarketplaceRepository.getDesigners - Found designers:', result.rows);
+      
+      return result.rows;
+    } catch (error) {
+      console.log('🧪 [TEST LOG] MarketplaceRepository.getDesigners - DATABASE ERROR:', error.message);
+      console.log('🧪 [TEST LOG] MarketplaceRepository.getDesigners - DATABASE ERROR STACK:', error.stack);
+      throw error;
+    }
   }
 
   async findTemplateById(id) {
