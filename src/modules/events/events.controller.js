@@ -25,18 +25,18 @@ const { recordSecurityEvent, recordBusinessOperation } = require('../../middlewa
 class EventsController {
   async createEvent(req, res, next) {
     try {
-      // Extraction des données avec fallback pour organizer_id
-      const { title, description, event_date, location, organizer_id } = req.body;
+      // Extraction des données (PLUS de organizer_id dans req.body)
+      const { title, description, event_date, location } = req.body;
       
-      // Utiliser l'ID de l'utilisateur connecté si organizer_id n'est pas fourni
-      const finalOrganizerId = organizer_id || req.user.id;
+      // INJECTION AUTOMATIQUE du user_id depuis le contexte d'authentification
+      const organizerId = req.user.id;
 
       const result = await eventsService.createEvent({
         title,
         description,
         event_date,
         location
-      }, finalOrganizerId);
+      }, organizerId);
       
       if (!result.success) {
         // Gérer les différents types d'erreurs
