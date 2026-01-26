@@ -46,7 +46,15 @@ class ApplicationError extends Error {
     this.severity = severity;
     this.statusCode = statusCode;
     this.isOperational = isOperational;
-    this.errorId = crypto.randomUUID();
+    
+    // Generate errorId with fallback
+    try {
+      this.errorId = crypto.randomUUID();
+    } catch (error) {
+      // Fallback if crypto.randomUUID() fails
+      this.errorId = `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
     this.timestamp = new Date().toISOString();
     this.stack = (new Error()).stack;
     
@@ -229,58 +237,93 @@ class ErrorHandler {
    * Global error handler middleware
    */
   static globalHandler(err, req, res, next) {
-    // Log error with security context
-    ErrorHandler.logError(err, req);
+    try {
+      // Log error with security context
+      ErrorHandler.logError(err, req);
 
-    // Handle different error types
-    if (err instanceof ApplicationError) {
-      return res.status(err.statusCode).json(err.toJSON());
+      // Handle different error types
+      if (err instanceof ApplicationError) {
+        return res.status(err.statusCode).json(err.toJSON());
+      }
+
+      // Handle JWT errors
+      if (err.name === 'JsonWebTokenError') {
+        const authError = new AuthenticationError('Invalid token');
+        return res.status(authError.statusCode).json(authError.toJSON());
+      }
+
+      if (err.name === 'TokenExpiredError') {
+        const authError = new AuthenticationError('Token expired');
+        return res.status(authError.statusCode).json(authError.toJSON());
+      }
+
+      // Handle Joi validation errors
+      if (err.isJoi) {
+        const validationError = new ValidationError('Validation failed', err.details);
+        return res.status(validationError.statusCode).json(validationError.toJSON());
+      }
+
+      // Handle PostgreSQL errors
+      if (err.code && err.code.startsWith('23')) {
+        // Integrity constraint violation
+        const conflictError = new ConflictError('Data integrity violation');
+        return res.status(conflictError.statusCode).json(conflictError.toJSON());
+      }
+
+      // Handle structured service errors
+      if (err && typeof err === 'object' && err.success === false) {
+        return res.status(400).json({
+          success: false,
+          error: err.error || 'Service error',
+          ...(err.details && { details: err.details }),
+          errorId: err.errorId || `svc_${Date.now()}`,
+          timestamp: err.timestamp || new Date().toISOString()
+        });
+      }
+
+      // Default error handler with better error message
+      const errorMessage = err.message || 'An unexpected error occurred';
+      const defaultError = new ApplicationError(
+        errorMessage,
+        ERROR_CATEGORIES.SYSTEM,
+        ERROR_SEVERITY.HIGH,
+        500,
+        false
+      );
+
+      res.status(defaultError.statusCode).json(defaultError.toJSON());
+      
+    } catch (handlerError) {
+      // Fallback if the error handler itself fails
+      console.error('Error handler failed:', handlerError);
+      console.error('Original error:', err);
+      
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        errorId: `fallback_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        category: 'system',
+        severity: 'critical'
+      });
     }
-
-    // Handle JWT errors
-    if (err.name === 'JsonWebTokenError') {
-      const authError = new AuthenticationError('Invalid token');
-      return res.status(authError.statusCode).json(authError.toJSON());
-    }
-
-    if (err.name === 'TokenExpiredError') {
-      const authError = new AuthenticationError('Token expired');
-      return res.status(authError.statusCode).json(authError.toJSON());
-    }
-
-    // Handle Joi validation errors
-    if (err.isJoi) {
-      const validationError = new ValidationError('Validation failed', err.details);
-      return res.status(validationError.statusCode).json(validationError.toJSON());
-    }
-
-    // Handle PostgreSQL errors
-    if (err.code && err.code.startsWith('23')) {
-      // Integrity constraint violation
-      const conflictError = new ConflictError('Data integrity violation');
-      return res.status(conflictError.statusCode).json(conflictError.toJSON());
-    }
-
-    // Default error handler
-    const defaultError = new ApplicationError(
-      'An unexpected error occurred',
-      ERROR_CATEGORIES.SYSTEM,
-      ERROR_SEVERITY.HIGH,
-      500,
-      false
-    );
-
-    res.status(defaultError.statusCode).json(defaultError.toJSON());
   }
 
   /**
    * Log errors with security context
    */
   static logError(err, req) {
-    const logData = {
-      errorId: err.errorId || crypto.randomUUID(),
-      category: err.category || ERROR_CATEGORIES.SYSTEM,
-      severity: err.severity || ERROR_SEVERITY.MEDIUM,
+    try {
+      const logData = {
+        errorId: err.errorId || (() => {
+          try {
+            return crypto.randomUUID();
+          } catch (e) {
+            return `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          }
+        })(),
+        category: err.category || ERROR_CATEGORIES.SYSTEM,
+        severity: err.severity || ERROR_SEVERITY.MEDIUM,
       message: err.message,
       statusCode: err.statusCode || 500,
       timestamp: new Date().toISOString(),
@@ -312,6 +355,11 @@ class ErrorHandler {
         break;
       default:
         console.info('LOW SEVERITY ERROR:', JSON.stringify(logData, null, 2));
+    }
+    } catch (logError) {
+      // Fallback logging if structured logging fails
+      console.error('Failed to log error:', logError);
+      console.error('Original error:', err.message || 'Unknown error');
     }
   }
 
