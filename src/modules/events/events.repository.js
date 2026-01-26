@@ -102,6 +102,10 @@ class EventsRepository {
   }
 
   async findByOrganizer(organizerId, options = {}) {
+    console.log('🧪 [TEST LOG] EventsRepository.findByOrganizer - ENTRY');
+    console.log('🧪 [TEST LOG] EventsRepository.findByOrganizer - organizerId:', organizerId);
+    console.log('🧪 [TEST LOG] EventsRepository.findByOrganizer - options:', options);
+    
     const { page = 1, limit = 20, status } = options;
     const offset = (page - 1) * limit;
 
@@ -131,29 +135,43 @@ class EventsRepository {
 
     values.push(limit, offset);
 
-    const result = await database.query(query, values);
+    console.log('🧪 [TEST LOG] EventsRepository.findByOrganizer - Main query:', query);
+    console.log('🧪 [TEST LOG] EventsRepository.findByOrganizer - Main values:', values);
+    
+    try {
+      console.log('🧪 [TEST LOG] EventsRepository.findByOrganizer - Executing main query...');
+      const result = await database.query(query, values);
+      console.log('🧪 [TEST LOG] EventsRepository.findByOrganizer - Main query result rows:', result.rows.length);
 
-    // Get total count
-    let countQuery = 'SELECT COUNT(*) as total FROM events WHERE organizer_id = $1 AND deleted_at IS NULL';
-    const countValues = [organizerId];
-    
-    if (status) {
-      countQuery += ' AND status = $2';
-      countValues.push(status);
-    }
-    
-    const countResult = await database.query(countQuery, countValues);
-    const total = parseInt(countResult.rows[0].total);
-    
-    return {
-      events: result.rows,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+      // Get total count
+      let countQuery = 'SELECT COUNT(*) as total FROM events WHERE organizer_id = $1 AND deleted_at IS NULL';
+      const countValues = [organizerId];
+      
+      if (status) {
+        countQuery += ' AND status = $2';
+        countValues.push(status);
       }
-    };
+      
+      console.log('🧪 [TEST LOG] EventsRepository.findByOrganizer - Count query:', countQuery);
+      console.log('🧪 [TEST LOG] EventsRepository.findByOrganizer - Executing count query...');
+      const countResult = await database.query(countQuery, countValues);
+      const total = parseInt(countResult.rows[0].total);
+      console.log('🧪 [TEST LOG] EventsRepository.findByOrganizer - Total count:', total);
+      
+      return {
+        events: result.rows,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+    } catch (error) {
+      console.log('🧪 [TEST LOG] EventsRepository.findByOrganizer - DATABASE ERROR:', error.message);
+      console.log('🧪 [TEST LOG] EventsRepository.findByOrganizer - DATABASE ERROR STACK:', error.stack);
+      throw error;
+    }
   }
 
   async update(id, updateData, updatedBy) {

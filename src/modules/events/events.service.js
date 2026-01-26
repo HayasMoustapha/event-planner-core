@@ -194,18 +194,24 @@ class EventsService {
    * @param {number} options.userId - User ID (organizer)
    */
   async getEvents(options = {}) {
+    console.log('🧪 [TEST LOG] EventsService.getEvents - ENTRY');
+    console.log('🧪 [TEST LOG] EventsService.getEvents - Options:', options);
+    
     const { userId, page, limit, status, search } = options;
 
     if (!userId) {
+      console.log('🧪 [TEST LOG] EventsService.getEvents - ERROR: Missing userId');
       throw new ValidationError('User ID is required');
     }
 
+    console.log('🧪 [TEST LOG] EventsService.getEvents - Calling eventsRepository.findByOrganizer...');
     const result = await eventsRepository.findByOrganizer(userId, {
       page,
       limit,
       status,
       search
     });
+    console.log('🧪 [TEST LOG] EventsService.getEvents - Repository result:', result);
 
     return {
       events: result.events,

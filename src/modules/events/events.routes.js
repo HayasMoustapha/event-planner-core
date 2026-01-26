@@ -64,7 +64,7 @@ router.use(authenticate);
  *         description: Permissions insuffisantes
  */
 router.post('/', 
-  authenticate,
+  // authenticate retiré - déjà appliqué globalement ligne 10
   injectUserContext,
   requirePermission('events.create'),
   validate(schemas.createEvent),
@@ -126,7 +126,7 @@ router.post('/',
  *         description: Permissions insuffisantes
  */
 router.get('/', 
-  authenticate,
+  // authenticate retiré - déjà appliqué globalement ligne 10
   injectUserContext,
   requirePermission('events.read'),
   validate(schemas.pagination, 'query'),
@@ -134,14 +134,14 @@ router.get('/',
 );
 
 router.get('/stats', 
-  authenticate,
+  // authenticate retiré - déjà appliqué globalement ligne 10
   injectUserContext,
   requirePermission('events.read'),
   eventsController.getEventStats
 );
 
 router.get('/:id', 
-  authenticate,
+  // authenticate retiré - déjà appliqué globalement ligne 10
   injectUserContext,
   requirePermission('events.read'),
   validate(schemas.idParam, 'params'),
@@ -149,7 +149,7 @@ router.get('/:id',
 );
 
 router.put('/:id', 
-  authenticate,
+  // authenticate retiré - déjà appliqué globalement ligne 10
   injectUserContext,
   requirePermission('events.update'),
   validate(schemas.idParam, 'params'),
@@ -158,7 +158,7 @@ router.put('/:id',
 );
 
 router.delete('/:id', 
-  authenticate,
+  // authenticate retiré - déjà appliqué globalement ligne 10
   injectUserContext,
   requirePermission('events.delete'),
   validate(schemas.idParam, 'params'),
@@ -167,7 +167,7 @@ router.delete('/:id',
 
 // Event Lifecycle Management
 router.post('/:id/publish', 
-  authenticate,
+  // authenticate retiré - déjà appliqué globalement ligne 10
   injectUserContext,
   requirePermission('events.publish'),
   validate(schemas.idParam, 'params'),
@@ -175,7 +175,7 @@ router.post('/:id/publish',
 );
 
 router.post('/:id/archive', 
-  authenticate,
+  // authenticate retiré - déjà appliqué globalement ligne 10
   injectUserContext,
   requirePermission('events.archive'),
   validate(schemas.idParam, 'params'),

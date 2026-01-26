@@ -178,11 +178,19 @@ class EventsController {
 
   async getEvents(req, res, next) {
     try {
+      console.log('🧪 [TEST LOG] EventsController.getEvents - ENTRY POINT');
+      console.log('🧪 [TEST LOG] EventsController.getEvents - Request query:', req.query);
+      console.log('🧪 [TEST LOG] EventsController.getEvents - User context:', { 
+        context: req.context?.userId, 
+        user: req.user?.id 
+      });
+      
       // Validation des paramètres de requête
       const { page, limit, status, search } = req.query;
       
       // Validation du paramètre page
       if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        console.log('🧪 [TEST LOG] EventsController.getEvents - ERROR: Invalid page parameter:', page);
         return res.status(400).json(validationErrorResponse({
           field: 'page',
           message: 'Le numéro de page doit être un entier positif'
@@ -191,6 +199,7 @@ class EventsController {
       
       // Validation du paramètre limit
       if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        console.log('🧪 [TEST LOG] EventsController.getEvents - ERROR: Invalid limit parameter:', limit);
         return res.status(400).json(validationErrorResponse({
           field: 'limit',
           message: 'La limite doit être un entier entre 1 et 100'
@@ -199,6 +208,7 @@ class EventsController {
 
       // Validation du paramètre search
       if (search && search.length > 255) {
+        console.log('🧪 [TEST LOG] EventsController.getEvents - ERROR: Search too long:', search.length);
         return res.status(400).json(validationErrorResponse({
           field: 'search',
           message: 'La recherche ne peut pas dépasser 255 caractères'
@@ -207,6 +217,7 @@ class EventsController {
 
       // Sécurité: Détection XSS dans la recherche
       if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onerror=') || search.includes('onclick='))) {
+        console.log('🧪 [TEST LOG] EventsController.getEvents - ERROR: XSS attempt in search');
         recordSecurityEvent('xss_attempt', 'high');
         const securityError = SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in search query');
         return res.status(403).json(errorResponse(
@@ -219,11 +230,14 @@ class EventsController {
       // Validation du statut si fourni
       const validStatuses = ['draft', 'published', 'archived'];
       if (status && !validStatuses.includes(status)) {
+        console.log('🧪 [TEST LOG] EventsController.getEvents - ERROR: Invalid status:', status);
         return res.status(400).json(validationErrorResponse({
           field: 'status',
           message: `Le statut doit être l'une des valeurs suivantes: ${validStatuses.join(', ')}`
         }));
       }
+
+      console.log('🧪 [TEST LOG] EventsController.getEvents - Parameters validated');
 
       const options = {
         page: page ? parseInt(page) : 1,
@@ -233,15 +247,23 @@ class EventsController {
         userId: req.user.id
       };
 
+      console.log('🧪 [TEST LOG] EventsController.getEvents - Prepared options:', options);
+      console.log('🧪 [TEST LOG] EventsController.getEvents - Calling eventsService.getEvents...');
+      
       const result = await eventsService.getEvents(options);
+      console.log('🧪 [TEST LOG] EventsController.getEvents - Service result:', result);
       
       if (!result.success) {
         if (result.error && result.error.includes('non autorisé')) {
+          console.log('🧪 [TEST LOG] EventsController.getEvents - ERROR: Access denied');
           return res.status(403).json(forbiddenResponse(result.error));
         }
+        console.log('🧪 [TEST LOG] EventsController.getEvents - ERROR: Service failed:', result.error);
         throw new ValidationError(result.error, result.details);
       }
 
+      console.log('🧪 [TEST LOG] EventsController.getEvents - SUCCESS PATH');
+      
       // Réponse paginée si pagination
       if (result.pagination) {
         recordBusinessOperation('events_listed', 'success');
@@ -258,6 +280,8 @@ class EventsController {
         ));
       }
     } catch (error) {
+      console.log('🧪 [TEST LOG] EventsController.getEvents - ERROR PATH:', error.message);
+      console.log('🧪 [TEST LOG] EventsController.getEvents - ERROR STACK:', error.stack);
       recordBusinessOperation('events_listed', 'error');
       next(error);
     }
