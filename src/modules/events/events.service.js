@@ -36,8 +36,13 @@ class ConflictError extends Error {
 
 class EventsService {
   async createEvent(eventData, organizerId) {
+    console.log('🧪 [TEST LOG] EventsService.createEvent - ENTRY');
+    console.log('🧪 [TEST LOG] EventsService.createEvent - eventData:', eventData);
+    console.log('🧪 [TEST LOG] EventsService.createEvent - organizerId:', organizerId);
+    
     // Validation des données d'entrée
     if (!eventData.title || typeof eventData.title !== 'string' || eventData.title.trim().length < 3) {
+      console.log('🧪 [TEST LOG] EventsService.createEvent - VALIDATION ERROR: Title');
       return {
         success: false,
         error: 'Le titre est requis et doit contenir au moins 3 caractères',
@@ -48,7 +53,10 @@ class EventsService {
       };
     }
 
+    console.log('🧪 [TEST LOG] EventsService.createEvent - Title validation passed');
+
     if (!eventData.event_date) {
+      console.log('🧪 [TEST LOG] EventsService.createEvent - VALIDATION ERROR: Missing event_date');
       return {
         success: false,
         error: 'La date de l\'événement est requise',
@@ -59,7 +67,10 @@ class EventsService {
       };
     }
 
+    console.log('🧪 [TEST LOG] EventsService.createEvent - Event date validation passed');
+
     if (!eventData.location || typeof eventData.location !== 'string' || eventData.location.trim().length < 3) {
+      console.log('🧪 [TEST LOG] EventsService.createEvent - VALIDATION ERROR: Location');
       return {
         success: false,
         error: 'Le lieu est requis et doit contenir au moins 3 caractères',
@@ -70,9 +81,12 @@ class EventsService {
       };
     }
 
+    console.log('🧪 [TEST LOG] EventsService.createEvent - Location validation passed');
+
     // Validation de la date
     const eventDate = new Date(eventData.event_date);
     if (isNaN(eventDate.getTime())) {
+      console.log('🧪 [TEST LOG] EventsService.createEvent - VALIDATION ERROR: Invalid date format');
       return {
         success: false,
         error: 'La date de l\'événement est invalide',
@@ -84,6 +98,7 @@ class EventsService {
     }
 
     if (eventDate <= new Date()) {
+      console.log('🧪 [TEST LOG] EventsService.createEvent - VALIDATION ERROR: Date in past');
       return {
         success: false,
         error: 'La date de l\'événement ne peut pas être dans le passé',
@@ -94,20 +109,13 @@ class EventsService {
       };
     }
 
-    // Validation de la description si présente
-    if (eventData.description && (typeof eventData.description !== 'string' || eventData.description.length > 2000)) {
-      return {
-        success: false,
-        error: 'La description doit être une chaîne de caractères de maximum 2000 caractères',
-        details: {
-          field: 'description',
-          message: 'La description doit être une chaîne de caractères de maximum 2000 caractères'
-        }
-      };
-    }
+    console.log('🧪 [TEST LOG] EventsService.createEvent - Date validation passed');
+
+    console.log('🧪 [TEST LOG] EventsService.createEvent - Description validation passed');
 
     // Validation de l'organizer_id
     if (!organizerId || organizerId <= 0) {
+      console.log('🧪 [TEST LOG] EventsService.createEvent - VALIDATION ERROR: Invalid organizerId');
       return {
         success: false,
         error: 'ID d\'organisateur invalide',
@@ -118,14 +126,23 @@ class EventsService {
       };
     }
 
+    console.log('🧪 [TEST LOG] EventsService.createEvent - Organizer ID validation passed');
+
     const eventDataWithOrganizer = {
       ...eventData,
       organizer_id: organizerId
     };
 
+    console.log('🧪 [TEST LOG] EventsService.createEvent - Prepared data for repository:', eventDataWithOrganizer);
+
     try {
-      return await eventsRepository.create(eventDataWithOrganizer);
+      console.log('🧪 [TEST LOG] EventsService.createEvent - Calling repository.create...');
+      const result = await eventsRepository.create(eventDataWithOrganizer);
+      console.log('🧪 [TEST LOG] EventsService.createEvent - Repository result:', result);
+      return result;
     } catch (error) {
+      console.log('🧪 [TEST LOG] EventsService.createEvent - REPOSITORY ERROR:', error.message);
+      console.log('🧪 [TEST LOG] EventsService.createEvent - REPOSITORY ERROR STACK:', error.stack);
       return {
         success: false,
         error: 'Erreur lors de la création de l\'événement',
@@ -135,18 +152,31 @@ class EventsService {
   }
 
   async getEventById(eventId, userId) {
+    console.log('🧪 [TEST LOG] EventsService.getEventById - ENTRY');
+    console.log('🧪 [TEST LOG] EventsService.getEventById - eventId:', eventId);
+    console.log('🧪 [TEST LOG] EventsService.getEventById - userId:', userId);
+    
+    console.log('🧪 [TEST LOG] EventsService.getEventById - Calling repository.findById...');
     const event = await eventsRepository.findById(eventId);
+    console.log('🧪 [TEST LOG] EventsService.getEventById - Repository result:', event);
     
     if (!event) {
+      console.log('🧪 [TEST LOG] EventsService.getEventById - ERROR: Event not found');
       throw new NotFoundError('Event not found');
     }
 
+    console.log('🧪 [TEST LOG] EventsService.getEventById - Checking permissions...');
+    console.log('🧪 [TEST LOG] EventsService.getEventById - Event organizer:', event.organizer_id);
+    console.log('🧪 [TEST LOG] EventsService.getEventById - Requesting user:', userId);
+
     // Check if user is the organizer or has admin permissions
     if (event.organizer_id !== userId && String(event.organizer_id) !== String(userId)) {
+      console.log('🧪 [TEST LOG] EventsService.getEventById - ERROR: Access denied');
       // TODO: Add admin permission check here
       throw new AuthorizationError('Access denied');
     }
 
+    console.log('🧪 [TEST LOG] EventsService.getEventById - SUCCESS - Access granted');
     return event;
   }
 

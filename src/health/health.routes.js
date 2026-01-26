@@ -12,11 +12,14 @@ const router = express.Router();
  */
 router.get('/', async (req, res) => {
   try {
+    console.log('🧪 [TEST LOG] Health route / - ENTRY');
     const result = await enhancedHealth.simpleHealthCheck();
+    console.log('🧪 [TEST LOG] Health route / - Result:', result);
     const statusCode = result.status === 'healthy' ? 200 : 503;
     
     res.status(statusCode).json(result);
   } catch (error) {
+    console.log('🧪 [TEST LOG] Health route / - ERROR:', error.message);
     res.status(503).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),

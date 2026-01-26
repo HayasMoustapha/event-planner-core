@@ -2,6 +2,9 @@ const { database } = require('../../config');
 
 class EventsRepository {
   async create(eventData) {
+    console.log('🧪 [TEST LOG] EventsRepository.create - ENTRY');
+    console.log('🧪 [TEST LOG] EventsRepository.create - eventData:', eventData);
+    
     const {
       title,
       description,
@@ -27,9 +30,15 @@ class EventsRepository {
       organizer_id
     ];
     
+    console.log('🧪 [TEST LOG] EventsRepository.create - SQL Query:', query);
+    console.log('🧪 [TEST LOG] EventsRepository.create - SQL Values:', values);
+    
     try {
+      console.log('🧪 [TEST LOG] EventsRepository.create - Executing database query...');
       const result = await database.query(query, values);
       const createdEvent = result.rows[0];
+      console.log('🧪 [TEST LOG] EventsRepository.create - Database result:', result);
+      console.log('🧪 [TEST LOG] EventsRepository.create - Created event:', createdEvent);
       
       return {
         success: true,
@@ -37,6 +46,10 @@ class EventsRepository {
         data: createdEvent
       };
     } catch (error) {
+      console.log('🧪 [TEST LOG] EventsRepository.create - DATABASE ERROR:', error.message);
+      console.log('🧪 [TEST LOG] EventsRepository.create - DATABASE ERROR CODE:', error.code);
+      console.log('🧪 [TEST LOG] EventsRepository.create - DATABASE ERROR STACK:', error.stack);
+      
       // Gérer les erreurs de contrainte (doublons, etc.)
       if (error.code === '23505') { // unique_violation
         return {
@@ -68,10 +81,24 @@ class EventsRepository {
   }
 
   async findById(id) {
-    const query = 'SELECT * FROM events WHERE id = $1 AND deleted_at IS NULL';
-    const result = await database.query(query, [id]);
+    console.log('🧪 [TEST LOG] EventsRepository.findById - ENTRY');
+    console.log('🧪 [TEST LOG] EventsRepository.findById - id:', id);
     
-    return result.rows[0] || null;
+    const query = 'SELECT * FROM events WHERE id = $1 AND deleted_at IS NULL';
+    console.log('🧪 [TEST LOG] EventsRepository.findById - SQL Query:', query);
+    
+    try {
+      console.log('🧪 [TEST LOG] EventsRepository.findById - Executing database query...');
+      const result = await database.query(query, [id]);
+      console.log('🧪 [TEST LOG] EventsRepository.findById - Database result:', result);
+      console.log('🧪 [TEST LOG] EventsRepository.findById - Found event:', result.rows[0]);
+      
+      return result.rows[0] || null;
+    } catch (error) {
+      console.log('🧪 [TEST LOG] EventsRepository.findById - DATABASE ERROR:', error.message);
+      console.log('🧪 [TEST LOG] EventsRepository.findById - DATABASE ERROR STACK:', error.stack);
+      throw error;
+    }
   }
 
   async findByOrganizer(organizerId, options = {}) {

@@ -25,13 +25,20 @@ const { recordSecurityEvent, recordBusinessOperation } = require('../../middlewa
 class EventsController {
   async createEvent(req, res, next) {
     try {
+      console.log('🧪 [TEST LOG] createEvent - ENTRY POINT');
+      console.log('🧪 [TEST LOG] Request body:', req.body);
+      console.log('🧪 [TEST LOG] User context:', { context: req.context?.userId, user: req.user?.id });
+      
       // Extraction des données client uniquement
       const { title, description, event_date, location } = req.body;
       
       // Récupération du user_id depuis le contexte injecté
       const organizerId = req.context?.userId || req.user?.id;
       
+      console.log('🧪 [TEST LOG] Extracted organizerId:', organizerId);
+      
       if (!organizerId) {
+        console.log('🧪 [TEST LOG] ERROR - No organizer ID found');
         return res.status(401).json({
           success: false,
           error: 'Authentication required',
@@ -40,12 +47,15 @@ class EventsController {
         });
       }
 
+      console.log('🧪 [TEST LOG] Calling eventsService.createEvent...');
       const result = await eventsService.createEvent({
         title,
         description,
         event_date,
         location
       }, organizerId);
+      
+      console.log('🧪 [TEST LOG] Service result:', result);
       
       if (!result.success) {
         // Gérer les différents types d'erreurs
@@ -64,12 +74,15 @@ class EventsController {
         ));
       }
 
+      console.log('🧪 [TEST LOG] createEvent - SUCCESS PATH');
       recordBusinessOperation('event_created', 'success');
       res.status(201).json(createdResponse(
         result.message || 'Événement créé avec succès',
         result.data
       ));
     } catch (error) {
+      console.log('🧪 [TEST LOG] createEvent - ERROR PATH:', error.message);
+      console.log('🧪 [TEST LOG] createEvent - ERROR STACK:', error.stack);
       recordBusinessOperation('event_created', 'error');
       
       // Ne pas lancer de ValidationError avec message vide
@@ -85,10 +98,14 @@ class EventsController {
 
   async getEvent(req, res, next) {
     try {
+      console.log('🧪 [TEST LOG] getEvent - ENTRY POINT');
+      console.log('🧪 [TEST LOG] Request params:', req.params);
+      
       const { id } = req.params;
       
       // Validation du paramètre ID
       if (!id) {
+        console.log('🧪 [TEST LOG] getEvent - ERROR: Missing ID parameter');
         return res.status(400).json(badRequestResponse(
           'L\'ID de l\'événement est requis'
         ));
@@ -97,14 +114,18 @@ class EventsController {
       const eventId = parseInt(id);
       
       if (isNaN(eventId) || eventId <= 0) {
+        console.log('🧪 [TEST LOG] getEvent - ERROR: Invalid ID format', { id, eventId });
         return res.status(400).json(validationErrorResponse({
           field: 'id',
           message: 'L\'ID de l\'événement doit être un nombre entier positif'
         }));
       }
 
+      console.log('🧪 [TEST LOG] getEvent - Validated eventId:', eventId);
+
       // Sécurité: Détection de tentatives d'injection
       if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*') || id.toString().includes('DROP') || id.toString().includes('DELETE')) {
+        console.log('🧪 [TEST LOG] getEvent - SECURITY VIOLATION: SQL injection attempt');
         recordSecurityEvent('sql_injection_attempt', 'critical');
         const securityError = SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in event ID');
         return res.status(403).json(errorResponse(
@@ -114,7 +135,10 @@ class EventsController {
         ));
       }
 
+      console.log('🧪 [TEST LOG] getEvent - Calling eventsService.getEventById...');
       const result = await eventsService.getEventById(eventId, req.context?.userId || req.user?.id);
+      
+      console.log('🧪 [TEST LOG] getEvent - Service result:', result);
       
       if (!result.success) {
         if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
@@ -138,12 +162,15 @@ class EventsController {
         recordSecurityEvent('unauthorized_event_access', 'medium');
       }
 
+      console.log('🧪 [TEST LOG] getEvent - SUCCESS PATH');
       recordBusinessOperation('event_viewed', 'success');
       res.json(successResponse(
         'Événement récupéré avec succès',
         result.data
       ));
     } catch (error) {
+      console.log('🧪 [TEST LOG] getEvent - ERROR PATH:', error.message);
+      console.log('🧪 [TEST LOG] getEvent - ERROR STACK:', error.stack);
       recordBusinessOperation('event_viewed', 'error');
       next(error);
     }
