@@ -2,11 +2,14 @@ const Joi = require('joi');
 
 const validate = (schema, property = 'body') => {
   return (req, res, next) => {
-    const { error, value } = schema.validate(req[property], {
+    // Permettre les champs injectés par le contexte
+    const options = {
       abortEarly: false,
-      allowUnknown: false,
-      stripUnknown: true
-    });
+      allowUnknown: true, // Permettre les champs injectés par le contexte
+      stripUnknown: false // Ne pas supprimer les champs injectés
+    };
+
+    const { error, value } = schema.validate(req[property], options);
 
     if (error) {
       const errors = error.details.map(detail => ({
@@ -16,13 +19,16 @@ const validate = (schema, property = 'body') => {
       }));
 
       return res.status(400).json({
+        success: false,
         error: 'Validation failed',
         message: 'Invalid input data',
         errors
       });
     }
 
-    req[property] = value;
+    // Ne pas écraser req[property] pour préserver les champs injectés
+    // Fusionner seulement les champs validés
+    req[property] = { ...req[property], ...value };
     next();
   };
 };
@@ -34,11 +40,13 @@ const schemas = {
   // Schema: id, title, description, event_date, location, status, organizer_id
   // ============================================
   createEvent: Joi.object({
+    // Les champs user_id et organizer_id sont injectés par le middleware
+    // et ne doivent pas être fournis par le client
     title: Joi.string().min(3).max(255).required(),
     description: Joi.string().max(5000).optional(),
     event_date: Joi.date().iso().min('now').required(),
     location: Joi.string().max(255).required()
-  }),
+  }).unknown(false),
 
   updateEvent: Joi.object({
     title: Joi.string().min(3).max(255).optional(),
@@ -105,7 +113,7 @@ const schemas = {
   // Schema: id, event_id, name, description, type, quantity, price, currency, available_from, available_to
   // ============================================
   createTicketType: Joi.object({
-    event_id: Joi.number().integer().positive().required(),
+    // event_id est injecté par le middleware depuis le contexte
     name: Joi.string().min(1).max(255).required(),
     description: Joi.string().max(5000).optional(),
     type: Joi.string().valid('free', 'paid', 'donation').required(),
@@ -114,7 +122,7 @@ const schemas = {
     currency: Joi.string().length(3).default('EUR'),
     available_from: Joi.date().iso().optional(),
     available_to: Joi.date().iso().optional()
-  }),
+  }).unknown(false),
 
   updateTicketType: Joi.object({
     name: Joi.string().min(1).max(255).optional(),
@@ -166,10 +174,10 @@ const schemas = {
   // Schema: id, user_id (unique), brand_name, portfolio_url, is_verified
   // ============================================
   createDesigner: Joi.object({
-    user_id: Joi.number().integer().positive().required(),
+    // user_id est injecté par le middleware depuis le contexte
     brand_name: Joi.string().min(1).max(255).required(),
     portfolio_url: Joi.string().uri().max(500).optional()
-  }),
+  }).unknown(false),
 
   updateDesigner: Joi.object({
     brand_name: Joi.string().min(1).max(255).optional(),
@@ -182,14 +190,14 @@ const schemas = {
   // Schema: id, designer_id, name, description, preview_url, source_files_path, price, currency, status
   // ============================================
   createTemplate: Joi.object({
-    designer_id: Joi.number().integer().positive().required(),
+    // designer_id est injecté par le middleware depuis le contexte
     name: Joi.string().min(1).max(255).required(),
     description: Joi.string().max(5000).optional(),
     preview_url: Joi.string().uri().max(500).optional(),
     source_files_path: Joi.string().max(500).optional(),
     price: Joi.number().precision(2).min(0).default(0),
     currency: Joi.string().length(3).default('EUR')
-  }),
+  }).unknown(false),
 
   updateTemplate: Joi.object({
     name: Joi.string().min(1).max(255).optional(),
@@ -206,21 +214,23 @@ const schemas = {
   // Schema: id, user_id, template_id, purchase_date, amount, currency, transaction_id
   // ============================================
   createPurchase: Joi.object({
+    // user_id est injecté par le middleware depuis le contexte
     template_id: Joi.number().integer().positive().required(),
     amount: Joi.number().precision(2).min(0).required(),
     currency: Joi.string().length(3).default('EUR'),
     transaction_id: Joi.string().max(255).optional()
-  }),
+  }).unknown(false),
 
   // ============================================
   // REVIEW VALIDATIONS
   // Schema: id, user_id, template_id, rating (1-5), comment
   // ============================================
   createReview: Joi.object({
+    // user_id est injecté par le middleware depuis le contexte
     template_id: Joi.number().integer().positive().required(),
     rating: Joi.number().integer().min(1).max(5).required(),
     comment: Joi.string().max(5000).optional()
-  }),
+  }).unknown(false),
 
   updateReview: Joi.object({
     rating: Joi.number().integer().min(1).max(5).optional(),

@@ -1,11 +1,8 @@
 const express = require('express');
 const eventsController = require('./events.controller');
-const { AuthMiddleware } = require("../../../../shared");
+const { authenticate, requirePermission } = require("../../../../shared");
 const { validate, schemas } = require("../../middleware/validation");
-const { normalizeContext, normalizeIdContext } = require("../../middleware/context-normalization");
-
-// Utiliser le vrai middleware stateless
-const { authenticate, requirePermission } = AuthMiddleware;
+const { injectUserContext } = require("../../../../shared/context-middleware");
 
 const router = express.Router();
 
@@ -67,9 +64,10 @@ router.use(authenticate);
  *         description: Permissions insuffisantes
  */
 router.post('/', 
-  normalizeContext(),
-  validate(schemas.createEvent),
+  authenticate,
+  injectUserContext,
   requirePermission('events.create'),
+  validate(schemas.createEvent),
   eventsController.createEvent
 );
 
@@ -128,52 +126,59 @@ router.post('/',
  *         description: Permissions insuffisantes
  */
 router.get('/', 
-  normalizeContext(),
-  validate(schemas.pagination, 'query'),
+  authenticate,
+  injectUserContext,
   requirePermission('events.read'),
+  validate(schemas.pagination, 'query'),
   eventsController.getEvents
 );
 
 router.get('/stats', 
-  normalizeContext(),
+  authenticate,
+  injectUserContext,
   requirePermission('events.read'),
   eventsController.getEventStats
 );
 
 router.get('/:id', 
-  normalizeIdContext(),
-  validate(schemas.idParam, 'params'),
+  authenticate,
+  injectUserContext,
   requirePermission('events.read'),
+  validate(schemas.idParam, 'params'),
   eventsController.getEvent
 );
 
 router.put('/:id', 
-  normalizeIdContext(),
+  authenticate,
+  injectUserContext,
+  requirePermission('events.update'),
   validate(schemas.idParam, 'params'),
   validate(schemas.updateEvent),
-  requirePermission('events.update'),
   eventsController.updateEvent
 );
 
 router.delete('/:id', 
-  normalizeIdContext(),
-  validate(schemas.idParam, 'params'),
+  authenticate,
+  injectUserContext,
   requirePermission('events.delete'),
+  validate(schemas.idParam, 'params'),
   eventsController.deleteEvent
 );
 
 // Event Lifecycle Management
 router.post('/:id/publish', 
-  normalizeIdContext(),
-  validate(schemas.idParam, 'params'),
+  authenticate,
+  injectUserContext,
   requirePermission('events.publish'),
+  validate(schemas.idParam, 'params'),
   eventsController.publishEvent
 );
 
 router.post('/:id/archive', 
-  normalizeIdContext(),
-  validate(schemas.idParam, 'params'),
+  authenticate,
+  injectUserContext,
   requirePermission('events.archive'),
+  validate(schemas.idParam, 'params'),
   eventsController.archiveEvent
 );
 

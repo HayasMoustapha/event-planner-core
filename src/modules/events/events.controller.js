@@ -25,11 +25,20 @@ const { recordSecurityEvent, recordBusinessOperation } = require('../../middlewa
 class EventsController {
   async createEvent(req, res, next) {
     try {
-      // Extraction des données (PLUS de organizer_id dans req.body)
+      // Extraction des données client uniquement
       const { title, description, event_date, location } = req.body;
       
-      // INJECTION AUTOMATIQUE du user_id depuis le contexte d'authentification
-      const organizerId = req.user.id;
+      // Récupération du user_id depuis le contexte injecté
+      const organizerId = req.context?.userId || req.user?.id;
+      
+      if (!organizerId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required',
+          message: 'User context not found',
+          code: 'MISSING_USER_CONTEXT'
+        });
+      }
 
       const result = await eventsService.createEvent({
         title,
@@ -78,8 +87,34 @@ class EventsController {
     try {
       const { id } = req.params;
       
-      // Le contexte est déjà normalisé et validé par les middlewares
-      const result = await eventsService.getEventById(id, req.user.id);
+      // Validation du paramètre ID
+      if (!id) {
+        return res.status(400).json(badRequestResponse(
+          'L\'ID de l\'événement est requis'
+        ));
+      }
+      
+      const eventId = parseInt(id);
+      
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID de l\'événement doit être un nombre entier positif'
+        }));
+      }
+
+      // Sécurité: Détection de tentatives d'injection
+      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*') || id.toString().includes('DROP') || id.toString().includes('DELETE')) {
+        recordSecurityEvent('sql_injection_attempt', 'critical');
+        const securityError = SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in event ID');
+        return res.status(403).json(errorResponse(
+          securityError.message,
+          null,
+          'SECURITY_VIOLATION'
+        ));
+      }
+
+      const result = await eventsService.getEventById(eventId, req.context?.userId || req.user?.id);
       
       if (!result.success) {
         if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
@@ -92,10 +127,10 @@ class EventsController {
       }
 
       // Sécurité: Log accès aux données sensibles
-      if (result.data && result.data.organizer_id !== req.user.id) {
+      if (result.data && result.data.organizer_id !== (req.context?.userId || req.user?.id)) {
         console.warn('Access to non-owned event:', {
-          eventId: id,
-          userId: req.user.id,
+          eventId,
+          userId: req.context?.userId || req.user?.id,
           organizerId: result.data.organizer_id,
           ip: req.ip,
           userAgent: req.get('User-Agent')
@@ -116,12 +151,58 @@ class EventsController {
 
   async getEvents(req, res, next) {
     try {
-      // Le contexte est déjà normalisé et validé par les middlewares
+      // Validation des paramètres de requête
+      const { page, limit, status, search } = req.query;
+      
+      // Validation du paramètre page
+      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'page',
+          message: 'Le numéro de page doit être un entier positif'
+        }));
+      }
+      
+      // Validation du paramètre limit
+      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'limit',
+          message: 'La limite doit être un entier entre 1 et 100'
+        }));
+      }
+
+      // Validation du paramètre search
+      if (search && search.length > 255) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'search',
+          message: 'La recherche ne peut pas dépasser 255 caractères'
+        }));
+      }
+
+      // Sécurité: Détection XSS dans la recherche
+      if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onerror=') || search.includes('onclick='))) {
+        recordSecurityEvent('xss_attempt', 'high');
+        const securityError = SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in search query');
+        return res.status(403).json(errorResponse(
+          securityError.message,
+          null,
+          'SECURITY_VIOLATION'
+        ));
+      }
+
+      // Validation du statut si fourni
+      const validStatuses = ['draft', 'published', 'archived'];
+      if (status && !validStatuses.includes(status)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'status',
+          message: `Le statut doit être l'une des valeurs suivantes: ${validStatuses.join(', ')}`
+        }));
+      }
+
       const options = {
-        page: req.query.page || 1,
-        limit: req.query.limit || 20,
-        status: req.query.status,
-        search: req.query.search,
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20,
+        status,
+        search,
         userId: req.user.id
       };
 
@@ -233,7 +314,7 @@ class EventsController {
       }
 
       // Sécurité: Vérification de l'événement existant
-      const existingEvent = await eventsService.getEventById(eventId, req.user.id);
+      const existingEvent = await eventsService.getEventById(eventId, req.context?.userId || req.user?.id);
       if (!existingEvent.success) {
         if (existingEvent.error && (existingEvent.error.includes('non trouvé') || existingEvent.error.includes('not found'))) {
           return res.status(404).json(notFoundResponse('Événement'));
@@ -242,14 +323,14 @@ class EventsController {
       }
 
       // Sécurité: Vérification des permissions
-      if (existingEvent.data.organizer_id !== req.user.id) {
+      if (existingEvent.data.organizer_id !== (req.context?.userId || req.user?.id)) {
         recordSecurityEvent('unauthorized_event_update', 'high');
         return res.status(403).json(forbiddenResponse(
           'Seul l\'organisateur peut modifier un événement'
         ));
       }
 
-      const result = await eventsService.updateEvent(eventId, updateData, req.user.id);
+      const result = await eventsService.updateEvent(eventId, updateData, req.context?.userId || req.user?.id);
       
       if (!result.success) {
         if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
@@ -293,7 +374,7 @@ class EventsController {
       }
 
       // Sécurité: Vérification de l'événement existant
-      const existingEvent = await eventsService.getEventById(eventId, req.user.id);
+      const existingEvent = await eventsService.getEventById(eventId, req.context?.userId || req.user?.id);
       if (!existingEvent.success) {
         if (existingEvent.error && (existingEvent.error.includes('non trouvé') || existingEvent.error.includes('not found'))) {
           return res.status(404).json(notFoundResponse('Événement'));
@@ -302,7 +383,7 @@ class EventsController {
       }
 
       // Sécurité: Vérification des permissions
-      if (existingEvent.data.organizer_id !== req.user.id) {
+      if (existingEvent.data.organizer_id !== (req.context?.userId || req.user?.id)) {
         recordSecurityEvent('unauthorized_event_deletion', 'high');
         return res.status(403).json(forbiddenResponse(
           'Seul l\'organisateur peut supprimer un événement'
@@ -323,7 +404,7 @@ class EventsController {
         ));
       }
 
-      const result = await eventsService.deleteEvent(eventId, req.user.id);
+      const result = await eventsService.deleteEvent(eventId, req.context?.userId || req.user?.id);
       
       if (!result.success) {
         if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
@@ -367,7 +448,7 @@ class EventsController {
       }
 
       // Sécurité: Vérification de l'événement existant
-      const existingEvent = await eventsService.getEventById(eventId, req.user.id);
+      const existingEvent = await eventsService.getEventById(eventId, req.context?.userId || req.user?.id);
       if (!existingEvent.success) {
         if (existingEvent.error && (existingEvent.error.includes('non trouvé') || existingEvent.error.includes('not found'))) {
           return res.status(404).json(notFoundResponse('Événement'));
@@ -376,7 +457,7 @@ class EventsController {
       }
 
       // Sécurité: Vérification des permissions
-      if (existingEvent.data.organizer_id !== req.user.id) {
+      if (existingEvent.data.organizer_id !== (req.context?.userId || req.user?.id)) {
         recordSecurityEvent('unauthorized_event_publish', 'high');
         return res.status(403).json(forbiddenResponse(
           'Seul l\'organisateur peut publier un événement'
@@ -404,7 +485,7 @@ class EventsController {
         ));
       }
 
-      const result = await eventsService.publishEvent(eventId, req.user.id);
+      const result = await eventsService.publishEvent(eventId, req.context?.userId || req.user?.id);
       
       if (!result.success) {
         if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
@@ -448,7 +529,7 @@ class EventsController {
       }
 
       // Sécurité: Vérification de l'événement existant
-      const existingEvent = await eventsService.getEventById(eventId, req.user.id);
+      const existingEvent = await eventsService.getEventById(eventId, req.context?.userId || req.user?.id);
       if (!existingEvent.success) {
         if (existingEvent.error && (existingEvent.error.includes('non trouvé') || existingEvent.error.includes('not found'))) {
           return res.status(404).json(notFoundResponse('Événement'));
@@ -457,7 +538,7 @@ class EventsController {
       }
 
       // Sécurité: Vérification des permissions
-      if (existingEvent.data.organizer_id !== req.user.id) {
+      if (existingEvent.data.organizer_id !== (req.context?.userId || req.user?.id)) {
         recordSecurityEvent('unauthorized_event_archive', 'high');
         return res.status(403).json(forbiddenResponse(
           'Seul l\'organisateur peut archiver un événement'
@@ -471,7 +552,7 @@ class EventsController {
         ));
       }
 
-      const result = await eventsService.archiveEvent(eventId, req.user.id);
+      const result = await eventsService.archiveEvent(eventId, req.context?.userId || req.user?.id);
       
       if (!result.success) {
         if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
@@ -515,7 +596,7 @@ class EventsController {
       }
 
       // Sécurité: Vérification de l'événement existant
-      const existingEvent = await eventsService.getEventById(eventId, req.user.id);
+      const existingEvent = await eventsService.getEventById(eventId, req.context?.userId || req.user?.id);
       if (!existingEvent.success) {
         if (existingEvent.error && (existingEvent.error.includes('non trouvé') || existingEvent.error.includes('not found'))) {
           return res.status(404).json(notFoundResponse('Événement'));
@@ -524,14 +605,14 @@ class EventsController {
       }
 
       // Sécurité: Vérification des permissions pour les stats
-      if (existingEvent.data.organizer_id !== req.user.id) {
+      if (existingEvent.data.organizer_id !== (req.context?.userId || req.user?.id)) {
         recordSecurityEvent('unauthorized_stats_access', 'high');
         return res.status(403).json(forbiddenResponse(
           'Seul l\'organisateur peut voir les statistiques d\'un événement'
         ));
       }
 
-      const result = await eventsService.getEventStats(eventId, req.user.id);
+      const result = await eventsService.getEventStats(eventId, req.context?.userId || req.user?.id);
       
       if (!result.success) {
         if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
