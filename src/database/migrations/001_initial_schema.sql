@@ -149,6 +149,26 @@ CREATE TABLE IF NOT EXISTS ticket_templates (
 -- Module Marketplace (Section 5.4)
 -- ========================================
 
+-- Table Designer (CRÉÉE EN PREMIER pour éviter les FK violations)
+-- Conforme exactement au diagramme + champs audit complets
+CREATE TABLE IF NOT EXISTS designers (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    brand_name VARCHAR NOT NULL,
+    portfolio_url VARCHAR,
+    -- Relation avec User (héritage) - référence externe au service auth
+    user_id BIGINT UNIQUE NOT NULL,
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    created_by BIGINT,
+    updated_by BIGINT,
+    deleted_by BIGINT,
+    -- Champs spécifiques aux actions
+    verified_at TIMESTAMP WITH TIME ZONE,
+    verified_by BIGINT
+);
+
 -- Table Template (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS templates (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -160,6 +180,7 @@ CREATE TABLE IF NOT EXISTS templates (
     currency VARCHAR(3) DEFAULT 'EUR',
     status VARCHAR(20) DEFAULT 'pending_review' CHECK (status IN ('pending_review', 'approved', 'rejected')),
     -- Designer selon diagramme: Designer "1" -- "*" Template
+    -- designers existe maintenant (créé ci-dessus)
     designer_id BIGINT NOT NULL REFERENCES designers(id) ON DELETE CASCADE,
     -- Champs d'audit complets
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -173,25 +194,6 @@ CREATE TABLE IF NOT EXISTS templates (
     approved_by BIGINT,
     rejected_at TIMESTAMP WITH TIME ZONE,
     rejected_by BIGINT
-);
-
--- Table Designer (conforme exactement au diagramme + champs audit complets)
-CREATE TABLE IF NOT EXISTS designers (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    brand_name VARCHAR NOT NULL,
-    portfolio_url VARCHAR,
-    -- Relation avec User (héritage)
-    user_id BIGINT UNIQUE NOT NULL,
-    -- Champs d'audit complets
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE,
-    created_by BIGINT,
-    updated_by BIGINT,
-    deleted_by BIGINT,
-    -- Champs spécifiques aux actions
-    verified_at TIMESTAMP WITH TIME ZONE,
-    verified_by BIGINT
 );
 
 -- Table Purchase (conforme exactement au diagramme + champs audit complets)
