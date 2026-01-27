@@ -46,9 +46,9 @@ app.use('/health', healthRoutes);
 // API routes
 app.use('/api/v1/events', eventsRoutes);
 app.use('/api/v1/guests', guestsRoutes);
-app.use('/v1/tickets', ticketsRoutes);
-app.use('/v1/marketplace', marketplaceRoutes);
-app.use('/v1/admin', adminRoutes);
+app.use('/api/v1/tickets', ticketsRoutes);
+app.use('/api/v1/marketplace', marketplaceRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
