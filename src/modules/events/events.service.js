@@ -1,267 +1,302 @@
 const eventsRepository = require('./events.repository');
 const { v4: uuidv4 } = require('uuid');
 
-// Custom error classes for better error handling
-class ValidationError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ValidationError';
-    this.statusCode = 400;
-  }
-}
-
-class NotFoundError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'NotFoundError';
-    this.statusCode = 404;
-  }
-}
-
-class AuthorizationError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'AuthorizationError';
-    this.statusCode = 403;
-  }
-}
-
-class ConflictError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ConflictError';
-    this.statusCode = 409;
-  }
-}
-
 class EventsService {
   async createEvent(eventData, organizerId) {
-    // Validation des données d'entrée
-    if (!eventData.title || typeof eventData.title !== 'string' || eventData.title.trim().length < 3) {
-      return {
-        success: false,
-        error: 'Le titre est requis et doit contenir au moins 3 caractères',
-        details: {
-          field: 'title',
-          message: 'Le titre est requis et doit contenir au moins 3 caractères'
-        }
-      };
-    }
-
-    if (!eventData.event_date) {
-      return {
-        success: false,
-        error: 'La date de l\'événement est requise',
-        details: {
-          field: 'event_date',
-          message: 'La date de l\'événement est requise'
-        }
-      };
-    }
-
-    if (!eventData.location || typeof eventData.location !== 'string' || eventData.location.trim().length < 3) {
-      return {
-        success: false,
-        error: 'Le lieu est requis et doit contenir au moins 3 caractères',
-        details: {
-          field: 'location',
-          message: 'Le lieu est requis et doit contenir au moins 3 caractères'
-        }
-      };
-    }
-
-    // Validation de la date
-    const eventDate = new Date(eventData.event_date);
-    if (isNaN(eventDate.getTime())) {
-      return {
-        success: false,
-        error: 'La date de l\'événement est invalide',
-        details: {
-          field: 'event_date',
-          message: 'La date de l\'événement est invalide'
-        }
-      };
-    }
-
-    if (eventDate <= new Date()) {
-      return {
-        success: false,
-        error: 'La date de l\'événement ne peut pas être dans le passé',
-        details: {
-          field: 'event_date',
-          message: 'La date de l\'événement ne peut pas être dans le passé'
-        }
-      };
-    }
-
-    // Validation de la description si présente
-    if (eventData.description && (typeof eventData.description !== 'string' || eventData.description.length > 2000)) {
-      return {
-        success: false,
-        error: 'La description doit être une chaîne de caractères de maximum 2000 caractères',
-        details: {
-          field: 'description',
-          message: 'La description doit être une chaîne de caractères de maximum 2000 caractères'
-        }
-      };
-    }
-
-    // Validation de l'organizer_id
-    if (!organizerId || organizerId <= 0) {
-      return {
-        success: false,
-        error: 'ID d\'organisateur invalide',
-        details: {
-          field: 'organizer_id',
-          message: 'L\'ID de l\'organisateur doit être un nombre entier positif'
-        }
-      };
-    }
-
-    const eventDataWithOrganizer = {
-      ...eventData,
-      organizer_id: organizerId
-    };
-
     try {
-      return await eventsRepository.create(eventDataWithOrganizer);
+      const eventDataWithId = {
+        ...eventData,
+        id: uuidv4(),
+        organizer_id: organizerId,
+        status: 'draft',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const event = await eventsRepository.create(eventDataWithId);
+      
+      return {
+        success: true,
+        data: event
+      };
     } catch (error) {
+      console.error('Error creating event:', error);
       return {
         success: false,
-        error: 'Erreur lors de la création de l\'événement',
-        details: error.message
+        error: error.message || 'Failed to create event'
       };
     }
   }
 
   async getEventById(eventId, userId) {
-    const event = await eventsRepository.findById(eventId);
-    
-    if (!event) {
-      throw new NotFoundError('Event not found');
-    }
+    try {
+      const event = await eventsRepository.findById(eventId);
+      
+      if (!event) {
+        return {
+          success: false,
+          error: 'Event not found'
+        };
+      }
 
-    // Check if user is the organizer or has admin permissions
-    if (event.organizer_id !== userId && String(event.organizer_id) !== String(userId)) {
-      // TODO: Add admin permission check here
-      throw new AuthorizationError('Access denied');
-    }
+      // Check if user is the organizer or has admin permissions
+      if (event.organizer_id !== userId && String(event.organizer_id) !== String(userId)) {
+        return {
+          success: false,
+          error: 'Access denied'
+        };
+      }
 
-    return event;
+      return {
+        success: true,
+        data: event
+      };
+    } catch (error) {
+      console.error('Error getting event by ID:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get event'
+      };
+    }
   }
 
-  async getEventsByOrganizer(organizerId, options = {}) {
-    return await eventsRepository.findByOrganizer(organizerId, options);
-  }
-
-  /**
-   * Get events with pagination and filters
-   * @param {Object} options - Query options
-   * @param {number} options.page - Page number
-   * @param {number} options.limit - Items per page
-   * @param {string} options.status - Filter by status
-   * @param {string} options.search - Search term
-   * @param {number} options.userId - User ID (organizer)
-   */
   async getEvents(options = {}) {
-    const { userId, page, limit, status, search } = options;
-
-    if (!userId) {
-      throw new ValidationError('User ID is required');
+    try {
+      const { page, limit, status, search, userId } = options;
+      const events = await eventsRepository.findByOrganizer(userId, {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 10,
+        status,
+        search
+      });
+      
+      return {
+        success: true,
+        data: events,
+        pagination: events.pagination
+      };
+    } catch (error) {
+      console.error('Error getting events:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get events'
+      };
     }
-
-    const result = await eventsRepository.findByOrganizer(userId, {
-      page,
-      limit,
-      status,
-      search
-    });
-
-    return {
-      events: result.events,
-      pagination: result.pagination
-    };
   }
 
   async updateEvent(eventId, updateData, userId) {
-    // First check if event exists and user is the organizer
-    const existingEvent = await eventsRepository.findById(eventId);
-    
-    if (!existingEvent) {
-      throw new NotFoundError('Event not found');
-    }
+    try {
+      const existingEvent = await eventsRepository.findById(eventId);
+      
+      if (!existingEvent) {
+        return {
+          success: false,
+          error: 'Event not found'
+        };
+      }
 
-    if (existingEvent.organizer_id !== userId && String(existingEvent.organizer_id) !== String(userId)) {
-      throw new AuthorizationError('Access denied');
-    }
+      if (existingEvent.organizer_id !== userId && String(existingEvent.organizer_id) !== String(userId)) {
+        return {
+          success: false,
+          error: 'Access denied'
+        };
+      }
 
-    // Validate event date if it's being updated
-    if (updateData.event_date && new Date(updateData.event_date) <= new Date()) {
-      throw new ValidationError('Event date must be in the future');
-    }
+      // Validate event date if it's being updated
+      if (updateData.event_date && new Date(updateData.event_date) <= new Date()) {
+        return {
+          success: false,
+          error: 'Event date must be in the future'
+        };
+      }
 
-    return await eventsRepository.update(eventId, updateData, userId);
+      const updatedEvent = await eventsRepository.update(eventId, {
+        ...updateData,
+        updated_at: new Date().toISOString()
+      }, userId);
+
+      return {
+        success: true,
+        data: updatedEvent
+      };
+    } catch (error) {
+      console.error('Error updating event:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to update event'
+      };
+    }
   }
 
   async deleteEvent(eventId, userId) {
-    // First check if event exists and user is the organizer
-    const existingEvent = await eventsRepository.findById(eventId);
-    
-    if (!existingEvent) {
-      throw new NotFoundError('Event not found');
-    }
+    try {
+      const existingEvent = await eventsRepository.findById(eventId);
+      
+      if (!existingEvent) {
+        return {
+          success: false,
+          error: 'Event not found'
+        };
+      }
 
-    if (existingEvent.organizer_id !== userId && String(existingEvent.organizer_id) !== String(userId)) {
-      throw new AuthorizationError('Access denied');
-    }
+      if (existingEvent.organizer_id !== userId && String(existingEvent.organizer_id) !== String(userId)) {
+        return {
+          success: false,
+          error: 'Access denied'
+        };
+      }
 
-    // Don't allow deletion of published events
-    if (existingEvent.status === 'published') {
-      throw new ConflictError('Cannot delete published events. Archive them instead.');
-    }
+      // Don't allow deletion of published events
+      if (existingEvent.status === 'published') {
+        return {
+          success: false,
+          error: 'Cannot delete published events. Archive them instead.'
+        };
+      }
 
-    return await eventsRepository.delete(eventId, userId);
+      const deletedEvent = await eventsRepository.delete(eventId, userId);
+
+      return {
+        success: true,
+        data: deletedEvent
+      };
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to delete event'
+      };
+    }
   }
 
   async publishEvent(eventId, userId) {
-    const publishedEvent = await eventsRepository.publish(eventId, userId);
-    
-    if (!publishedEvent) {
-      throw new NotFoundError('Event not found or access denied');
+    try {
+      const publishedEvent = await eventsRepository.publish(eventId, userId);
+      
+      if (!publishedEvent) {
+        return {
+          success: false,
+          error: 'Event not found or access denied'
+        };
+      }
+
+      return {
+        success: true,
+        data: publishedEvent
+      };
+    } catch (error) {
+      console.error('Error publishing event:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to publish event'
+      };
     }
-
-    // TODO: Send notifications to guests
-    // TODO: Trigger ticket generation if applicable
-
-    return publishedEvent;
   }
 
   async archiveEvent(eventId, userId) {
-    const archivedEvent = await eventsRepository.archive(eventId, userId);
-    
-    if (!archivedEvent) {
-      throw new NotFoundError('Event not found or access denied');
-    }
+    try {
+      const archivedEvent = await eventsRepository.archive(eventId, userId);
+      
+      if (!archivedEvent) {
+        return {
+          success: false,
+          error: 'Event not found or access denied'
+        };
+      }
 
-    return archivedEvent;
+      return {
+        success: true,
+        data: archivedEvent
+      };
+    } catch (error) {
+      console.error('Error archiving event:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to archive event'
+      };
+    }
   }
 
-  async getEventStats(organizerId) {
-    return await eventsRepository.getEventStats(organizerId);
+  async getEventStats(eventId, userId) {
+    try {
+      const event = await eventsRepository.findById(eventId);
+      
+      if (!event) {
+        return {
+          success: false,
+          error: 'Event not found'
+        };
+      }
+
+      if (event.organizer_id !== userId && String(event.organizer_id) !== String(userId)) {
+        return {
+          success: false,
+          error: 'Access denied'
+        };
+      }
+
+      const stats = await eventsRepository.getEventStats(eventId);
+
+      return {
+        success: true,
+        data: stats
+      };
+    } catch (error) {
+      console.error('Error getting event stats:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get event statistics'
+      };
+    }
   }
 
-  async validateEventAccess(eventId, userId) {
-    const event = await eventsRepository.findById(eventId);
-    
-    if (!event) {
-      throw new NotFoundError('Event not found');
-    }
+  async duplicateEvent(eventId, options, userId) {
+    try {
+      const originalEvent = await eventsRepository.findById(eventId);
+      
+      if (!originalEvent) {
+        return {
+          success: false,
+          error: 'Event not found'
+        };
+      }
 
-    if (event.organizer_id !== userId && String(event.organizer_id) !== String(userId)) {
-      throw new AuthorizationError('Access denied');
-    }
+      if (originalEvent.organizer_id !== userId && String(originalEvent.organizer_id) !== String(userId)) {
+        return {
+          success: false,
+          error: 'Access denied'
+        };
+      }
 
-    return event;
+      const { title, event_date } = options;
+      
+      const duplicatedEventData = {
+        title: title || `${originalEvent.title} (Copy)`,
+        description: originalEvent.description,
+        event_date: event_date || originalEvent.event_date,
+        location: originalEvent.location,
+        organizer_id: userId,
+        status: 'draft',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const duplicatedEvent = await eventsRepository.create({
+        ...duplicatedEventData,
+        id: uuidv4()
+      });
+
+      return {
+        success: true,
+        data: duplicatedEvent
+      };
+    } catch (error) {
+      console.error('Error duplicating event:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to duplicate event'
+      };
+    }
   }
 }
 

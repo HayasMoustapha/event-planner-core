@@ -17,15 +17,17 @@ class GuestsService {
 
       const guestDataWithCreator = {
         ...guestData,
-        created_by: userId
+        id: uuidv4(),
+        created_by: userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
       const guest = await guestsRepository.create(guestDataWithCreator);
       
       return {
         success: true,
-        data: guest,
-        message: 'Guest created successfully'
+        data: guest
       };
     } catch (error) {
       console.error('Error creating guest:', error);
@@ -36,7 +38,7 @@ class GuestsService {
     }
   }
 
-  async getGuestById(guestId) {
+  async getGuestById(guestId, userId) {
     try {
       const guest = await guestsRepository.findById(guestId);
       
@@ -52,7 +54,7 @@ class GuestsService {
         data: guest
       };
     } catch (error) {
-      console.error('Error getting guest:', error);
+      console.error('Error getting guest by ID:', error);
       return {
         success: false,
         error: error.message || 'Failed to get guest'
@@ -62,11 +64,19 @@ class GuestsService {
 
   async getGuests(options = {}) {
     try {
-      const result = await guestsRepository.findAll(options);
+      const { page, limit, status, search, userId } = options;
+      const guests = await guestsRepository.findAll({
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 10,
+        status,
+        search,
+        userId
+      });
       
       return {
         success: true,
-        data: result
+        data: guests,
+        pagination: guests.pagination
       };
     } catch (error) {
       console.error('Error getting guests:', error);
@@ -79,7 +89,6 @@ class GuestsService {
 
   async updateGuest(guestId, updateData, userId) {
     try {
-      // First check if guest exists
       const existingGuest = await guestsRepository.findById(guestId);
       
       if (!existingGuest) {
@@ -89,23 +98,15 @@ class GuestsService {
         };
       }
 
-      // Check if email is being updated and if it already exists
-      if (updateData.email && updateData.email !== existingGuest.email) {
-        const emailExists = await guestsRepository.findByEmail(updateData.email);
-        if (emailExists) {
-          return {
-            success: false,
-            error: 'Guest with this email already exists'
-          };
-        }
-      }
+      const updatedGuest = await guestsRepository.update(guestId, {
+        ...updateData,
+        updated_by: userId,
+        updated_at: new Date().toISOString()
+      });
 
-      const updatedGuest = await guestsRepository.update(guestId, updateData, userId);
-      
       return {
         success: true,
-        data: updatedGuest,
-        message: 'Guest updated successfully'
+        data: updatedGuest
       };
     } catch (error) {
       console.error('Error updating guest:', error);
@@ -116,7 +117,7 @@ class GuestsService {
     }
   }
 
-  async deleteGuest(guestId) {
+  async deleteGuest(guestId, userId) {
     try {
       const existingGuest = await guestsRepository.findById(guestId);
       
@@ -127,12 +128,11 @@ class GuestsService {
         };
       }
 
-      const deletedGuest = await guestsRepository.delete(guestId);
-      
+      await guestsRepository.delete(guestId);
+
       return {
         success: true,
-        data: deletedGuest,
-        message: 'Guest deleted successfully'
+        data: { id: guestId, deleted: true }
       };
     } catch (error) {
       console.error('Error deleting guest:', error);
@@ -145,11 +145,18 @@ class GuestsService {
 
   async getEventGuests(eventId, options = {}) {
     try {
-      const result = await guestsRepository.getEventGuests(eventId, options);
+      const { page, limit, status, userId } = options;
+      const guests = await guestsRepository.findByEventId(eventId, {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 10,
+        status,
+        userId
+      });
       
       return {
         success: true,
-        data: result
+        data: guests,
+        pagination: guests.pagination
       };
     } catch (error) {
       console.error('Error getting event guests:', error);
@@ -160,51 +167,72 @@ class GuestsService {
     }
   }
 
-  async addGuestToEvent(eventId, guestId, userId) {
+  async addGuestsToEvent(eventId, guests, userId) {
     try {
-      // Generate unique invitation code
-      const invitationCode = this.generateInvitationCode();
-      
-      const eventGuest = await guestsRepository.addGuestToEvent(
-        eventId, 
-        guestId, 
-        invitationCode, 
-        userId
-      );
-      
-      // TODO: Send invitation notification
+      const guestsWithIds = guests.map(guest => ({
+        ...guest,
+        id: uuidv4(),
+        event_id: eventId,
+        created_by: userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+
+      const addedGuests = await guestsRepository.bulkCreate(guestsWithIds);
       
       return {
         success: true,
-        data: eventGuest,
-        message: 'Guest added to event successfully'
+        data: addedGuests
       };
     } catch (error) {
-      console.error('Error adding guest to event:', error);
+      console.error('Error adding guests to event:', error);
       return {
         success: false,
-        error: error.message || 'Failed to add guest to event'
+        error: error.message || 'Failed to add guests to event'
       };
     }
   }
 
-  async checkInGuest(invitationCode) {
+  async bulkAddGuestsToEvent(eventId, guests, userId) {
     try {
-      const eventGuest = await guestsRepository.checkInGuest(invitationCode);
-      
-      if (!eventGuest) {
-        return {
-          success: false,
-          error: 'Invalid invitation code or guest already checked in'
-        };
-      }
+      const guestsWithIds = guests.map(guest => ({
+        ...guest,
+        id: uuidv4(),
+        event_id: eventId,
+        created_by: userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
 
-      // TODO: Send check-in confirmation
+      const addedGuests = await guestsRepository.bulkCreate(guestsWithIds);
       
       return {
         success: true,
-        data: eventGuest,
-        message: 'Guest checked in successfully'
+        data: addedGuests
+      };
+    } catch (error) {
+      console.error('Error bulk adding guests to event:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to bulk add guests to event'
+      };
+    }
+  }
+
+  async checkInGuest(guestId, eventId, userId) {
+    try {
+      const checkInData = {
+        guest_id: guestId,
+        event_id: eventId,
+        checked_in_at: new Date().toISOString(),
+        checked_in_by: userId
+      };
+
+      const checkIn = await guestsRepository.checkIn(checkInData);
+      
+      return {
+        success: true,
+        data: checkIn
       };
     } catch (error) {
       console.error('Error checking in guest:', error);
@@ -215,83 +243,59 @@ class GuestsService {
     }
   }
 
-  async getGuestStats(eventId) {
+  async checkInGuestById(guestId, eventId, userId) {
     try {
-      const stats = await guestsRepository.getGuestStats(eventId);
+      const guest = await guestsRepository.findById(guestId);
+      
+      if (!guest) {
+        return {
+          success: false,
+          error: 'Guest not found'
+        };
+      }
+
+      if (guest.event_id !== eventId) {
+        return {
+          success: false,
+          error: 'Guest does not belong to this event'
+        };
+      }
+
+      const checkInData = {
+        guest_id: guestId,
+        event_id: eventId,
+        checked_in_at: new Date().toISOString(),
+        checked_in_by: userId
+      };
+
+      const checkIn = await guestsRepository.checkIn(checkInData);
+      
+      return {
+        success: true,
+        data: checkIn
+      };
+    } catch (error) {
+      console.error('Error checking in guest by ID:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to check in guest'
+      };
+    }
+  }
+
+  async getEventGuestStats(eventId, userId) {
+    try {
+      const stats = await guestsRepository.getEventStats(eventId);
       
       return {
         success: true,
         data: stats
       };
     } catch (error) {
-      console.error('Error getting guest stats:', error);
+      console.error('Error getting event guest stats:', error);
       return {
         success: false,
-        error: error.message || 'Failed to get guest statistics'
-      };
-    }
-  }
-
-  generateInvitationCode() {
-    const prefix = 'INV';
-    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const timestamp = Date.now().toString(36).toUpperCase();
-    return `${prefix}-${random}-${timestamp}`;
-  }
-
-  async bulkAddGuestsToEvent(eventId, guestsData, userId) {
-    try {
-      const results = [];
-      
-      for (const guestData of guestsData) {
-        // First, create or find the guest
-        let guest;
-        if (guestData.email) {
-          guest = await guestsRepository.findByEmail(guestData.email);
-        }
-        
-        if (!guest) {
-          const createResult = await this.createGuest(guestData, userId);
-          if (!createResult.success) {
-            results.push({
-              success: false,
-              guest: guestData,
-              error: createResult.error
-            });
-            continue;
-          }
-          guest = createResult.data;
-        }
-        
-        // Add guest to event
-        const addResult = await this.addGuestToEvent(eventId, guest.id, userId);
-        results.push({
-          success: addResult.success,
-          guest: guest,
-          error: addResult.error || null
-        });
-      }
-      
-      const successCount = results.filter(r => r.success).length;
-      const failureCount = results.length - successCount;
-      
-      return {
-        success: true,
-        data: {
-          results,
-          summary: {
-            total: results.length,
-            success: successCount,
-            failures: failureCount
-          }
-        },
-        message: `Processed ${results.length} guests: ${successCount} successful, ${failureCount} failed`
-      };
-    } catch (error) {
-      console.error('Error bulk adding guests to event:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to bulk add guests to event'
+        error: error.message || 'Failed to get event guest statistics'
       };
     }
   }

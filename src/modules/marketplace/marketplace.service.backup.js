@@ -1,7 +1,7 @@
 const marketplaceRepository = require('./marketplace.repository');
 
 class MarketplaceService {
-  async becomeDesigner(userId, designerData) {
+  async becomeDesigner(userId, designerData, currentUserId) {
     try {
       // Check if user is already a designer
       const existingDesigner = await marketplaceRepository.findDesignerByUserId(userId);
@@ -16,17 +16,15 @@ class MarketplaceService {
         user_id: userId,
         brand_name: designerData.brand_name,
         portfolio_url: designerData.portfolio_url,
-        status: 'pending',
-        created_by: userId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        created_by: currentUserId
       };
 
       const designer = await marketplaceRepository.createDesigner(designerDataWithCreator);
       
       return {
         success: true,
-        data: designer
+        data: designer,
+        message: 'Designer profile created successfully'
       };
     } catch (error) {
       console.error('Error creating designer:', error);
@@ -39,19 +37,11 @@ class MarketplaceService {
 
   async getDesigners(options = {}) {
     try {
-      const { page, limit, status, search, userId } = options;
-      const designers = await marketplaceRepository.getDesigners({
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 10,
-        status,
-        search,
-        userId
-      });
+      const result = await marketplaceRepository.getDesigners(options);
       
       return {
         success: true,
-        data: designers,
-        pagination: designers.pagination
+        data: result
       };
     } catch (error) {
       console.error('Error getting designers:', error);
@@ -62,9 +52,9 @@ class MarketplaceService {
     }
   }
 
-  async getDesignerById(designerId, userId) {
+  async getDesignerById(designerId) {
     try {
-      const designer = await marketplaceRepository.getDesignerById(designerId);
+      const designer = await marketplaceRepository.findDesignerById(designerId);
       
       if (!designer) {
         return {
@@ -78,7 +68,7 @@ class MarketplaceService {
         data: designer
       };
     } catch (error) {
-      console.error('Error getting designer by ID:', error);
+      console.error('Error getting designer:', error);
       return {
         success: false,
         error: error.message || 'Failed to get designer'
@@ -88,7 +78,8 @@ class MarketplaceService {
 
   async updateDesigner(designerId, updateData, userId) {
     try {
-      const existingDesigner = await marketplaceRepository.getDesignerById(designerId);
+      // Check if designer exists and user owns it
+      const existingDesigner = await marketplaceRepository.findDesignerById(designerId);
       
       if (!existingDesigner) {
         return {
@@ -97,15 +88,19 @@ class MarketplaceService {
         };
       }
 
-      const updatedDesigner = await marketplaceRepository.updateDesigner(designerId, {
-        ...updateData,
-        updated_by: userId,
-        updated_at: new Date().toISOString()
-      });
+      if (existingDesigner.user_id !== userId) {
+        return {
+          success: false,
+          error: 'Access denied'
+        };
+      }
 
+      const updatedDesigner = await marketplaceRepository.updateDesigner(designerId, updateData, userId);
+      
       return {
         success: true,
-        data: updatedDesigner
+        data: updatedDesigner,
+        message: 'Designer profile updated successfully'
       };
     } catch (error) {
       console.error('Error updating designer:', error);
@@ -118,20 +113,27 @@ class MarketplaceService {
 
   async createTemplate(templateData, userId) {
     try {
+      // Verify user is a designer
+      const designer = await marketplaceRepository.findDesignerByUserId(userId);
+      if (!designer) {
+        return {
+          success: false,
+          error: 'User is not registered as a designer'
+        };
+      }
+
       const templateDataWithCreator = {
         ...templateData,
-        designer_id: userId,
-        status: 'pending',
-        created_by: userId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        designer_id: designer.id,
+        created_by: userId
       };
 
       const template = await marketplaceRepository.createTemplate(templateDataWithCreator);
       
       return {
         success: true,
-        data: template
+        data: template,
+        message: 'Template created successfully'
       };
     } catch (error) {
       console.error('Error creating template:', error);
@@ -144,20 +146,11 @@ class MarketplaceService {
 
   async getTemplates(options = {}) {
     try {
-      const { page, limit, category, search, designer_id, userId } = options;
-      const templates = await marketplaceRepository.getTemplates({
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 10,
-        category,
-        search,
-        designer_id,
-        userId
-      });
+      const result = await marketplaceRepository.getTemplates(options);
       
       return {
         success: true,
-        data: templates,
-        pagination: templates.pagination
+        data: result
       };
     } catch (error) {
       console.error('Error getting templates:', error);
@@ -168,9 +161,9 @@ class MarketplaceService {
     }
   }
 
-  async getTemplateById(templateId, userId) {
+  async getTemplateById(templateId) {
     try {
-      const template = await marketplaceRepository.getTemplateById(templateId);
+      const template = await marketplaceRepository.findTemplateById(templateId);
       
       if (!template) {
         return {
@@ -184,7 +177,7 @@ class MarketplaceService {
         data: template
       };
     } catch (error) {
-      console.error('Error getting template by ID:', error);
+      console.error('Error getting template:', error);
       return {
         success: false,
         error: error.message || 'Failed to get template'
@@ -194,7 +187,8 @@ class MarketplaceService {
 
   async updateTemplate(templateId, updateData, userId) {
     try {
-      const existingTemplate = await marketplaceRepository.getTemplateById(templateId);
+      // Check if template exists and user owns it
+      const existingTemplate = await marketplaceRepository.findTemplateById(templateId);
       
       if (!existingTemplate) {
         return {
@@ -203,15 +197,19 @@ class MarketplaceService {
         };
       }
 
-      const updatedTemplate = await marketplaceRepository.updateTemplate(templateId, {
-        ...updateData,
-        updated_by: userId,
-        updated_at: new Date().toISOString()
-      });
+      if (existingTemplate.designer_user_id !== userId) {
+        return {
+          success: false,
+          error: 'Access denied'
+        };
+      }
 
+      const updatedTemplate = await marketplaceRepository.updateTemplate(templateId, updateData, userId);
+      
       return {
         success: true,
-        data: updatedTemplate
+        data: updatedTemplate,
+        message: 'Template updated successfully'
       };
     } catch (error) {
       console.error('Error updating template:', error);
@@ -222,9 +220,10 @@ class MarketplaceService {
     }
   }
 
-  async purchaseTemplate(templateId, purchaseData, userId) {
+  async purchaseTemplate(templateId, userId, purchaseData) {
     try {
-      const template = await marketplaceRepository.getTemplateById(templateId);
+      // Check if template exists and is approved
+      const template = await marketplaceRepository.findTemplateById(templateId);
       
       if (!template) {
         return {
@@ -240,20 +239,27 @@ class MarketplaceService {
         };
       }
 
-      const purchaseDataWithBuyer = {
+      // Check if user already purchased this template
+      // TODO: Implement this check
+
+      const purchaseDataWithUser = {
+        user_id: userId,
         template_id: templateId,
-        buyer_id: userId,
-        payment_method: purchaseData.payment_method,
         amount: template.price,
-        status: 'pending',
-        purchased_at: new Date().toISOString()
+        currency: template.currency,
+        transaction_id: purchaseData.transaction_id,
+        created_by: userId
       };
 
-      const purchase = await marketplaceRepository.createPurchase(purchaseDataWithBuyer);
+      const purchase = await marketplaceRepository.createPurchase(purchaseDataWithUser);
+      
+      // TODO: Process payment via payment service
+      // TODO: Grant access to template files
       
       return {
         success: true,
-        data: purchase
+        data: purchase,
+        message: 'Template purchased successfully'
       };
     } catch (error) {
       console.error('Error purchasing template:', error);
@@ -264,43 +270,35 @@ class MarketplaceService {
     }
   }
 
-  async getTemplateReviews(templateId, options = {}) {
+  async createReview(templateId, userId, reviewData) {
     try {
-      const { page, limit } = options;
-      const reviews = await marketplaceRepository.getTemplateReviews(templateId, {
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 10
-      });
+      // Check if template exists
+      const template = await marketplaceRepository.findTemplateById(templateId);
       
-      return {
-        success: true,
-        data: reviews,
-        pagination: reviews.pagination
-      };
-    } catch (error) {
-      console.error('Error getting template reviews:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to get template reviews'
-      };
-    }
-  }
+      if (!template) {
+        return {
+          success: false,
+          error: 'Template not found'
+        };
+      }
 
-  async createReview(templateId, reviewData, userId) {
-    try {
-      const reviewDataWithCreator = {
-        template_id: templateId,
+      // Check if user purchased this template
+      // TODO: Implement this check
+
+      const reviewDataWithUser = {
         user_id: userId,
+        template_id: templateId,
         rating: reviewData.rating,
         comment: reviewData.comment,
-        created_at: new Date().toISOString()
+        created_by: userId
       };
 
-      const review = await marketplaceRepository.createReview(reviewDataWithCreator);
+      const review = await marketplaceRepository.createReview(reviewDataWithUser);
       
       return {
         success: true,
-        data: review
+        data: review,
+        message: 'Review created successfully'
       };
     } catch (error) {
       console.error('Error creating review:', error);
@@ -311,19 +309,30 @@ class MarketplaceService {
     }
   }
 
-  async getUserPurchases(userId, options = {}) {
+  async getTemplateReviews(templateId, options = {}) {
     try {
-      const { page, limit, status } = options;
-      const purchases = await marketplaceRepository.getUserPurchases(userId, {
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 10,
-        status
-      });
+      const result = await marketplaceRepository.getTemplateReviews(templateId, options);
       
       return {
         success: true,
-        data: purchases,
-        pagination: purchases.pagination
+        data: result
+      };
+    } catch (error) {
+      console.error('Error getting template reviews:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get template reviews'
+      };
+    }
+  }
+
+  async getUserPurchases(userId, options = {}) {
+    try {
+      const result = await marketplaceRepository.getUserPurchases(userId, options);
+      
+      return {
+        success: true,
+        data: result
       };
     } catch (error) {
       console.error('Error getting user purchases:', error);
@@ -334,9 +343,9 @@ class MarketplaceService {
     }
   }
 
-  async getMarketplaceStats(userId) {
+  async getMarketplaceStats() {
     try {
-      const stats = await marketplaceRepository.getMarketplaceStats(userId);
+      const stats = await marketplaceRepository.getMarketplaceStats();
       
       return {
         success: true,
@@ -353,24 +362,21 @@ class MarketplaceService {
 
   async approveTemplate(templateId, userId) {
     try {
-      const template = await marketplaceRepository.getTemplateById(templateId);
+      const updatedTemplate = await marketplaceRepository.updateTemplate(templateId, { status: 'approved' }, userId);
       
-      if (!template) {
+      if (!updatedTemplate) {
         return {
           success: false,
           error: 'Template not found'
         };
       }
 
-      const approvedTemplate = await marketplaceRepository.updateTemplate(templateId, {
-        status: 'approved',
-        approved_by: userId,
-        approved_at: new Date().toISOString()
-      });
-
+      // TODO: Notify designer of approval
+      
       return {
         success: true,
-        data: approvedTemplate
+        data: updatedTemplate,
+        message: 'Template approved successfully'
       };
     } catch (error) {
       console.error('Error approving template:', error);
@@ -381,53 +387,23 @@ class MarketplaceService {
     }
   }
 
-  async deleteTemplate(templateId, userId) {
+  async rejectTemplate(templateId, userId, reason) {
     try {
-      const template = await marketplaceRepository.getTemplateById(templateId);
+      const updatedTemplate = await marketplaceRepository.updateTemplate(templateId, { status: 'rejected' }, userId);
       
-      if (!template) {
+      if (!updatedTemplate) {
         return {
           success: false,
           error: 'Template not found'
         };
       }
 
-      await marketplaceRepository.deleteTemplate(templateId);
-
-      return {
-        success: true,
-        data: { id: templateId, deleted: true }
-      };
-    } catch (error) {
-      console.error('Error deleting template:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to delete template'
-      };
-    }
-  }
-
-  async rejectTemplate(templateId, rejectData, userId) {
-    try {
-      const template = await marketplaceRepository.getTemplateById(templateId);
+      // TODO: Notify designer of rejection with reason
       
-      if (!template) {
-        return {
-          success: false,
-          error: 'Template not found'
-        };
-      }
-
-      const rejectedTemplate = await marketplaceRepository.updateTemplate(templateId, {
-        status: 'rejected',
-        rejection_reason: rejectData.reason,
-        rejected_by: userId,
-        rejected_at: new Date().toISOString()
-      });
-
       return {
         success: true,
-        data: rejectedTemplate
+        data: updatedTemplate,
+        message: 'Template rejected successfully'
       };
     } catch (error) {
       console.error('Error rejecting template:', error);
@@ -440,24 +416,21 @@ class MarketplaceService {
 
   async verifyDesigner(designerId, userId) {
     try {
-      const designer = await marketplaceRepository.getDesignerById(designerId);
+      const updatedDesigner = await marketplaceRepository.updateDesigner(designerId, { is_verified: true }, userId);
       
-      if (!designer) {
+      if (!updatedDesigner) {
         return {
           success: false,
           error: 'Designer not found'
         };
       }
 
-      const verifiedDesigner = await marketplaceRepository.updateDesigner(designerId, {
-        status: 'verified',
-        verified_by: userId,
-        verified_at: new Date().toISOString()
-      });
-
+      // TODO: Notify designer of verification
+      
       return {
         success: true,
-        data: verifiedDesigner
+        data: updatedDesigner,
+        message: 'Designer verified successfully'
       };
     } catch (error) {
       console.error('Error verifying designer:', error);

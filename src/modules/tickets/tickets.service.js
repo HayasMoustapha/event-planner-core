@@ -1,88 +1,44 @@
 const ticketsRepository = require('./tickets.repository');
-const { ticketGeneratorClient, scanValidationClient } = require('../../config/clients');
 const { v4: uuidv4 } = require('uuid');
-
-// Custom error classes for better error handling
-class ValidationError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ValidationError';
-    this.statusCode = 400;
-  }
-}
-
-class NotFoundError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'NotFoundError';
-    this.statusCode = 404;
-  }
-}
-
-class AuthorizationError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'AuthorizationError';
-    this.statusCode = 403;
-  }
-}
-
-class ConflictError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ConflictError';
-    this.statusCode = 409;
-  }
-}
 
 class TicketsService {
   async createTicketType(ticketTypeData, userId) {
-    // Validate ticket type
-    const validTypes = ['free', 'paid', 'donation'];
-    if (!validTypes.includes(ticketTypeData.type)) {
-      return {
-        success: false,
-        error: 'Invalid ticket type. Must be free, paid, or donation',
-        details: {
-          field: 'type',
-          message: 'Invalid ticket type. Must be free, paid, or donation'
-        }
-      };
-    }
-
-    // Validate availability dates
-    if (ticketTypeData.available_from && ticketTypeData.available_to) {
-      if (new Date(ticketTypeData.available_from) >= new Date(ticketTypeData.available_to)) {
+    try {
+      const validTypes = ['free', 'paid', 'donation'];
+      if (!validTypes.includes(ticketTypeData.type)) {
         return {
           success: false,
-          error: 'Available from date must be before available to date',
-          details: {
-            field: 'available_from',
-            message: 'Available from date must be before available to date'
-          }
+          error: 'Invalid ticket type. Must be free, paid, or donation'
         };
       }
-    }
 
-    const ticketTypeDataWithCreator = {
-      ...ticketTypeData,
-      created_by: userId
-    };
+      const ticketTypeDataWithCreator = {
+        ...ticketTypeData,
+        id: uuidv4(),
+        organizer_id: userId,
+        created_by: userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
 
-    try {
-      return await ticketsRepository.createTicketType(ticketTypeDataWithCreator);
+      const ticketType = await ticketsRepository.createTicketType(ticketTypeDataWithCreator);
+      
+      return {
+        success: true,
+        data: ticketType
+      };
     } catch (error) {
+      console.error('Error creating ticket type:', error);
       return {
         success: false,
-        error: 'Error creating ticket type',
-        details: error.message
+        error: error.message || 'Failed to create ticket type'
       };
     }
   }
 
-  async getTicketTypeById(ticketTypeId) {
+  async getTicketTypeById(ticketTypeId, userId) {
     try {
-      const ticketType = await ticketsRepository.findTicketTypeById(ticketTypeId);
+      const ticketType = await ticketsRepository.getTicketTypeById(ticketTypeId);
       
       if (!ticketType) {
         return {
@@ -91,12 +47,20 @@ class TicketsService {
         };
       }
 
+      // Check if user is the organizer
+      if (ticketType.organizer_id !== userId && String(ticketType.organizer_id) !== String(userId)) {
+        return {
+          success: false,
+          error: 'Access denied'
+        };
+      }
+
       return {
         success: true,
         data: ticketType
       };
     } catch (error) {
-      console.error('Error getting ticket type:', error);
+      console.error('Error getting ticket type by ID:', error);
       return {
         success: false,
         error: error.message || 'Failed to get ticket type'
@@ -104,27 +68,9 @@ class TicketsService {
     }
   }
 
-  async getTicketTypesByEvent(eventId, options = {}) {
-    try {
-      const result = await ticketsRepository.getTicketTypesByEvent(eventId, options);
-      
-      return {
-        success: true,
-        data: result
-      };
-    } catch (error) {
-      console.error('Error getting ticket types:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to get ticket types'
-      };
-    }
-  }
-
   async updateTicketType(ticketTypeId, updateData, userId) {
     try {
-      // First check if ticket type exists
-      const existingTicketType = await ticketsRepository.findTicketTypeById(ticketTypeId);
+      const existingTicketType = await ticketsRepository.getTicketTypeById(ticketTypeId);
       
       if (!existingTicketType) {
         return {
@@ -133,23 +79,23 @@ class TicketsService {
         };
       }
 
-      // Validate ticket type if being updated
-      if (updateData.type) {
-        const validTypes = ['free', 'paid', 'donation'];
-        if (!validTypes.includes(updateData.type)) {
-          return {
-            success: false,
-            error: 'Invalid ticket type. Must be free, paid, or donation'
-          };
-        }
+      // Check if user is the organizer
+      if (existingTicketType.organizer_id !== userId && String(existingTicketType.organizer_id) !== String(userId)) {
+        return {
+          success: false,
+          error: 'Access denied'
+        };
       }
 
-      const updatedTicketType = await ticketsRepository.updateTicketType(ticketTypeId, updateData, userId);
-      
+      const updatedTicketType = await ticketsRepository.updateTicketType(ticketTypeId, {
+        ...updateData,
+        updated_by: userId,
+        updated_at: new Date().toISOString()
+      });
+
       return {
         success: true,
-        data: updatedTicketType,
-        message: 'Ticket type updated successfully'
+        data: updatedTicketType
       };
     } catch (error) {
       console.error('Error updating ticket type:', error);
@@ -160,9 +106,9 @@ class TicketsService {
     }
   }
 
-  async deleteTicketType(ticketTypeId) {
+  async deleteTicketType(ticketTypeId, userId) {
     try {
-      const existingTicketType = await ticketsRepository.findTicketTypeById(ticketTypeId);
+      const existingTicketType = await ticketsRepository.getTicketTypeById(ticketTypeId);
       
       if (!existingTicketType) {
         return {
@@ -171,12 +117,27 @@ class TicketsService {
         };
       }
 
-      const deletedTicketType = await ticketsRepository.deleteTicketType(ticketTypeId);
-      
+      // Check if user is the organizer
+      if (existingTicketType.organizer_id !== userId && String(existingTicketType.organizer_id) !== String(userId)) {
+        return {
+          success: false,
+          error: 'Access denied'
+        };
+      }
+
+      // Check if tickets have been sold for this type
+      if (existingTicketType.tickets_sold > 0) {
+        return {
+          success: false,
+          error: 'Cannot delete ticket type with sold tickets'
+        };
+      }
+
+      await ticketsRepository.deleteTicketType(ticketTypeId);
+
       return {
         success: true,
-        data: deletedTicketType,
-        message: 'Ticket type deleted successfully'
+        data: { id: ticketTypeId, deleted: true }
       };
     } catch (error) {
       console.error('Error deleting ticket type:', error);
@@ -187,85 +148,60 @@ class TicketsService {
     }
   }
 
-  async generateTicket(eventGuestId, ticketTypeId, userId) {
+  async createTicket(ticketData, userId) {
     try {
-      // 1. Generate unique ticket code (LOGIQUE MÉTIER)
-      const ticketCode = await ticketsRepository.generateTicketCode();
-      
-      // 2. Create ticket in database (PERSISTANCE MÉTIER)
-      const ticketData = {
-        ticket_code: ticketCode,
-        qr_code_data: null, // Will be populated by ticket-generator service
-        ticket_type_id: ticketTypeId,
-        event_guest_id: eventGuestId,
-        price: 0, // Will be set based on ticket type
-        currency: 'EUR',
-        created_by: userId
+      const ticketDataWithId = {
+        ...ticketData,
+        id: uuidv4(),
+        user_id: userId,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
-      const ticket = await ticketsRepository.createTicket(ticketData);
+      const ticket = await ticketsRepository.createTicket(ticketDataWithId);
       
-      // 3. Call ticket-generator service for QR code generation (APPEL SERVICE TECHNIQUE)
-      try {
-        // Récupérer l'event_id depuis le ticket créé via une jointure
-        const ticketWithEvent = await ticketsRepository.findTicketWithEvent(ticket.id);
-        
-        const qrResult = await ticketGeneratorClient.generateQRCode({
-          ticketCode: ticketCode,
-          ticketId: ticket.id,
-          eventId: ticketWithEvent?.event_id || null
-        });
-        
-        if (qrResult.success) {
-          // Update ticket with QR code data
-          await ticketsRepository.updateTicketQRCode(ticket.id, qrResult.qrCodeData);
-        }
-      } catch (qrError) {
-        console.warn('QR code generation failed, continuing without QR:', qrError.message);
-        // Continue without QR code - ticket is still valid
-      }
-      
-      return {
-        success: true,
-        data: ticket,
-        message: 'Ticket generated successfully'
-      };
-    } catch (error) {
-      console.error('Error generating ticket:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to generate ticket'
-      };
-    }
-  }
-
-  async getTicketById(ticketId) {
-    try {
-      const ticket = await ticketsRepository.findTicketById(ticketId);
-      
-      if (!ticket) {
-        return {
-          success: false,
-          error: 'Ticket not found'
-        };
-      }
-
       return {
         success: true,
         data: ticket
       };
     } catch (error) {
-      console.error('Error getting ticket:', error);
+      console.error('Error creating ticket:', error);
       return {
         success: false,
-        error: error.message || 'Failed to get ticket'
+        error: error.message || 'Failed to create ticket'
       };
     }
   }
 
-  async getTicketByCode(ticketCode) {
+  async getTickets(options = {}) {
     try {
-      const ticket = await ticketsRepository.findTicketByCode(ticketCode);
+      const { page, limit, status, event_id, userId } = options;
+      const tickets = await ticketsRepository.getTickets({
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 10,
+        status,
+        event_id,
+        user_id: userId
+      });
+      
+      return {
+        success: true,
+        data: tickets,
+        pagination: tickets.pagination
+      };
+    } catch (error) {
+      console.error('Error getting tickets:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get tickets'
+      };
+    }
+  }
+
+  async getTicketByCode(ticketCode, userId) {
+    try {
+      const ticket = await ticketsRepository.findByCode(ticketCode);
       
       if (!ticket) {
         return {
@@ -282,32 +218,38 @@ class TicketsService {
       console.error('Error getting ticket by code:', error);
       return {
         success: false,
-        error: error.message || 'Failed to get ticket'
+        error: error.message || 'Failed to get ticket by code'
       };
     }
   }
 
-  async getTicketsByEvent(eventId, options = {}) {
+  async getEventTickets(eventId, options = {}) {
     try {
-      const result = await ticketsRepository.getTicketsByEvent(eventId, options);
+      const { page, limit, status, userId } = options;
+      const tickets = await ticketsRepository.findByEventId(eventId, {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 10,
+        status,
+        userId
+      });
       
       return {
         success: true,
-        data: result
+        data: tickets,
+        pagination: tickets.pagination
       };
     } catch (error) {
-      console.error('Error getting tickets:', error);
+      console.error('Error getting event tickets:', error);
       return {
         success: false,
-        error: error.message || 'Failed to get tickets'
+        error: error.message || 'Failed to get event tickets'
       };
     }
   }
 
-  async validateTicket(ticketId) {
+  async validateTicket(ticketId, userId) {
     try {
-      // 1. Get ticket from database (LOGIQUE MÉTIER)
-      const ticket = await ticketsRepository.findTicketById(ticketId);
+      const ticket = await ticketsRepository.findById(ticketId);
       
       if (!ticket) {
         return {
@@ -316,45 +258,31 @@ class TicketsService {
         };
       }
 
-      if (ticket.is_validated) {
+      // Check if user owns the ticket or has admin permissions
+      if (ticket.user_id !== userId && !ticket.is_admin) {
         return {
           success: false,
-          error: 'Ticket already validated'
+          error: 'Access denied'
         };
       }
 
-      // 2. Call scan-validation service for technical validation (APPEL SERVICE TECHNIQUE)
-      let validationResult = { valid: true, reason: 'No QR code to validate' };
-      
-      if (ticket.qr_code_data) {
-        try {
-          validationResult = await scanValidationClient.validateTicket(ticket.qr_code_data, {
-            ticketId: ticket.id,
-            validationTime: new Date().toISOString()
-          });
-        } catch (validationError) {
-          console.warn('Scan validation service unavailable, proceeding with business validation:', validationError.message);
-          // Continue with business validation even if technical validation fails
-        }
-      }
+      const validationResult = {
+        ticket_id: ticket.id,
+        qr_code: ticket.qr_code,
+        status: 'validated',
+        validated_at: new Date().toISOString(),
+        scanner: userId
+      };
 
-      // 3. Apply business rules based on technical validation (LOGIQUE MÉTIER)
-      if (!validationResult.valid) {
-        return {
-          success: false,
-          error: 'Ticket validation failed',
-          reason: validationResult.reason || 'Technical validation failed'
-        };
-      }
+      const updatedTicket = await ticketsRepository.update(ticketId, {
+        status: 'validated',
+        validated_at: new Date().toISOString(),
+        validated_by: userId
+      });
 
-      // 4. Update ticket validation status in database (PERSISTANCE MÉTIER)
-      const validatedTicket = await ticketsRepository.validateTicket(ticketId);
-      
       return {
         success: true,
-        data: validatedTicket,
-        message: 'Ticket validated successfully',
-        technicalValidation: validationResult
+        data: updatedTicket
       };
     } catch (error) {
       console.error('Error validating ticket:', error);
@@ -365,10 +293,9 @@ class TicketsService {
     }
   }
 
-  async validateTicketByCode(ticketCode) {
+  async validateTicketByCode(ticketCode, userId) {
     try {
-      // 1. Get ticket from database (LOGIQUE MÉTIER)
-      const ticket = await ticketsRepository.findTicketByCode(ticketCode);
+      const ticket = await ticketsRepository.findByCode(ticketCode);
       
       if (!ticket) {
         return {
@@ -377,106 +304,165 @@ class TicketsService {
         };
       }
 
-      if (ticket.is_validated) {
+      // Check if user owns the ticket or has admin permissions
+      if (ticket.user_id !== userId && !ticket.is_admin) {
         return {
           success: false,
-          error: 'Ticket already validated'
+          error: 'Access denied'
         };
       }
 
-      // 2. Call scan-validation service for technical validation (APPEL SERVICE TECHNIQUE)
-      let validationResult = { valid: true, reason: 'No QR code to validate' };
-      
-      if (ticket.qr_code_data) {
-        try {
-          validationResult = await scanValidationClient.validateTicket(ticket.qr_code_data, {
-            ticketId: ticket.id,
-            validationTime: new Date().toISOString()
-          });
-        } catch (validationError) {
-          console.warn('Scan validation service unavailable, proceeding with business validation:', validationError.message);
-          // Continue with business validation even if technical validation fails
-        }
-      }
+      const validationResult = {
+        ticket_id: ticket.id,
+        qr_code: ticket.qr_code,
+        status: 'validated',
+        validated_at: new Date().toISOString(),
+        scanner: userId
+      };
 
-      // 3. Apply business rules based on technical validation (LOGIQUE MÉTIER)
-      if (!validationResult.valid) {
-        return {
-          success: false,
-          error: 'Ticket validation failed',
-          reason: validationResult.reason || 'Technical validation failed'
-        };
-      }
+      const updatedTicket = await ticketsRepository.update(ticket.id, {
+        status: 'validated',
+        validated_at: new Date().toISOString(),
+        validated_by: userId
+      });
 
-      // 4. Update ticket validation status in database (PERSISTANCE MÉTIER)
-      const validatedTicket = await ticketsRepository.validateTicketByCode(ticketCode);
-      
       return {
         success: true,
-        data: validatedTicket,
-        message: 'Ticket validated successfully',
-        technicalValidation: validationResult
+        data: updatedTicket
       };
     } catch (error) {
       console.error('Error validating ticket by code:', error);
       return {
         success: false,
-        error: error.message || 'Failed to validate ticket'
+        error: error.message || 'Failed to validate ticket by code'
       };
     }
   }
 
-  async getTicketStats(eventId) {
+  async bulkGenerateTickets(bulkData, userId) {
     try {
-      const stats = await ticketsRepository.getTicketStats(eventId);
+      const { event_id, ticket_type_id, quantity } = bulkData;
       
-      return {
-        success: true,
-        data: stats
-      };
-    } catch (error) {
-      console.error('Error getting ticket stats:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to get ticket statistics'
-      };
-    }
-  }
-
-  async bulkGenerateTickets(eventGuestIds, ticketTypeId, userId) {
-    try {
-      const results = [];
-      
-      for (const eventGuestId of eventGuestIds) {
-        const result = await this.generateTicket(eventGuestId, ticketTypeId, userId);
-        results.push({
-          event_guest_id: eventGuestId,
-          success: result.success,
-          ticket: result.data || null,
-          error: result.error || null
-        });
+      const tickets = [];
+      for (let i = 0; i < quantity; i++) {
+        const ticketData = {
+          id: uuidv4(),
+          event_id,
+          ticket_type_id,
+          user_id: null, // Will be assigned when purchased
+          status: 'available',
+          created_by: userId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        tickets.push(ticketData);
       }
-      
-      const successCount = results.filter(r => r.success).length;
-      const failureCount = results.length - successCount;
+
+      const createdTickets = await ticketsRepository.bulkCreate(tickets);
       
       return {
         success: true,
-        data: {
-          results,
-          summary: {
-            total: results.length,
-            success: successCount,
-            failures: failureCount
-          }
-        },
-        message: `Generated ${successCount} tickets out of ${results.length} requests`
+        data: createdTickets
       };
     } catch (error) {
       console.error('Error bulk generating tickets:', error);
       return {
         success: false,
         error: error.message || 'Failed to bulk generate tickets'
+      };
+    }
+  }
+
+  async createJob(jobData, userId) {
+    try {
+      const jobDataWithId = {
+        ...jobData,
+        id: uuidv4(),
+        user_id: userId,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const job = await ticketsRepository.createJob(jobDataWithId);
+      
+      return {
+        success: true,
+        data: job
+      };
+    } catch (error) {
+      console.error('Error creating job:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to create job'
+      };
+    }
+  }
+
+  async processJob(jobId, userId) {
+    try {
+      const job = await ticketsRepository.getJobById(jobId);
+      
+      if (!job) {
+        return {
+          success: false,
+          error: 'Job not found'
+        };
+      }
+
+      // Check if user owns the job
+      if (job.user_id !== userId) {
+        return {
+          success: false,
+          error: 'Access denied'
+        };
+      }
+
+      const processedJob = await ticketsRepository.updateJob(jobId, {
+        status: 'processing',
+        started_at: new Date().toISOString(),
+        started_by: userId
+      });
+
+      // Simulate job processing (in real implementation, this would be async)
+      setTimeout(async () => {
+        try {
+          await ticketsRepository.updateJob(jobId, {
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          completed_by: userId
+        });
+        } catch (error) {
+          console.error('Error completing job:', error);
+        }
+      }, 1000);
+
+      return {
+        success: true,
+        data: processedJob
+      };
+    } catch (error) {
+      console.error('Error processing job:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to process job'
+      };
+    }
+  }
+
+  async getEventTicketStats(eventId, userId) {
+    try {
+      const stats = await ticketsRepository.getEventStats(eventId);
+      
+      return {
+        success: true,
+        data: stats
+      };
+    } catch (error) {
+      console.error('Error getting event ticket statistics:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get event ticket statistics'
       };
     }
   }
