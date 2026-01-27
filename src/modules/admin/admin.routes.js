@@ -1,11 +1,14 @@
 const express = require('express');
 const adminController = require('./admin.controller');
-const { SecurityMiddleware, validate, createAdminValidator } = require('../../../../shared');
+const { SecurityMiddleware, validate, createAdminValidator, ContextInjector } = require('../../../../shared');
 
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(SecurityMiddleware.adminOnly());
+
+// Apply admin context injection
+router.use(ContextInjector.injectAdminContext());
 
 // Dashboard
 router.get('/dashboard', adminController.getDashboard);

@@ -1,6 +1,6 @@
 const express = require('express');
 const ticketsController = require('./tickets.controller');
-const { SecurityMiddleware, validate, createTicketsValidator } = require('../../../../shared');
+const { SecurityMiddleware, validate, createTicketsValidator, ContextInjector } = require('../../../../shared');
 
 // Import routes
 const ticketTypesRoutes = require('./ticket-types.routes');
@@ -10,6 +10,9 @@ const router = express.Router();
 
 // Apply authentication to all routes
 router.use(SecurityMiddleware.authenticated());
+
+// Apply context injection for all routes
+router.use(ContextInjector.injectTicketContext());
 
 // Ticket Type Management
 router.use('/types', ticketTypesRoutes);

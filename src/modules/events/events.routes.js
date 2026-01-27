@@ -1,11 +1,14 @@
 const express = require('express');
 const eventsController = require('./events.controller');
-const { SecurityMiddleware, validate, createEventsValidator } = require('../../../../shared');
+const { SecurityMiddleware, validate, createEventsValidator, ContextInjector } = require('../../../../shared');
 
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(SecurityMiddleware.authenticated());
+
+// Apply context injection for all routes
+router.use(ContextInjector.injectEventContext());
 
 /**
  * @swagger

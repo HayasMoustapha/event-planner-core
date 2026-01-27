@@ -1,11 +1,14 @@
 const express = require('express');
 const marketplaceController = require('./marketplace.controller');
-const { SecurityMiddleware, validate, createMarketplaceValidator } = require('../../../../shared');
+const { SecurityMiddleware, validate, createMarketplaceValidator, ContextInjector } = require('../../../../shared');
 
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(SecurityMiddleware.authenticated());
+
+// Apply context injection for all routes
+router.use(ContextInjector.injectMarketplaceContext());
 
 // Designer Management
 router.post('/designers', 
