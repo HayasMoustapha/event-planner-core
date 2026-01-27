@@ -404,6 +404,118 @@ class TicketsRepository {
     return `${prefix}-${random}-${timestamp}`;
   }
 
+  /**
+   * Get ticket type by ID (alias for findTicketTypeById)
+   */
+  async getTicketTypeById(ticketTypeId) {
+    return await this.findTicketTypeById(ticketTypeId);
+  }
+
+  /**
+   * Get tickets with pagination and filters
+   */
+  async getTickets(options = {}) {
+    const { page = 1, limit = 10, status, event_id, userId } = options;
+    const offset = (page - 1) * limit;
+
+    let whereConditions = ['t.deleted_at IS NULL'];
+    let queryParams = [];
+    let paramIndex = 1;
+
+    if (status) {
+      whereConditions.push(`t.status = $${paramIndex++}`);
+      queryParams.push(status);
+    }
+
+    if (event_id) {
+      whereConditions.push(`t.event_id = $${paramIndex++}`);
+      queryParams.push(event_id);
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    const query = `
+      SELECT t.*, tt.name as ticket_type_name, tt.type as ticket_type,
+             eg.event_id, eg.guest_id, g.first_name, g.last_name, g.email,
+             e.title as event_title, e.organizer_id
+      FROM tickets t
+      LEFT JOIN ticket_types tt ON t.ticket_type_id = tt.id
+      LEFT JOIN event_guests eg ON t.event_guest_id = eg.id
+      LEFT JOIN guests g ON eg.guest_id = g.id
+      LEFT JOIN events e ON eg.event_id = e.id
+      WHERE ${whereClause}
+      ORDER BY t.created_at DESC
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+    `;
+
+    queryParams.push(limit, offset);
+
+    const result = await database.query(query, queryParams);
+    return result.rows;
+  }
+
+  /**
+   * Find ticket by code (alias for findTicketByCode)
+   */
+  async findByCode(ticketCode) {
+    return await this.findTicketByCode(ticketCode);
+  }
+
+  /**
+   * Find tickets by event ID (alias for getTicketsByEvent)
+   */
+  async findByEventId(eventId, options = {}) {
+    return await this.getTicketsByEvent(eventId, options);
+  }
+
+  /**
+   * Find ticket types by event ID (alias for getTicketTypesByEvent)
+   */
+  async findTicketTypesByEventId(eventId, options = {}) {
+    return await this.getTicketTypesByEvent(eventId, options);
+  }
+
+  /**
+   * Find ticket by ID (alias for findTicketById)
+   */
+  async findById(ticketId) {
+    return await this.findTicketById(ticketId);
+  }
+
+  /**
+   * Update ticket
+   */
+  async update(ticketId, updateData) {
+    const allowedFields = ['status', 'validated_at', 'validated_by', 'qr_code_data'];
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+
+    for (const [key, value] of Object.entries(updateData)) {
+      if (allowedFields.includes(key)) {
+        updates.push(`${key} = $${paramIndex++}`);
+        values.push(value);
+      }
+    }
+
+    if (updates.length === 0) {
+      throw new Error('No valid fields to update');
+    }
+
+    updates.push(`updated_at = NOW()`);
+    values.push(ticketId);
+
+    const query = `
+      UPDATE tickets
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `;
+
+    const result = await database.query(query, values);
+    return result.rows[0] || null;
+  }
+
   async findTicketTypesByEventId(eventId, options = {}) {
     const { page = 1, limit = 20 } = options;
     const offset = (page - 1) * limit;

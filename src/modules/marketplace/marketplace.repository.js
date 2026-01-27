@@ -491,7 +491,61 @@ class MarketplaceRepository {
     
     const result = await database.query(query);
     
-    return result.rows[0];
+    return result.rows;
+  }
+
+  /**
+   * Get marketplace statistics
+   */
+  async getMarketplaceStats() {
+    const query = `
+      SELECT 
+        COUNT(DISTINCT d.id) as total_designers,
+        COUNT(DISTINCT d.id) FILTER (WHERE d.is_verified = true) as verified_designers,
+        COUNT(DISTINCT t.id) as total_templates,
+        COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'approved') as approved_templates,
+        COUNT(DISTINCT p.id) as total_purchases,
+        COALESCE(SUM(p.amount), 0) as total_revenue,
+        COUNT(DISTINCT r.id) as total_reviews,
+        COALESCE(AVG(r.rating), 0) as average_rating
+      FROM designers d
+      LEFT JOIN ticket_templates t ON d.id = t.designer_id
+      LEFT JOIN purchases p ON t.id = p.template_id
+      LEFT JOIN reviews r ON t.id = r.template_id
+    `;
+    
+    const result = await database.query(query);
+    
+    return result.rows;
+  }
+
+  /**
+   * Get designer by ID (alias for findDesignerById)
+   */
+  async getDesignerById(designerId) {
+    return await this.findDesignerById(designerId);
+  }
+
+  /**
+   * Get template by ID (alias for findTemplateById)
+   */
+  async getTemplateById(templateId) {
+    return await this.findTemplateById(templateId);
+  }
+
+  /**
+   * Delete template
+   */
+  async deleteTemplate(templateId, deletedBy) {
+    const query = `
+      UPDATE ticket_templates
+      SET deleted_at = NOW(), deleted_by = $2, updated_at = NOW(), updated_by = $2
+      WHERE id = $1 AND deleted_at IS NULL
+      RETURNING *
+    `;
+
+    const result = await database.query(query, [templateId, deletedBy]);
+    return result.rows[0] || null;
   }
 }
 

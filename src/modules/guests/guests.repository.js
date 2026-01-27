@@ -240,6 +240,88 @@ class GuestsRepository {
     
     return result.rows[0];
   }
+
+  /**
+   * Create multiple guests in bulk
+   */
+  async bulkCreate(guestsData) {
+    if (!guestsData || guestsData.length === 0) {
+      return [];
+    }
+
+    const values = guestsData.map((guest, index) => {
+      const baseIndex = index * 6;
+      return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6})`;
+    }).join(', ');
+
+    const flatGuests = guestsData.flatMap(guest => [
+      guest.first_name,
+      guest.last_name,
+      guest.email,
+      guest.phone || null,
+      guest.created_by,
+      guest.updated_by
+    ]);
+
+    const query = `
+      INSERT INTO guests (first_name, last_name, email, phone, created_by, updated_by)
+      VALUES ${values}
+      RETURNING id, first_name, last_name, email, phone, created_at
+    `;
+
+    const result = await database.query(query, flatGuests);
+    return result.rows;
+  }
+
+  /**
+   * Check in a guest
+   */
+  async checkIn(checkInData) {
+    const { guest_id, event_id, checked_in_at, checked_in_by } = checkInData;
+
+    const query = `
+      UPDATE event_guests 
+      SET is_present = true, check_in_time = $1, checked_in_by = $2, updated_at = NOW()
+      WHERE guest_id = $3 AND event_id = $4
+      RETURNING *
+    `;
+
+    const result = await database.query(query, [checked_in_at, checked_in_by, guest_id, event_id]);
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Find guests by event ID
+   */
+  async findByEventId(eventId, options = {}) {
+    const { page = 1, limit = 20, status } = options;
+    const offset = (page - 1) * limit;
+
+    let whereConditions = ['eg.event_id = $1'];
+    let queryParams = [eventId];
+
+    if (status) {
+      whereConditions.push(`eg.status = $${queryParams.length + 1}`);
+      queryParams.push(status);
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    const query = `
+      SELECT g.*, eg.invitation_code, eg.is_present, eg.check_in_time, eg.checked_in_by,
+             eg.status as event_guest_status, eg.created_at as event_guest_created_at
+      FROM guests g
+      JOIN event_guests eg ON g.id = eg.guest_id
+      WHERE ${whereClause} AND g.deleted_at IS NULL
+      ORDER BY g.created_at DESC
+      LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+    `;
+
+    queryParams.push(limit, offset);
+
+    const result = await database.query(query, queryParams);
+    return result.rows;
+  }
 }
 
 module.exports = new GuestsRepository();

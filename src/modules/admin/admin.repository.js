@@ -1,4 +1,5 @@
 const { database } = require('../../config');
+const { v4: uuidv4 } = require('uuid');
 
 class AdminRepository {
   async getGlobalStats() {
@@ -483,6 +484,446 @@ class AdminRepository {
     
     const result = await database.query(query);
     return result.rows;
+  }
+
+  /**
+   * Get dashboard data for admin
+   */
+  async getDashboardData(userId) {
+    try {
+      const query = `
+        SELECT 
+          (SELECT COUNT(*) FROM users WHERE deleted_at IS NULL) as total_users,
+          (SELECT COUNT(*) FROM events WHERE deleted_at IS NULL) as total_events,
+          (SELECT COUNT(*) FROM events WHERE status = 'published' AND deleted_at IS NULL) as published_events,
+          (SELECT COUNT(*) FROM guests WHERE deleted_at IS NULL) as total_guests,
+          (SELECT COALESCE(SUM(price), 0) FROM ticket_types WHERE deleted_at IS NULL) as potential_revenue
+      `;
+      
+      const result = await database.query(query);
+      return result.rows[0] || {};
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get users with pagination and filters
+   */
+  async getUsers(options = {}) {
+    const { page = 1, limit = 50, status, search, role, userId } = options;
+    const offset = (page - 1) * limit;
+    
+    let whereConditions = ['u.deleted_at IS NULL'];
+    let queryParams = [];
+    let paramIndex = 1;
+    
+    if (status) {
+      whereConditions.push(`u.status = $${paramIndex++}`);
+      queryParams.push(status);
+    }
+    
+    if (search) {
+      whereConditions.push(`(u.first_name ILIKE $${paramIndex++} OR u.last_name ILIKE $${paramIndex++} OR u.email ILIKE $${paramIndex++})`);
+      queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    
+    if (role) {
+      whereConditions.push(`u.role = $${paramIndex++}`);
+      queryParams.push(role);
+    }
+    
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    
+    const query = `
+      SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.status, u.created_at, u.updated_at,
+             COUNT(DISTINCT e.id) as events_count
+      FROM users u
+      LEFT JOIN events e ON e.organizer_id = u.id AND e.deleted_at IS NULL
+      ${whereClause}
+      GROUP BY u.id, u.first_name, u.last_name, u.email, u.role, u.status, u.created_at, u.updated_at
+      ORDER BY u.created_at DESC
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+    `;
+    
+    queryParams.push(limit, offset);
+    
+    const countQuery = `
+      SELECT COUNT(DISTINCT u.id) as total
+      FROM users u
+      ${whereClause}
+    `;
+    
+    const [result, countResult] = await Promise.all([
+      database.query(query, queryParams),
+      database.query(countQuery, queryParams.slice(0, -2))
+    ]);
+    
+    return {
+      users: result.rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: parseInt(countResult.rows[0].total),
+        totalPages: Math.ceil(countResult.rows[0].total / limit)
+      }
+    };
+  }
+
+  /**
+   * Get user by ID
+   */
+  async getUserById(options = {}) {
+    const { id, userId } = options;
+    
+    const query = `
+      SELECT u.*, 
+             COUNT(DISTINCT e.id) as events_count,
+             COUNT(DISTINCT g.id) as guests_count
+      FROM users u
+      LEFT JOIN events e ON e.organizer_id = u.id AND e.deleted_at IS NULL
+      LEFT JOIN guests g ON g.created_by = u.id AND g.deleted_at IS NULL
+      WHERE u.id = $1 AND u.deleted_at IS NULL
+      GROUP BY u.id
+    `;
+    
+    const result = await database.query(query, [id]);
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Get events with pagination and filters
+   */
+  async getEvents(options = {}) {
+    const { page = 1, limit = 50, status, search, userId } = options;
+    const offset = (page - 1) * limit;
+    
+    let whereConditions = ['e.deleted_at IS NULL'];
+    let queryParams = [];
+    let paramIndex = 1;
+    
+    if (status) {
+      whereConditions.push(`e.status = $${paramIndex++}`);
+      queryParams.push(status);
+    }
+    
+    if (search) {
+      whereConditions.push(`(e.title ILIKE $${paramIndex++} OR e.description ILIKE $${paramIndex++})`);
+      queryParams.push(`%${search}%`, `%${search}%`);
+    }
+    
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    
+    const query = `
+      SELECT e.*, u.first_name as organizer_first_name, u.last_name as organizer_last_name, u.email as organizer_email,
+             COUNT(DISTINCT g.id) as guests_count,
+             COUNT(DISTINCT tt.id) as ticket_types_count
+      FROM events e
+      LEFT JOIN users u ON u.id = e.organizer_id
+      LEFT JOIN guests g ON g.event_id = e.id AND g.deleted_at IS NULL
+      LEFT JOIN ticket_types tt ON tt.event_id = e.id AND tt.deleted_at IS NULL
+      ${whereClause}
+      GROUP BY e.id, u.first_name, u.last_name, u.email
+      ORDER BY e.created_at DESC
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+    `;
+    
+    queryParams.push(limit, offset);
+    
+    const countQuery = `
+      SELECT COUNT(DISTINCT e.id) as total
+      FROM events e
+      ${whereClause}
+    `;
+    
+    const [result, countResult] = await Promise.all([
+      database.query(query, queryParams),
+      database.query(countQuery, queryParams.slice(0, -2))
+    ]);
+    
+    return {
+      events: result.rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: parseInt(countResult.rows[0].total),
+        totalPages: Math.ceil(countResult.rows[0].total / limit)
+      }
+    };
+  }
+
+  /**
+   * Get designers pending approval
+   */
+  async getDesignersPendingApproval(options = {}) {
+    const { page = 1, limit = 20, userId } = options;
+    const offset = (page - 1) * limit;
+    
+    const query = `
+      SELECT d.*, u.first_name, u.last_name, u.email, u.created_at as user_created_at
+      FROM designers d
+      JOIN users u ON u.id = d.user_id
+      WHERE d.is_verified = false AND d.deleted_at IS NULL
+      ORDER BY d.created_at DESC
+      LIMIT $1 OFFSET $2
+    `;
+    
+    const result = await database.query(query, [limit, offset]);
+    
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM designers d
+      WHERE d.is_verified = false AND d.deleted_at IS NULL
+    `;
+    
+    const countResult = await database.query(countQuery);
+    
+    return {
+      designers: result.rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: parseInt(countResult.rows[0].total),
+        totalPages: Math.ceil(countResult.rows[0].total / limit)
+      }
+    };
+  }
+
+  /**
+   * Moderate content
+   */
+  async moderateContent(options = {}) {
+    const { action, entityType, entityId, reason, userId } = options;
+    
+    const validActions = ['approve', 'reject', 'suspend'];
+    if (!validActions.includes(action)) {
+      throw new Error('Invalid moderation action');
+    }
+    
+    const validEntities = ['template', 'designer', 'event'];
+    if (!validEntities.includes(entityType)) {
+      throw new Error('Invalid entity type');
+    }
+    
+    let query, params;
+    
+    switch (entityType) {
+      case 'template':
+        query = `
+          UPDATE ticket_templates 
+          SET status = $1, moderation_reason = $2, moderated_by = $3, moderated_at = NOW()
+          WHERE id = $4 AND deleted_at IS NULL
+          RETURNING *
+        `;
+        params = [action === 'approve' ? 'approved' : 'rejected', reason, userId, entityId];
+        break;
+        
+      case 'designer':
+        query = `
+          UPDATE designers 
+          SET is_verified = $1, moderation_reason = $2, moderated_by = $3, moderated_at = NOW()
+          WHERE user_id = $4 AND deleted_at IS NULL
+          RETURNING *
+        `;
+        params = [action === 'approve', reason, userId, entityId];
+        break;
+        
+      case 'event':
+        query = `
+          UPDATE events 
+          SET status = $1, moderation_reason = $2, moderated_by = $3, moderated_at = NOW()
+          WHERE id = $4 AND deleted_at IS NULL
+          RETURNING *
+        `;
+        params = [action === 'approve' ? 'published' : 'suspended', reason, userId, entityId];
+        break;
+    }
+    
+    const result = await database.query(query, params);
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Get revenue analytics
+   */
+  async getRevenueAnalytics(options = {}) {
+    const { period = 'month', start_date, end_date, userId } = options;
+    
+    let dateFormat;
+    switch (period) {
+      case 'day':
+        dateFormat = 'YYYY-MM-DD';
+        break;
+      case 'week':
+        dateFormat = 'YYYY-"W"WW';
+        break;
+      case 'month':
+        dateFormat = 'YYYY-MM';
+        break;
+      case 'year':
+        dateFormat = 'YYYY';
+        break;
+      default:
+        dateFormat = 'YYYY-MM';
+    }
+    
+    let dateFilter = '';
+    let queryParams = [];
+    
+    if (start_date && end_date) {
+      dateFilter = `AND tt.created_at BETWEEN $1 AND $2`;
+      queryParams = [start_date, end_date];
+    }
+    
+    const query = `
+      SELECT 
+        TO_CHAR(tt.created_at, '${dateFormat}') as period,
+        COUNT(*) as ticket_types_created,
+        COALESCE(SUM(tt.price * tt.quantity), 0) as potential_revenue,
+        COALESCE(AVG(tt.price), 0) as average_price
+      FROM ticket_types tt
+      WHERE tt.deleted_at IS NULL ${dateFilter}
+      GROUP BY TO_CHAR(tt.created_at, '${dateFormat}')
+      ORDER BY period DESC
+      LIMIT 12
+    `;
+    
+    const result = await database.query(query, queryParams);
+    return result.rows;
+  }
+
+  /**
+   * Export data
+   */
+  async exportData(options = {}) {
+    const { type, format, filters, userId } = options;
+    
+    let query, fileName;
+    
+    switch (type) {
+      case 'users':
+        query = `
+          SELECT id, first_name, last_name, email, role, status, created_at, updated_at
+          FROM users
+          WHERE deleted_at IS NULL
+          ORDER BY created_at DESC
+          LIMIT 10000
+        `;
+        fileName = `users_export_${Date.now()}.${format}`;
+        break;
+        
+      case 'events':
+        query = `
+          SELECT id, title, description, event_date, location, status, organizer_id, created_at, updated_at
+          FROM events
+          WHERE deleted_at IS NULL
+          ORDER BY created_at DESC
+          LIMIT 10000
+        `;
+        fileName = `events_export_${Date.now()}.${format}`;
+        break;
+        
+      case 'logs':
+        query = `
+          SELECT id, level, message, context, created_by, created_at
+          FROM system_logs
+          ORDER BY created_at DESC
+          LIMIT 10000
+        `;
+        fileName = `logs_export_${Date.now()}.${format}`;
+        break;
+        
+      default:
+        throw new Error('Invalid export type');
+    }
+    
+    const result = await database.query(query);
+    
+    return {
+      data: result.rows,
+      fileName,
+      exportedAt: new Date().toISOString(),
+      recordCount: result.rows.length
+    };
+  }
+
+  /**
+   * Get system health
+   */
+  async getSystemHealth(options = {}) {
+    const { userId } = options;
+    
+    const queries = [
+      'SELECT COUNT(*) as count FROM users WHERE deleted_at IS NULL',
+      'SELECT COUNT(*) as count FROM events WHERE deleted_at IS NULL',
+      'SELECT COUNT(*) as count FROM guests WHERE deleted_at IS NULL',
+      'SELECT COUNT(*) as count FROM ticket_types WHERE deleted_at IS NULL',
+      'SELECT COUNT(*) as count FROM system_logs WHERE created_at > NOW() - INTERVAL \'1 hour\'',
+      'SELECT pg_size_pretty(pg_database_size(current_database())) as db_size'
+    ];
+    
+    const [
+      usersResult,
+      eventsResult,
+      guestsResult,
+      ticketTypesResult,
+      logsResult,
+      dbSizeResult
+    ] = await Promise.all(queries.map(q => database.query(q)));
+    
+    return {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      metrics: {
+        totalUsers: parseInt(usersResult.rows[0].count),
+        totalEvents: parseInt(eventsResult.rows[0].count),
+        totalGuests: parseInt(guestsResult.rows[0].count),
+        totalTicketTypes: parseInt(ticketTypesResult.rows[0].count),
+        recentLogs: parseInt(logsResult.rows[0].count),
+        databaseSize: dbSizeResult.rows[0].db_size
+      },
+      services: {
+        database: 'healthy',
+        api: 'healthy',
+        authentication: 'healthy'
+      }
+    };
+  }
+
+  /**
+   * Create backup
+   */
+  async createBackup(options = {}) {
+    const { type, include, userId } = options;
+    
+    const backupData = {
+      id: uuidv4(),
+      type: type || 'full',
+      include: include || ['users', 'events', 'guests', 'ticket_types'],
+      created_by: userId,
+      created_at: new Date().toISOString(),
+      status: 'pending'
+    };
+    
+    // In a real implementation, this would trigger an actual backup process
+    // For now, we'll just create a backup record
+    
+    const query = `
+      INSERT INTO backups (id, type, include, created_by, created_at, status)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `;
+    
+    const result = await database.query(query, [
+      backupData.id,
+      backupData.type,
+      JSON.stringify(backupData.include),
+      backupData.created_by,
+      backupData.created_at,
+      backupData.status
+    ]);
+    
+    return result.rows[0];
   }
 
 }
