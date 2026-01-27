@@ -70,6 +70,10 @@ app.use((req, res, next) => {
   next();
 });
 
+// Sécurité contre les injections NoSQL - CORRECTION : désactiver mongoSanitize défectueux
+// TODO: Remplacer par une solution plus stable comme mongo-express-sanitize
+// this.app.use(mongoSanitize());
+
 // Compression middleware
 app.use(compression());
 
