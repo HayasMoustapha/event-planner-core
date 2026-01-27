@@ -1,4 +1,5 @@
 const express = require('express');
+const Joi = require('joi');
 const eventsController = require('./events.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
 
@@ -120,11 +121,21 @@ router.post('/', ValidationMiddleware.createEventsValidator('createEvent'), even
  *       403:
  *         description: Permissions insuffisantes
  */
-router.get('/', ValidationMiddleware.createEventsValidator('getEvents'), eventsController.getEvents);
+// GET routes - validation simple et cohérente
+router.get('/', ValidationMiddleware.validateQuery({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(20),
+  status: Joi.string().valid('draft', 'published', 'archived').optional(),
+  search: Joi.string().max(100).optional()
+}), eventsController.getEvents);
 
-router.get('/stats', ValidationMiddleware.createEventsValidator('getEventStats'), eventsController.getEventStats);
+router.get('/stats', ValidationMiddleware.validateQuery({
+  event_id: Joi.number().integer().positive().optional()
+}), eventsController.getEventStats);
 
-router.get('/:id', ValidationMiddleware.createEventsValidator('getEventById'), eventsController.getEventById);
+router.get('/:id', ValidationMiddleware.validateParams({
+  id: Joi.number().integer().positive().required()
+}), eventsController.getEventById);
 
 router.put('/:id', ValidationMiddleware.createEventsValidator('updateEvent'), eventsController.updateEvent);
 

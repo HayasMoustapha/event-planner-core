@@ -1,4 +1,5 @@
 const express = require('express');
+const Joi = require('joi');
 const guestsController = require('./guests.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
 
@@ -13,16 +14,29 @@ router.use(ContextInjector.injectUserContext());
 // Guest CRUD Operations
 router.post('/', ValidationMiddleware.createGuestsValidator('createGuest'), guestsController.createGuest);
 
-router.get('/', guestsController.getGuests);
+// GET routes - validation simple et cohérente
+router.get('/', ValidationMiddleware.validateQuery({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(20),
+  status: Joi.string().valid('pending', 'confirmed', 'cancelled').optional()
+}), guestsController.getGuests);
 
-router.get('/:id', guestsController.getGuestById);
+router.get('/:id', ValidationMiddleware.validateParams({
+  id: Joi.number().integer().positive().required()
+}), guestsController.getGuestById);
 
 router.put('/:id', ValidationMiddleware.createGuestsValidator('updateGuest'), guestsController.updateGuest);
 
 router.delete('/:id', guestsController.deleteGuest);
 
-// Event Guest Management
-router.get('/events/:eventId/guests', guestsController.getEventGuests);
+// Event Guest Management - GET routes avec validation
+router.get('/events/:eventId/guests', ValidationMiddleware.validateParams({
+  eventId: Joi.number().integer().positive().required()
+}), ValidationMiddleware.validateQuery({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(20),
+  status: Joi.string().valid('pending', 'confirmed', 'cancelled').optional()
+}), guestsController.getEventGuests);
 
 router.post('/events/:eventId/guests', guestsController.addGuestsToEvent);
 
@@ -33,7 +47,9 @@ router.post('/check-in', guestsController.checkInGuest);
 
 router.post('/events/:eventId/guests/:guestId/checkin', guestsController.checkInGuestById);
 
-// Statistics
-router.get('/events/:eventId/stats', guestsController.getEventGuestStats);
+// Statistics - GET routes avec validation
+router.get('/events/:eventId/stats', ValidationMiddleware.validateParams({
+  eventId: Joi.number().integer().positive().required()
+}), guestsController.getEventGuestStats);
 
 module.exports = router;

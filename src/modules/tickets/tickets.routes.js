@@ -1,4 +1,5 @@
 const express = require('express');
+const Joi = require('joi');
 const ticketsController = require('./tickets.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
 
@@ -26,13 +27,24 @@ router.post('/',
   ticketsController.createTicket
 );
 
-router.get('/', ticketsController.getTickets);
+router.get('/', ValidationMiddleware.validateQuery({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(20),
+  status: Joi.string().valid('pending', 'validated', 'used', 'cancelled').optional(),
+  event_id: Joi.number().integer().positive().optional()
+}), ticketsController.getTickets);
 
-router.get('/code/:ticketCode', ticketsController.getTicketByCode);
+router.get('/code/:ticketCode', ValidationMiddleware.validateParams({
+  ticketCode: Joi.string().required()
+}), ticketsController.getTicketByCode);
 
-router.get('/events/:eventId/tickets', 
-  ticketsController.getEventTickets
-);
+router.get('/events/:eventId/tickets', ValidationMiddleware.validateParams({
+  eventId: Joi.number().integer().positive().required()
+}), ValidationMiddleware.validateQuery({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(20),
+  status: Joi.string().valid('pending', 'validated', 'used', 'cancelled').optional()
+}), ticketsController.getEventTickets);
 
 // Ticket Validation
 router.post('/:id/validate', ticketsController.validateTicket);
@@ -46,9 +58,9 @@ router.post('/jobs', ticketsController.createJob);
 
 router.post('/jobs/:jobId/process', ticketsController.processJob);
 
-// Statistics
-router.get('/events/:eventId/stats', 
-  ticketsController.getEventTicketStats
-);
+// Statistics - GET routes avec validation
+router.get('/events/:eventId/stats', ValidationMiddleware.validateParams({
+  eventId: Joi.number().integer().positive().required()
+}), ticketsController.getEventTicketStats);
 
 module.exports = router;

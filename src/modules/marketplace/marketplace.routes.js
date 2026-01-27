@@ -1,4 +1,5 @@
 const express = require('express');
+const Joi = require('joi');
 const marketplaceController = require('./marketplace.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
 
@@ -10,15 +11,16 @@ router.use(SecurityMiddleware.authenticated());
 // Apply context injection for all routes
 router.use(ContextInjector.injectMarketplaceContext());
 
-// Designer Management
-router.post('/designers', 
-  ValidationMiddleware.createMarketplaceValidator('becomeDesigner'), 
-  marketplaceController.becomeDesigner
-);
+// Designer Management - GET routes avec validation
+router.get('/designers', ValidationMiddleware.validateQuery({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(20),
+  status: Joi.string().valid('pending', 'approved', 'rejected').optional()
+}), marketplaceController.getDesigners);
 
-router.get('/designers', marketplaceController.getDesigners);
-
-router.get('/designers/:id', marketplaceController.getDesignerById);
+router.get('/designers/:id', ValidationMiddleware.validateParams({
+  id: Joi.number().integer().positive().required()
+}), marketplaceController.getDesignerById);
 
 router.put('/designers/:id', ValidationMiddleware.createMarketplaceValidator('updateDesigner'), marketplaceController.updateDesigner);
 
@@ -28,29 +30,42 @@ router.post('/templates',
   marketplaceController.createTemplate
 );
 
-router.get('/templates', marketplaceController.getTemplates);
+router.get('/templates', ValidationMiddleware.validateQuery({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(20),
+  designer_id: Joi.number().integer().positive().optional(),
+  status: Joi.string().valid('pending_review', 'approved', 'rejected').optional()
+}), marketplaceController.getTemplates);
 
-router.get('/templates/:id', 
-  marketplaceController.getTemplateById
-);
+router.get('/templates/:id', ValidationMiddleware.validateParams({
+  id: Joi.number().integer().positive().required()
+}), marketplaceController.getTemplateById);
 
 router.put('/templates/:id', ValidationMiddleware.createMarketplaceValidator('updateTemplate'), marketplaceController.updateTemplate);
 
 // Template Purchase
 router.post('/templates/:templateId/purchase', ValidationMiddleware.createMarketplaceValidator('purchaseTemplate'), marketplaceController.purchaseTemplate);
 
-// Template Reviews
-router.get('/templates/:templateId/reviews', marketplaceController.getTemplateReviews);
+// Template Reviews - GET routes avec validation
+router.get('/templates/:templateId/reviews', ValidationMiddleware.validateParams({
+  templateId: Joi.number().integer().positive().required()
+}), ValidationMiddleware.validateQuery({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(50).default(20)
+}), marketplaceController.getTemplateReviews);
 
 router.post('/templates/:templateId/reviews', ValidationMiddleware.createMarketplaceValidator('createReview'), marketplaceController.createReview);
 
-// User Purchases
-router.get('/purchases', marketplaceController.getUserPurchases);
+// User Purchases - GET routes avec validation
+router.get('/purchases', ValidationMiddleware.validateQuery({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(20)
+}), marketplaceController.getUserPurchases);
 
-// Admin Operations
-router.get('/stats', 
-  marketplaceController.getMarketplaceStats
-);
+// Admin Operations - GET routes avec validation
+router.get('/stats', ValidationMiddleware.validateQuery({
+  period: Joi.string().valid('day', 'week', 'month', 'year').default('month')
+}), marketplaceController.getMarketplaceStats);
 
 router.post('/templates/:id/approve', 
   ValidationMiddleware.createMarketplaceValidator('approveTemplate'), 
