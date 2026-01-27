@@ -2,6 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const eventsController = require('./events.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
+const { eventsErrorHandler } = require('./events.errorHandler');
 
 const router = express.Router();
 
@@ -10,6 +11,9 @@ router.use(SecurityMiddleware.authenticated());
 
 // Apply context injection for all routes
 router.use(ContextInjector.injectEventContext());
+
+// Apply error handler for all routes
+router.use(eventsErrorHandler);
 
 /**
  * @swagger

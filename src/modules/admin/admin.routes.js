@@ -2,6 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const adminController = require('./admin.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
+const { adminErrorHandler } = require('./admin.errorHandler');
 
 const router = express.Router();
 
@@ -10,6 +11,9 @@ router.use(SecurityMiddleware.adminOnly());
 
 // Apply admin context injection
 router.use(ContextInjector.injectAdminContext());
+
+// Apply error handler for all routes
+router.use(adminErrorHandler);
 
 // Dashboard - GET routes avec validation
 router.get('/dashboard', ValidationMiddleware.validateQuery({

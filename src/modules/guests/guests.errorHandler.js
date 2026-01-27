@@ -6,7 +6,7 @@
  * spécifiques à la gestion des invités
  */
 
-const { ErrorHandlerFactory } = require('../../../shared');
+const { ErrorHandlerFactory } = require('../../../../shared');
 
 const guestsErrorHandler = ErrorHandlerFactory.create('guests', {
   logLevel: 'error',

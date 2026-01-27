@@ -6,7 +6,7 @@
  * spécifiques à la gestion administrative
  */
 
-const { ErrorHandlerFactory } = require('../../../shared');
+const { ErrorHandlerFactory } = require('../../../../shared');
 
 const adminErrorHandler = ErrorHandlerFactory.create('admin', {
   logLevel: 'error',

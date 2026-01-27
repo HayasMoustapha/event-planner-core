@@ -6,7 +6,7 @@
  * spécifiques à la gestion des billets et des types de billets
  */
 
-const { ErrorHandlerFactory } = require('../../../shared');
+const { ErrorHandlerFactory } = require('../../../../shared');
 
 const ticketsErrorHandler = ErrorHandlerFactory.create('tickets', {
   logLevel: 'error',

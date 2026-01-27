@@ -2,6 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const ticketsController = require('./tickets.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
+const { ticketsErrorHandler } = require('./tickets.errorHandler');
 
 // Import routes
 const ticketTypesRoutes = require('./ticket-types.routes');
@@ -14,6 +15,9 @@ router.use(SecurityMiddleware.authenticated());
 
 // Apply context injection for all routes
 router.use(ContextInjector.injectTicketContext());
+
+// Apply error handler for all routes
+router.use(ticketsErrorHandler);
 
 // Ticket Type Management
 router.use('/types', ticketTypesRoutes);

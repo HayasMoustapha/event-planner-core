@@ -6,7 +6,7 @@
  * spécifiques à la gestion du marketplace et des designers
  */
 
-const { ErrorHandlerFactory } = require('../../../shared');
+const { ErrorHandlerFactory } = require('../../../../shared');
 
 const marketplaceErrorHandler = ErrorHandlerFactory.create('marketplace', {
   logLevel: 'error',

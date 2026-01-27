@@ -2,6 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const guestsController = require('./guests.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
+const { guestsErrorHandler } = require('./guests.errorHandler');
 
 const router = express.Router();
 
@@ -10,6 +11,9 @@ router.use(SecurityMiddleware.authenticated());
 
 // Apply context injection for all routes
 router.use(ContextInjector.injectUserContext());
+
+// Apply error handler for all routes
+router.use(guestsErrorHandler);
 
 // Guest CRUD Operations
 router.post('/', ValidationMiddleware.createGuestsValidator('createGuest'), guestsController.createGuest);

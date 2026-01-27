@@ -2,6 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const marketplaceController = require('./marketplace.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
+const { marketplaceErrorHandler } = require('./marketplace.errorHandler');
 
 const router = express.Router();
 
@@ -10,6 +11,9 @@ router.use(SecurityMiddleware.authenticated());
 
 // Apply context injection for all routes
 router.use(ContextInjector.injectMarketplaceContext());
+
+// Apply error handler for all routes
+router.use(marketplaceErrorHandler);
 
 // Designer Management - GET routes avec validation
 router.get('/designers', ValidationMiddleware.validateQuery({

@@ -6,7 +6,7 @@
  * spécifiques à la gestion d'événements
  */
 
-const { ErrorHandlerFactory } = require('../../../shared');
+const { ErrorHandlerFactory } = require('../../../../shared');
 
 const eventsErrorHandler = ErrorHandlerFactory.create('events', {
   logLevel: 'error',
