@@ -61,13 +61,7 @@ router.use(SecurityMiddleware.authenticated());
  *       403:
  *         description: Permissions insuffisantes
  */
-router.post('/', 
-  authenticate,
-  injectUserContext,
-  requirePermission('events.create'),
-  validate(schemas.createEvent),
-  eventsController.createEvent
-);
+router.post('/', createEventsValidator('createEvent'), eventsController.createEvent);
 
 /**
  * @swagger
@@ -123,61 +117,19 @@ router.post('/',
  *       403:
  *         description: Permissions insuffisantes
  */
-router.get('/', 
-  authenticate,
-  injectUserContext,
-  requirePermission('events.read'),
-  validate(schemas.pagination, 'query'),
-  eventsController.getEvents
-);
+router.get('/', createEventsValidator('getEvents'), eventsController.getEvents);
 
-router.get('/stats', 
-  authenticate,
-  injectUserContext,
-  requirePermission('events.read'),
-  eventsController.getEventStats
-);
+router.get('/stats', createEventsValidator('getEventStats'), eventsController.getEventStats);
 
-router.get('/:id', 
-  authenticate,
-  injectUserContext,
-  requirePermission('events.read'),
-  validate(schemas.idParam, 'params'),
-  eventsController.getEvent
-);
+router.get('/:id', createEventsValidator('getEventById'), eventsController.getEventById);
 
-router.put('/:id', 
-  authenticate,
-  injectUserContext,
-  requirePermission('events.update'),
-  validate(schemas.idParam, 'params'),
-  validate(schemas.updateEvent),
-  eventsController.updateEvent
-);
+router.put('/:id', createEventsValidator('updateEvent'), eventsController.updateEvent);
 
-router.delete('/:id', 
-  authenticate,
-  injectUserContext,
-  requirePermission('events.delete'),
-  validate(schemas.idParam, 'params'),
-  eventsController.deleteEvent
-);
+router.delete('/:id', createEventsValidator('deleteEvent'), eventsController.deleteEvent);
 
 // Event Lifecycle Management
-router.post('/:id/publish', 
-  authenticate,
-  injectUserContext,
-  requirePermission('events.publish'),
-  validate(schemas.idParam, 'params'),
-  eventsController.publishEvent
-);
+router.post('/:id/publish', createEventsValidator('publishEvent'), eventsController.publishEvent);
 
-router.post('/:id/archive', 
-  authenticate,
-  injectUserContext,
-  requirePermission('events.archive'),
-  validate(schemas.idParam, 'params'),
-  eventsController.archiveEvent
-);
+router.post('/:id/archive', createEventsValidator('archiveEvent'), eventsController.archiveEvent);
 
 module.exports = router;

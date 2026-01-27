@@ -1,51 +1,58 @@
 const express = require('express');
 const ticketTemplatesController = require('./ticket-templates.controller');
-const { SecurityMiddleware, validate, createTicketsValidator } = require('../../../../shared');
+const { authenticate, requirePermission } = require('../../../../shared');
+const { validate, schemas } = require("../../middleware/validation");
 
 const router = express.Router();
 
 // Apply authentication to all routes
-router.use(SecurityMiddleware.authenticated());
+router.use(authenticate);
 
 // Ticket Templates CRUD Operations
 router.post('/', 
-  createTicketsValidator('createTemplate'),
+  requirePermission('tickets.create'),
   ticketTemplatesController.createTemplate
 );
 
 router.get('/', 
-  createTicketsValidator('getTemplates'),
+  requirePermission('tickets.read'),
+  validate(schemas.pagination, 'query'),
   ticketTemplatesController.getTemplates
 );
 
 router.get('/popular', 
-  createTicketsValidator('getPopularTemplates'),
+  requirePermission('tickets.read'),
   ticketTemplatesController.getPopularTemplates
 );
 
 router.get('/:id', 
-  createTicketsValidator('getTemplate'),
+  requirePermission('tickets.read'),
+  validate(schemas.idParam, 'params'),
   ticketTemplatesController.getTemplate
 );
 
 router.put('/:id', 
-  createTicketsValidator('updateTemplate'),
+  requirePermission('tickets.update'),
+  validate(schemas.idParam, 'params'),
   ticketTemplatesController.updateTemplate
 );
 
 router.delete('/:id', 
-  createTicketsValidator('deleteTemplate'),
+  requirePermission('tickets.delete'),
+  validate(schemas.idParam, 'params'),
   ticketTemplatesController.deleteTemplate
 );
 
 // Template Operations
 router.post('/:id/validate', 
-  createTicketsValidator('validateTemplateForEvent'),
+  requirePermission('tickets.read'),
+  validate(schemas.idParam, 'params'),
   ticketTemplatesController.validateTemplateForEvent
 );
 
 router.post('/:id/clone', 
-  createTicketsValidator('cloneTemplate'),
+  requirePermission('tickets.create'),
+  validate(schemas.idParam, 'params'),
   ticketTemplatesController.cloneTemplate
 );
 

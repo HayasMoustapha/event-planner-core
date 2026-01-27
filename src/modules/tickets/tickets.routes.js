@@ -25,10 +25,7 @@ router.post('/',
 
 router.get('/', ticketsController.getTickets);
 
-router.get('/code/:ticketCode', 
-  requirePermission('tickets.read'),
-  ticketsController.getTicketByCode
-);
+router.get('/code/:ticketCode', ticketsController.getTicketByCode);
 
 router.get('/events/:eventId/tickets', 
   ticketsController.getEventTickets

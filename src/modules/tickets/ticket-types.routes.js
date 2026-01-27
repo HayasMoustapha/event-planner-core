@@ -1,41 +1,35 @@
 const express = require('express');
 const ticketsController = require('./tickets.controller');
-const { authenticate, requirePermission } = require("../../../../shared");
-const { validate, schemas } = require("../../middleware/validation");
+const { SecurityMiddleware, validate, createTicketsValidator } = require('../../../../shared');
 
 const router = express.Router();
 
 // Apply authentication to all routes
-router.use(authenticate);
+router.use(SecurityMiddleware.authenticated());
 
 // Ticket Type Management
 router.post('/', 
-  requirePermission('tickets.create'),
+  createTicketsValidator('createTicketType'),
   ticketsController.createTicketType
 );
 
 router.get('/:id', 
-  requirePermission('tickets.read'),
-  validate(schemas.idParam, 'params'),
-  ticketsController.getTicketType
+  createTicketsValidator('getTicketTypeById'),
+  ticketsController.getTicketTypeById
 );
 
 router.get('/events/:eventId/types', 
-  requirePermission('tickets.read'),
-  validate(schemas.idParam, 'params'),
-  validate(schemas.pagination, 'query'),
+  createTicketsValidator('getTicketTypesByEvent'),
   ticketsController.getTicketTypesByEvent
 );
 
 router.put('/:id', 
-  requirePermission('tickets.update'),
-  validate(schemas.idParam, 'params'),
+  createTicketsValidator('updateTicketType'),
   ticketsController.updateTicketType
 );
 
 router.delete('/:id', 
-  requirePermission('tickets.delete'),
-  validate(schemas.idParam, 'params'),
+  createTicketsValidator('deleteTicketType'),
   ticketsController.deleteTicketType
 );
 

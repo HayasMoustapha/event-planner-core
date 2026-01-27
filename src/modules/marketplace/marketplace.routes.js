@@ -15,11 +15,7 @@ router.post('/designers',
 
 router.get('/designers', marketplaceController.getDesigners);
 
-router.get('/designers/:id', 
-  requirePermission('marketplace.read'),
-  validate(schemas.idParam, 'params'),
-  marketplaceController.getDesignerById
-);
+router.get('/designers/:id', marketplaceController.getDesignerById);
 
 router.put('/designers/:id', updateMarketplaceValidator('updateDesigner'), marketplaceController.updateDesigner);
 
@@ -43,11 +39,7 @@ router.post('/templates/:templateId/purchase', createMarketplaceValidator('purch
 // Template Reviews
 router.get('/templates/:templateId/reviews', marketplaceController.getTemplateReviews);
 
-router.post('/templates/:templateId/reviews', 
-  requirePermission('marketplace.create'),
-  validate(schemas.idParam, 'params'),
-  marketplaceController.createReview
-);
+router.post('/templates/:templateId/reviews', createMarketplaceValidator('createReview'), marketplaceController.createReview);
 
 // User Purchases
 router.get('/purchases', marketplaceController.getUserPurchases);
@@ -67,16 +59,8 @@ router.delete('/templates/:id',
   marketplaceController.deleteTemplate
 );
 
-router.post('/templates/:id/reject', 
-  requirePermission('marketplace.moderate'),
-  validate(schemas.idParam, 'params'),
-  marketplaceController.rejectTemplate
-);
+router.post('/templates/:id/reject', createMarketplaceValidator('rejectTemplate'), marketplaceController.rejectTemplate);
 
-router.post('/designers/:id/verify', 
-  requirePermission('marketplace.moderate'),
-  validate(schemas.idParam, 'params'),
-  marketplaceController.verifyDesigner
-);
+router.post('/designers/:id/verify', createMarketplaceValidator('verifyDesigner'), marketplaceController.verifyDesigner);
 
 module.exports = router;
