@@ -1,6 +1,6 @@
 const express = require('express');
 const guestsController = require('./guests.controller');
-const { SecurityMiddleware, validate, createGuestsValidator } = require('../../../../shared');
+const { SecurityMiddleware, createGuestsValidator } = require('../../../../shared');
 
 const router = express.Router();
 
