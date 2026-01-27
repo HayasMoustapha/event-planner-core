@@ -1,8 +1,8 @@
 {
   "info": {
-    "name": "Event Planner Core API",
-    "description": "API collection for Event Planner Core service with centralized security and validation",
-    "version": "2.0.0",
+    "name": "Event Planner Core API - COMPLETE",
+    "description": "Complete API collection for Event Planner Core service with all 73 routes implemented",
+    "version": "3.0.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -18,12 +18,12 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:3001",
+      "value": "{{base_url}}",
       "type": "string"
     },
     {
       "key": "auth_token",
-      "value": "your_jwt_token_here",
+      "value": "{{auth_token}}",
       "type": "string"
     }
   ],
@@ -32,16 +32,139 @@
       "name": "Admin Module",
       "item": [
         {
-          "name": "Get System Stats",
+          "name": "Get Dashboard",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/admin/stats",
+              "raw": "{{base_url}}/api/admin/dashboard?period=month",
               "host": ["{{base_url}}"],
-              "path": ["api", "admin", "stats"]
+              "path": ["api", "admin", "dashboard"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month",
+                  "description": "Period: day, week, month, year"
+                }
+              ]
             },
-            "description": "Get system statistics (requires admin.stats.read permission)"
+            "description": "Get admin dashboard data (requires admin access)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Global Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/stats?period=month",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "stats"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month",
+                  "description": "Period: day, week, month, year"
+                }
+              ]
+            },
+            "description": "Get global statistics (requires admin.stats.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recent Activity",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/activity?page=1&limit=50&type=all",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "activity"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Items per page (max 100)"
+                },
+                {
+                  "key": "type",
+                  "value": "all",
+                  "description": "Activity type: all, events, tickets, users, payments"
+                }
+              ]
+            },
+            "description": "Get recent system activity (requires admin.activity.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get System Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/logs?page=1&limit=100",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "logs"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "100",
+                  "description": "Items per page (max 200)"
+                },
+                {
+                  "key": "level",
+                  "value": "error",
+                  "description": "Log level: error, warning, info, debug (optional)"
+                },
+                {
+                  "key": "start_date",
+                  "value": "2026-01-01",
+                  "description": "Start date filter (optional)"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2026-01-31",
+                  "description": "End date filter (optional)"
+                }
+              ]
+            },
+            "description": "Get system logs (requires admin.logs.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create System Log",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"level\": \"info\",\n  \"message\": \"Admin action performed\",\n  \"context\": {\n    \"action\": \"user_management\",\n    \"user_id\": \"{{user_id}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/logs",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "logs"]
+            },
+            "description": "Create a system log entry (requires admin.logs.create permission)"
           },
           "response": []
         },
@@ -51,7 +174,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/admin/users?page=1&limit=20",
+              "raw": "{{base_url}}/api/admin/users?page=1&limit=20&status=active",
               "host": ["{{base_url}}"],
               "path": ["api", "admin", "users"],
               "query": [
@@ -63,11 +186,281 @@
                 {
                   "key": "limit",
                   "value": "20",
-                  "description": "Items per page"
+                  "description": "Items per page (max 100)"
+                },
+                {
+                  "key": "status",
+                  "value": "active",
+                  "description": "User status: active, inactive, suspended (optional)"
+                },
+                {
+                  "key": "search",
+                  "value": "john",
+                  "description": "Search term (optional)"
                 }
               ]
             },
             "description": "Get users list with pagination (requires admin.users.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", "{{user_id}}"]
+            },
+            "description": "Get user details by ID (requires admin.users.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Events List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/events?page=1&limit=20&status=published",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "events"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Items per page (max 100)"
+                },
+                {
+                  "key": "status",
+                  "value": "published",
+                  "description": "Event status: draft, published, archived (optional)"
+                },
+                {
+                  "key": "search",
+                  "value": "conference",
+                  "description": "Search term (optional)"
+                }
+              ]
+            },
+            "description": "Get events list with admin filters (requires admin.events.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Templates Pending Approval",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/templates/pending?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "templates", "pending"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Items per page (max 100)"
+                }
+              ]
+            },
+            "description": "Get templates pending approval (requires admin.templates.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Designers Pending Approval",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/designers/pending?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "designers", "pending"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Items per page (max 100)"
+                }
+              ]
+            },
+            "description": "Get designers pending approval (requires admin.designers.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Moderate Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content_type\": \"template\",\n  \"content_id\": \"{{template_id}}\",\n  \"action\": \"approve\",\n  \"reason\": \"Template meets quality standards\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/moderate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "moderate"]
+            },
+            "description": "Moderate content (approve/reject) (requires admin.moderate permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Revenue Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics/revenue?period=month",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "analytics", "revenue"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month",
+                  "description": "Period: day, week, month, year"
+                },
+                {
+                  "key": "start_date",
+                  "value": "2026-01-01",
+                  "description": "Start date (optional)"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2026-01-31",
+                  "description": "End date (optional)"
+                }
+              ]
+            },
+            "description": "Get revenue analytics (requires admin.analytics.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event Growth Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics/events?period=month",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "analytics", "events"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month",
+                  "description": "Period: day, week, month, year"
+                },
+                {
+                  "key": "start_date",
+                  "value": "2026-01-01",
+                  "description": "Start date (optional)"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2026-01-31",
+                  "description": "End date (optional)"
+                }
+              ]
+            },
+            "description": "Get event growth statistics (requires admin.analytics.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Export Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/export?type=all&format=json",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "export"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "all",
+                  "description": "Data type: users, events, tickets, payments, all"
+                },
+                {
+                  "key": "format",
+                  "value": "json",
+                  "description": "Export format: json, csv, xlsx"
+                },
+                {
+                  "key": "start_date",
+                  "value": "2026-01-01",
+                  "description": "Start date (optional)"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2026-01-31",
+                  "description": "End date (optional)"
+                }
+              ]
+            },
+            "description": "Export system data (requires admin.export permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get System Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "health"]
+            },
+            "description": "Get system health status (requires admin.health.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Backup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"full\",\n  \"description\": \"Manual backup - {{timestamp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/backup",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "backup"]
+            },
+            "description": "Create system backup (requires admin.backup permission)"
           },
           "response": []
         }
@@ -105,7 +498,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/events?page=1&limit=20&status=active",
+              "raw": "{{base_url}}/api/events?page=1&limit=20&status=published",
               "host": ["{{base_url}}"],
               "path": ["api", "events"],
               "query": [
@@ -121,8 +514,13 @@
                 },
                 {
                   "key": "status",
-                  "value": "active",
-                  "description": "Event status filter"
+                  "value": "published",
+                  "description": "Event status: draft, published, archived"
+                },
+                {
+                  "key": "search",
+                  "value": "conference",
+                  "description": "Search term (optional)"
                 }
               ]
             },
@@ -180,14 +578,30 @@
             "description": "Delete an event (requires events.delete permission)"
           },
           "response": []
-        }
-      ]
-    },
-    {
-      "name": "Guests Module",
-      "item": [
+        },
         {
-          "name": "Register Guest",
+          "name": "Get Event Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/events/stats?event_id={{event_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "stats"],
+              "query": [
+                {
+                  "key": "event_id",
+                  "value": "{{event_id}}",
+                  "description": "Event ID (optional)"
+                }
+              ]
+            },
+            "description": "Get event statistics (requires events.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Publish Event",
           "request": {
             "method": "POST",
             "header": [
@@ -198,26 +612,77 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"eventId\": \"{{event_id}}\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+33612345678\",\n  \"ticketTypeId\": \"{{ticket_type_id}}\"\n}"
+              "raw": "{\n  \"publish_date\": \"2026-01-27T10:00:00Z\",\n  \"notify_attendees\": true\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/guests/register",
+              "raw": "{{base_url}}/api/events/{{event_id}}/publish",
               "host": ["{{base_url}}"],
-              "path": ["api", "guests", "register"]
+              "path": ["api", "events", "{{event_id}}", "publish"]
             },
-            "description": "Register a guest for an event (requires guests.create permission)"
+            "description": "Publish an event (requires events.update permission)"
           },
           "response": []
         },
         {
-          "name": "Get Event Guests",
+          "name": "Archive Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Event completed successfully\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/events/{{event_id}}/archive",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "{{event_id}}", "archive"]
+            },
+            "description": "Archive an event (requires events.update permission)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Guests Module",
+      "item": [
+        {
+          "name": "Create Guest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": {{event_id}},\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+33612345678\",\n  \"ticketTypeId\": {{ticket_type_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/guests",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests"]
+            },
+            "description": "Create a new guest (requires guests.create permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Guests List",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/guests/event/{{event_id}}?page=1&limit=20",
+              "raw": "{{base_url}}/api/guests?page=1&limit=20&status=confirmed",
               "host": ["{{base_url}}"],
-              "path": ["api", "guests", "event", "{{event_id}}"],
+              "path": ["api", "guests"],
               "query": [
                 {
                   "key": "page",
@@ -227,11 +692,204 @@
                 {
                   "key": "limit",
                   "value": "20",
-                  "description": "Items per page"
+                  "description": "Items per page (max 100)"
+                },
+                {
+                  "key": "status",
+                  "value": "confirmed",
+                  "description": "Guest status: pending, confirmed, cancelled (optional)"
+                }
+              ]
+            },
+            "description": "Get guests list with pagination (requires guests.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Guest by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/guests/{{guest_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests", "{{guest_id}}"]
+            },
+            "description": "Get guest details by ID (requires guests.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Guest",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John Updated\",\n  \"lastName\": \"Doe Updated\",\n  \"phone\": \"+33687654321\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/guests/{{guest_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests", "{{guest_id}}"]
+            },
+            "description": "Update guest details (requires guests.update permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Guest",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/guests/{{guest_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests", "{{guest_id}}"]
+            },
+            "description": "Delete a guest (requires guests.delete permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event Guests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/guests/events/{{event_id}}/guests?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests", "events", "{{event_id}}", "guests"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Items per page (max 100)"
+                },
+                {
+                  "key": "status",
+                  "value": "confirmed",
+                  "description": "Guest status: pending, confirmed, cancelled (optional)"
                 }
               ]
             },
             "description": "Get guests for a specific event (requires guests.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Add Guests to Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guests\": [\n    {\n      \"firstName\": \"Jane\",\n      \"lastName\": \"Smith\",\n      \"email\": \"jane.smith@example.com\",\n      \"phone\": \"+33612345679\",\n      \"ticketTypeId\": {{ticket_type_id}}\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/guests/events/{{event_id}}/guests",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests", "events", "{{event_id}}", "guests"]
+            },
+            "description": "Add guests to an event (requires guests.create permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Add Guests to Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guests\": [\n    {\n      \"firstName\": \"Guest1\",\n      \"lastName\": \"One\",\n      \"email\": \"guest1@example.com\",\n      \"phone\": \"+33612345671\",\n      \"ticketTypeId\": {{ticket_type_id}}\n    },\n    {\n      \"firstName\": \"Guest2\",\n      \"lastName\": \"Two\",\n      \"email\": \"guest2@example.com\",\n      \"phone\": \"+33612345672\",\n      \"ticketTypeId\": {{ticket_type_id}}\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/guests/events/{{event_id}}/guests/bulk",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests", "events", "{{event_id}}", "guests", "bulk"]
+            },
+            "description": "Bulk add guests to an event (requires guests.create permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Check-in Guest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guestId\": {{guest_id}},\n  \"eventId\": {{event_id}},\n  \"checkpoint\": \"Main Entrance\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/guests/check-in",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests", "check-in"]
+            },
+            "description": "Check-in a guest (requires guests.update permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Check-in Guest by Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checkpoint\": \"Main Entrance\",\n  \"notes\": \"VIP guest\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/guests/events/{{event_id}}/guests/{{guest_id}}/checkin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests", "events", "{{event_id}}", "guests", "{{guest_id}}", "checkin"]
+            },
+            "description": "Check-in a specific guest for an event (requires guests.update permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event Guest Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/guests/events/{{event_id}}/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "guests", "events", "{{event_id}}", "stats"]
+            },
+            "description": "Get guest statistics for an event (requires guests.read permission)"
           },
           "response": []
         }
@@ -241,7 +899,75 @@
       "name": "Marketplace Module",
       "item": [
         {
-          "name": "Create Listing",
+          "name": "Get Designers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/designers?page=1&limit=20&status=approved",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "designers"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Items per page (max 100)"
+                },
+                {
+                  "key": "status",
+                  "value": "approved",
+                  "description": "Designer status: pending, approved, rejected (optional)"
+                }
+              ]
+            },
+            "description": "Get marketplace designers list (requires marketplace.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Designer by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/designers/{{designer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "designers", "{{designer_id}}"]
+            },
+            "description": "Get designer details by ID (requires marketplace.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Designer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"company_name\": \"Updated Design Studio\",\n  \"bio\": \"Updated designer bio\",\n  \"portfolio_url\": \"https://updated-portfolio.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/designers/{{designer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "designers", "{{designer_id}}"]
+            },
+            "description": "Update designer profile (requires marketplace.update permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Template",
           "request": {
             "method": "POST",
             "header": [
@@ -252,35 +978,289 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"eventId\": \"{{event_id}}\",\n  \"title\": \"Premium Workshop\",\n  \"description\": \"Advanced workshop for professionals\",\n  \"price\": 49.99,\n  \"quantity\": 50,\n  \"category\": \"workshop\"\n}"
+              "raw": "{\n  \"name\": \"Premium Event Template\",\n  \"description\": \"Professional template for corporate events\",\n  \"category\": \"corporate\",\n  \"price\": 49.99,\n  \"preview_image\": \"https://example.com/preview.jpg\",\n  \"download_url\": \"https://example.com/template.zip\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/marketplace/listings",
+              "raw": "{{base_url}}/api/marketplace/templates",
               "host": ["{{base_url}}"],
-              "path": ["api", "marketplace", "listings"]
+              "path": ["api", "marketplace", "templates"]
             },
-            "description": "Create a marketplace listing (requires marketplace.create permission)"
+            "description": "Create a new marketplace template (requires marketplace.create permission)"
           },
           "response": []
         },
         {
-          "name": "Get Marketplace Listings",
+          "name": "Get Templates",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/marketplace/listings?eventId={{event_id}}",
+              "raw": "{{base_url}}/api/marketplace/templates?page=1&limit=20&designer_id={{designer_id}}",
               "host": ["{{base_url}}"],
-              "path": ["api", "marketplace", "listings"],
+              "path": ["api", "marketplace", "templates"],
               "query": [
                 {
-                  "key": "eventId",
-                  "value": "{{event_id}}",
-                  "description": "Filter by event ID"
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Items per page (max 100)"
+                },
+                {
+                  "key": "designer_id",
+                  "value": "{{designer_id}}",
+                  "description": "Filter by designer ID (optional)"
+                },
+                {
+                  "key": "status",
+                  "value": "approved",
+                  "description": "Template status: pending_review, approved, rejected (optional)"
                 }
               ]
             },
-            "description": "Get marketplace listings (requires marketplace.read permission)"
+            "description": "Get marketplace templates list (requires marketplace.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Template by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/templates/{{template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "templates", "{{template_id}}"]
+            },
+            "description": "Get template details by ID (requires marketplace.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Template",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Template Name\",\n  \"description\": \"Updated template description\",\n  \"price\": 59.99\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/templates/{{template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "templates", "{{template_id}}"]
+            },
+            "description": "Update template details (requires marketplace.update permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Purchase Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_method\": \"stripe\",\n  \"license_type\": \"commercial\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/templates/{{template_id}}/purchase",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "templates", "{{template_id}}", "purchase"]
+            },
+            "description": "Purchase a marketplace template (requires marketplace.purchase permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Template Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/templates/{{template_id}}/reviews?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "templates", "{{template_id}}", "reviews"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Items per page (max 50)"
+                }
+              ]
+            },
+            "description": "Get template reviews (requires marketplace.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Template Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Excellent template, very professional!\",\n  \"pros\": [\"Easy to use\", \"Great design\"],\n  \"cons\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/templates/{{template_id}}/reviews",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "templates", "{{template_id}}", "reviews"]
+            },
+            "description": "Create a template review (requires marketplace.review permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Purchases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/purchases?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "purchases"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Items per page (max 100)"
+                }
+              ]
+            },
+            "description": "Get user's marketplace purchases (requires marketplace.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Marketplace Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/stats?period=month",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "stats"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month",
+                  "description": "Period: day, week, month, year"
+                }
+              ]
+            },
+            "description": "Get marketplace statistics (requires marketplace.stats.read permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"review_notes\": \"Template meets all quality standards\",\n  \"featured\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/templates/{{template_id}}/approve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "templates", "{{template_id}}", "approve"]
+            },
+            "description": "Approve a marketplace template (requires marketplace.moderate permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Template",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/templates/{{template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "templates", "{{template_id}}"]
+            },
+            "description": "Delete a marketplace template (requires marketplace.delete permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Reject Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Template does not meet quality standards\",\n  \"feedback\": \"Please improve the design and resubmit\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/templates/{{template_id}}/reject",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "templates", "{{template_id}}", "reject"]
+            },
+            "description": "Reject a marketplace template (requires marketplace.moderate permission)"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Designer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verification_status\": \"verified\",\n  \"verification_notes\": \"Designer credentials verified successfully\",\n  \"verified_until\": \"2027-01-27\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/marketplace/designers/{{designer_id}}/verify",
+              "host": ["{{base_url}}"],
+              "path": ["api", "marketplace", "designers", "{{designer_id}}", "verify"]
+            },
+            "description": "Verify a marketplace designer (requires marketplace.moderate permission)"
           },
           "response": []
         }
@@ -290,64 +1270,479 @@
       "name": "Tickets Module",
       "item": [
         {
-          "name": "Create Ticket",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"eventId\": \"{{event_id}}\",\n  \"ticketTypeId\": \"{{ticket_type_id}}\",\n  \"guestId\": \"{{guest_id}}\",\n  \"price\": 99.99\n}"
+          "name": "Ticket Types",
+          "item": [
+            {
+              "name": "Create Ticket Type",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Standard Ticket\",\n  \"description\": \"Standard admission ticket\",\n  \"price\": 99.99,\n  \"quantity\": 500,\n  \"event_id\": {{event_id}}\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/types",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "types"]
+                },
+                "description": "Create a new ticket type (requires tickets.create permission)"
+              },
+              "response": []
             },
-            "url": {
-              "raw": "{{base_url}}/api/tickets",
-              "host": ["{{base_url}}"],
-              "path": ["api", "tickets"]
+            {
+              "name": "Get Ticket Type by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/types/{{ticket_type_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "types", "{{ticket_type_id}}"]
+                },
+                "description": "Get ticket type details by ID (requires tickets.read permission)"
+              },
+              "response": []
             },
-            "description": "Create a ticket (requires tickets.create permission)"
-          },
-          "response": []
+            {
+              "name": "Get Ticket Types by Event",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/events/{{event_id}}/types",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "events", "{{event_id}}", "types"]
+                },
+                "description": "Get ticket types for an event (requires tickets.read permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Update Ticket Type",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Updated Ticket Type\",\n  \"price\": 149.99,\n  \"quantity\": 400\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/types/{{ticket_type_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "types", "{{ticket_type_id}}"]
+                },
+                "description": "Update ticket type (requires tickets.update permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Ticket Type",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/types/{{ticket_type_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "types", "{{ticket_type_id}}"]
+                },
+                "description": "Delete a ticket type (requires tickets.delete permission)"
+              },
+              "response": []
+            }
+          ]
         },
         {
-          "name": "Get Event Tickets",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/api/tickets/event/{{event_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["api", "tickets", "event", "{{event_id}}"]
+          "name": "Ticket Templates",
+          "item": [
+            {
+              "name": "Get Templates",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/templates?page=1&limit=20",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "templates"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Page number"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "description": "Items per page (max 100)"
+                    }
+                  ]
+                },
+                "description": "Get ticket templates list (requires tickets.read permission)"
+              },
+              "response": []
             },
-            "description": "Get tickets for an event (requires tickets.read permission)"
-          },
-          "response": []
+            {
+              "name": "Get Popular Templates",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/templates/popular?limit=10",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "templates", "popular"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "10",
+                      "description": "Number of templates (max 20)"
+                    }
+                  ]
+                },
+                "description": "Get popular ticket templates (requires tickets.read permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Template by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/templates/{{ticket_template_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "templates", "{{ticket_template_id}}"]
+                },
+                "description": "Get ticket template details by ID (requires tickets.read permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Update Template",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Updated Template\",\n  \"description\": \"Updated template description\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/templates/{{ticket_template_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "templates", "{{ticket_template_id}}"]
+                },
+                "description": "Update ticket template (requires tickets.update permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Template",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/templates/{{ticket_template_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "templates", "{{ticket_template_id}}"]
+                },
+                "description": "Delete ticket template (requires tickets.delete permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Validate Template for Event",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"event_id\": {{event_id}}\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/templates/{{ticket_template_id}}/validate",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "templates", "{{ticket_template_id}}", "validate"]
+                },
+                "description": "Validate template for an event (requires tickets.read permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Clone Template",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Cloned Template\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/templates/{{ticket_template_id}}/clone",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "templates", "{{ticket_template_id}}", "clone"]
+                },
+                "description": "Clone a ticket template (requires tickets.create permission)"
+              },
+              "response": []
+            }
+          ]
         },
         {
-          "name": "Validate Ticket",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"ticketId\": \"{{ticket_id}}\",\n  \"validationCode\": \"123456\"\n}"
+          "name": "Tickets",
+          "item": [
+            {
+              "name": "Create Ticket",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"eventId\": {{event_id}},\n  \"ticketTypeId\": {{ticket_type_id}},\n  \"guestId\": {{guest_id}},\n  \"price\": 99.99\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/tickets",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets"]
+                },
+                "description": "Create a ticket (requires tickets.create permission)"
+              },
+              "response": []
             },
-            "url": {
-              "raw": "{{base_url}}/api/tickets/validate",
-              "host": ["{{base_url}}"],
-              "path": ["api", "tickets", "validate"]
+            {
+              "name": "Get Tickets",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/tickets?page=1&limit=20&status=validated&event_id={{event_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Page number"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "description": "Items per page (max 100)"
+                    },
+                    {
+                      "key": "status",
+                      "value": "validated",
+                      "description": "Ticket status: pending, validated, used, cancelled (optional)"
+                    },
+                    {
+                      "key": "event_id",
+                      "value": "{{event_id}}",
+                      "description": "Filter by event ID (optional)"
+                    }
+                  ]
+                },
+                "description": "Get tickets list with filters (requires tickets.read permission)"
+              },
+              "response": []
             },
-            "description": "Validate a ticket (requires tickets.validate permission)"
-          },
-          "response": []
+            {
+              "name": "Get Ticket by Code",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/code/{{ticket_code}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "code", "{{ticket_code}}"]
+                },
+                "description": "Get ticket by code (requires tickets.read permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Event Tickets",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/events/{{event_id}}/tickets?page=1&limit=20",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "events", "{{event_id}}", "tickets"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Page number"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "description": "Items per page (max 100)"
+                    }
+                  ]
+                },
+                "description": "Get tickets for an event (requires tickets.read permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Validate Ticket by ID",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"validation_code\": \"123456\",\n  \"checkpoint\": \"Main Entrance\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/{{ticket_id}}/validate",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "{{ticket_id}}", "validate"]
+                },
+                "description": "Validate a ticket by ID (requires tickets.validate permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Validate Ticket by Code",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ticket_code\": \"{{ticket_code}}\",\n  \"validation_code\": \"123456\",\n  \"checkpoint\": \"Main Entrance\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/validate",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "validate"]
+                },
+                "description": "Validate a ticket by code (requires tickets.validate permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Bulk Generate Tickets",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"event_id\": {{event_id}},\n  \"ticket_type_id\": {{ticket_type_id}},\n  \"quantity\": 100,\n  \"batch_id\": \"batch_{{timestamp}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/bulk/generate",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "bulk", "generate"]
+                },
+                "description": "Bulk generate tickets (requires tickets.create permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Create Job",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"job_type\": \"bulk_generate\",\n  \"parameters\": {\n    \"event_id\": {{event_id}},\n    \"quantity\": 50\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/jobs",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "jobs"]
+                },
+                "description": "Create a ticket processing job (requires tickets.jobs.create permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Process Job",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"priority\": \"high\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/jobs/{{job_id}}/process",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "jobs", "{{job_id}}", "process"]
+                },
+                "description": "Process a specific job (requires tickets.jobs.process permission)"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Event Ticket Stats",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/tickets/events/{{event_id}}/stats",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "tickets", "events", "{{event_id}}", "stats"]
+                },
+                "description": "Get ticket statistics for an event (requires tickets.stats.read permission)"
+              },
+              "response": []
+            }
+          ]
         }
       ]
     },
