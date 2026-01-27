@@ -2,7 +2,7 @@
  * Auth Client pour Event Planner Core Service
  * Réutilise le client partagé avec configuration du logger local
  */
-const authClient = require('../../shared/clients/auth-client');
+const authClient = require('../../../shared/clients/auth-client');
 
 // Tenter de configurer le logger du service si disponible
 try {
