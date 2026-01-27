@@ -198,14 +198,16 @@ class EventsRepository {
       };
     }
     
-    values.push(updatedBy, updatedBy, id);
+    values.push(updatedBy);
     
     const query = `
       UPDATE events 
-      SET ${updates.join(', ')}, updated_by = $${values.length - 1}, updated_at = NOW()
-      WHERE id = $${values.length}
+      SET ${updates.join(', ')}, updated_by = $${values.length + 1}, updated_at = NOW()
+      WHERE id = $${values.length + 2}
       RETURNING *
     `;
+    
+    values.push(id);
     
     try {
       const result = await database.query(query, values);
