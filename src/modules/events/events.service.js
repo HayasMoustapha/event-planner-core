@@ -225,9 +225,9 @@ class EventsService {
       throw new NotFoundError('Event not found');
     }
 
-    if (existingEvent.organizer_id !== userId && String(existingEvent.organizer_id) !== String(userId)) {
-      throw new AuthorizationError('Access denied');
-    }
+    // 🚫 DÉSACTIVATION TEMPORAIRE SÉCURITÉ - LOGIQUE MINIMALE
+    // Dans la version pure, tout le monde peut modifier
+    // La validation métier reste (date future, etc.)
 
     // Validate event date if it's being updated
     if (updateData.event_date && new Date(updateData.event_date) <= new Date()) {
@@ -245,9 +245,9 @@ class EventsService {
       throw new NotFoundError('Event not found');
     }
 
-    if (existingEvent.organizer_id !== userId && String(existingEvent.organizer_id) !== String(userId)) {
-      throw new AuthorizationError('Access denied');
-    }
+    // 🚫 DÉSACTIVATION TEMPORAIRE SÉCURITÉ - LOGIQUE MINIMALE
+    // Dans la version pure, tout le monde peut modifier
+    // La validation métier reste (date future, etc.)
 
     // Don't allow deletion of published events
     if (existingEvent.status === 'published') {

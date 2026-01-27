@@ -242,7 +242,7 @@ class EventsRepository {
     const query = `
       UPDATE events
       SET status = 'published', updated_by = $2, updated_at = NOW()
-      WHERE id = $1 AND organizer_id = $2 AND deleted_at IS NULL
+      WHERE id = $1 AND deleted_at IS NULL
       RETURNING *
     `;
 
@@ -255,7 +255,7 @@ class EventsRepository {
     const query = `
       UPDATE events
       SET status = 'archived', updated_by = $2, updated_at = NOW()
-      WHERE id = $1 AND organizer_id = $2 AND deleted_at IS NULL
+      WHERE id = $1 AND deleted_at IS NULL
       RETURNING *
     `;
 

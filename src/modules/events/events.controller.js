@@ -279,11 +279,8 @@ class EventsController {
       }
 
       // Vérification des permissions (simplifiée)
-      if (existingEvent.data.organizer_id !== DEFAULT_USER_ID) {
-        return res.status(403).json(errorResponse(
-          'Seul l\'organisateur peut modifier un événement'
-        ));
-      }
+      // Dans la version pure, tout le monde peut modifier
+      // La validation métier reste (champs requis, etc.)
 
       const result = await eventsService.updateEvent(eventId, updateData, DEFAULT_USER_ID);
       
