@@ -413,6 +413,117 @@ class GuestsController {
       next(error);
     }
   }
+
+  async getEventGuests(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      const { page = 1, limit = 20, search } = req.query;
+      
+      if (!eventId || isNaN(parseInt(eventId))) {
+        return res.status(400).json(badRequestResponse('Event ID invalide'));
+      }
+
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        search,
+        eventId: parseInt(eventId),
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await guestsService.getEventGuests(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Invités récupérés', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async addGuestToEvent(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      const { guestId } = req.body;
+      
+      if (!eventId || !guestId) {
+        return res.status(400).json(badRequestResponse('Event ID et Guest ID requis'));
+      }
+
+      const result = await guestsService.addGuestToEvent(parseInt(eventId), parseInt(guestId), DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Invité ajouté à l\'événement', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bulkAddGuestsToEvent(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      const { guests } = req.body;
+      
+      if (!eventId || !guests || !Array.isArray(guests)) {
+        return res.status(400).json(badRequestResponse('Event ID et liste d\'invités requis'));
+      }
+
+      const result = await guestsService.bulkAddGuestsToEvent(parseInt(eventId), guests, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Invités ajoutés en masse', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async checkInGuestById(req, res, next) {
+    try {
+      const { eventId, guestId } = req.params;
+      
+      if (!eventId || !guestId) {
+        return res.status(400).json(badRequestResponse('Event ID et Guest ID requis'));
+      }
+
+      const result = await guestsService.checkInGuestById(parseInt(eventId), parseInt(guestId), DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Invité enregistré', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getGuestStats(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      
+      if (!eventId || isNaN(parseInt(eventId))) {
+        return res.status(400).json(badRequestResponse('Event ID invalide'));
+      }
+
+      const result = await guestsService.getGuestStats(parseInt(eventId), DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Statistiques invités', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new GuestsController();

@@ -23,6 +23,32 @@ const {
 const DEFAULT_USER_ID = 1;
 
 class TicketsController {
+  async generateTicket(req, res, next) {
+    try {
+      const { eventId, ticketTypeId, quantity = 1, metadata = {} } = req.body;
+      
+      if (!eventId || !ticketTypeId) {
+        return res.status(400).json(badRequestResponse('Event ID et Ticket Type ID requis'));
+      }
+
+      const result = await ticketsService.generateTicket({
+        eventId: parseInt(eventId),
+        ticketTypeId: parseInt(ticketTypeId),
+        quantity: parseInt(quantity),
+        metadata,
+        userId: DEFAULT_USER_ID
+      });
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.status(201).json(createdResponse('Billet généré', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async createTicketType(req, res, next) {
     try {
       const { event_id, name, type, price, quantity, currency, description } = req.body;
@@ -333,6 +359,34 @@ class TicketsController {
     }
   }
 
+  async getTicketTypesByEvent(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      const { page = 1, limit = 20 } = req.query;
+      
+      if (!eventId || isNaN(parseInt(eventId))) {
+        return res.status(400).json(badRequestResponse('Event ID requis'));
+      }
+
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        eventId: parseInt(eventId),
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await ticketsService.getTicketTypesByEvent(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Types de billets récupérés', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async deleteTicketType(req, res, next) {
     try {
       const { id } = req.params;
@@ -594,6 +648,300 @@ class TicketsController {
         result.message || 'Billet validé avec succès',
         result.data
       ));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getTicketByCode(req, res, next) {
+    try {
+      const { ticketCode } = req.params;
+      
+      if (!ticketCode) {
+        return res.status(400).json(badRequestResponse('Code du billet requis'));
+      }
+
+      const result = await ticketsService.getTicketByCode(ticketCode, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Billet'));
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Billet récupéré', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getTicketsByEvent(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      const { page = 1, limit = 20, status } = req.query;
+      
+      if (!eventId || isNaN(parseInt(eventId))) {
+        return res.status(400).json(badRequestResponse('Event ID invalide'));
+      }
+
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        status,
+        eventId: parseInt(eventId),
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await ticketsService.getTicketsByEvent(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Billets récupérés', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async validateTicketByCode(req, res, next) {
+    try {
+      const { ticketCode, qrCode } = req.body;
+      
+      if (!ticketCode) {
+        return res.status(400).json(badRequestResponse('Code du billet requis'));
+      }
+
+      const result = await ticketsService.validateTicketByCode(ticketCode, qrCode, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('invalide')) {
+          return res.status(400).json(badRequestResponse(result.error));
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Billet validé', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bulkGenerateTickets(req, res, next) {
+    try {
+      const { tickets } = req.body;
+      
+      if (!tickets || !Array.isArray(tickets)) {
+        return res.status(400).json(badRequestResponse('Liste de billets requise'));
+      }
+
+      const result = await ticketsService.bulkGenerateTickets(tickets, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.status(201).json(createdResponse('Billets générés en masse', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createJob(req, res, next) {
+    try {
+      const { jobData } = req.body;
+      
+      if (!jobData) {
+        return res.status(400).json(badRequestResponse('Données du job requises'));
+      }
+
+      const result = await ticketsService.createJob(jobData, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.status(201).json(createdResponse('Job créé', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async processJob(req, res, next) {
+    try {
+      const { jobId } = req.params;
+      
+      if (!jobId) {
+        return res.status(400).json(badRequestResponse('Job ID requis'));
+      }
+
+      const result = await ticketsService.processJob(jobId, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Job traité', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getTicketStats(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      const { period = 'day' } = req.query;
+      
+      if (!eventId || isNaN(parseInt(eventId))) {
+        return res.status(400).json(badRequestResponse('Event ID invalide'));
+      }
+
+      const result = await ticketsService.getTicketStats(parseInt(eventId), period, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Statistiques billets', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async downloadTicket(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      if (!id || isNaN(parseInt(id))) {
+        return res.status(400).json(badRequestResponse('ID du billet requis'));
+      }
+
+      const result = await ticketsService.downloadTicket(parseInt(id), DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Billet'));
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Téléchargement billet', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async downloadQRCode(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      if (!id || isNaN(parseInt(id))) {
+        return res.status(400).json(badRequestResponse('ID du billet requis'));
+      }
+
+      const result = await ticketsService.downloadQRCode(parseInt(id), DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('QR code'));
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Téléchargement QR code', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getQueueStats(req, res, next) {
+    try {
+      const result = await ticketsService.getQueueStats();
+      
+      res.json(successResponse('Statistiques queue', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async cleanCompletedJobs(req, res, next) {
+    try {
+      const result = await ticketsService.cleanCompletedJobs();
+      
+      res.json(successResponse('Jobs nettoyés', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async listJobs(req, res, next) {
+    try {
+      const { page = 1, limit = 20, status } = req.query;
+      
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        status,
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await ticketsService.listJobs(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Jobs listés', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getEventTickets(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      const { page = 1, limit = 20, status } = req.query;
+      
+      if (!eventId || isNaN(parseInt(eventId))) {
+        return res.status(400).json(badRequestResponse('Event ID invalide'));
+      }
+
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        status,
+        eventId: parseInt(eventId),
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await ticketsService.getEventTickets(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Billets événement', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getEventTicketStats(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      
+      if (!eventId || isNaN(parseInt(eventId))) {
+        return res.status(400).json(badRequestResponse('Event ID invalide'));
+      }
+
+      const result = await ticketsService.getEventTicketStats(parseInt(eventId), DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Statistiques billets événement', result.data));
     } catch (error) {
       next(error);
     }

@@ -60,7 +60,7 @@ app.get('/', (req, res) => {
 });
 
 // Error handling middleware
-app.use(ErrorHandler.handle);
+app.use(ErrorHandler.globalHandler);
 
 // 404 handler
 app.use('*', (req, res) => {

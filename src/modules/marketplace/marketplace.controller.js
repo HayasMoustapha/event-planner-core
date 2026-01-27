@@ -262,6 +262,42 @@ class MarketplaceController {
     }
   }
 
+  async updateDesigner(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { portfolio_url, experience_years, specialties, bio } = req.body;
+      
+      if (!id || isNaN(parseInt(id))) {
+        return res.status(400).json(badRequestResponse('Designer ID requis'));
+      }
+
+      const designerData = {
+        portfolio_url: portfolio_url ? portfolio_url.trim() : undefined,
+        experience_years: experience_years ? parseInt(experience_years) : undefined,
+        specialties: specialties ? specialties.map(s => s.trim()) : undefined,
+        bio: bio ? bio.trim() : undefined
+      };
+
+      const result = await marketplaceService.updateDesigner(parseInt(id), designerData, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Designer'));
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Designer mis à jour', result.data));
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
+      next(error);
+    }
+  }
+
   async getDesignerPortfolio(req, res, next) {
     try {
       const { id } = req.params;
@@ -533,6 +569,44 @@ class MarketplaceController {
     }
   }
 
+  async updateTemplate(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { name, description, price, category, tags, is_public } = req.body;
+      
+      if (!id || isNaN(parseInt(id))) {
+        return res.status(400).json(badRequestResponse('Template ID requis'));
+      }
+
+      const templateData = {
+        name: name ? name.trim() : undefined,
+        description: description ? description.trim() : undefined,
+        price: price ? parseFloat(price) : undefined,
+        category: category ? category.trim() : undefined,
+        tags: tags ? tags.map(t => t.trim()) : undefined,
+        is_public: is_public !== undefined ? Boolean(is_public) : undefined
+      };
+
+      const result = await marketplaceService.updateTemplate(parseInt(id), templateData, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Template'));
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Template mis à jour', result.data));
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
+      next(error);
+    }
+  }
+
   async purchaseTemplate(req, res, next) {
     try {
       const { id } = req.params;
@@ -571,6 +645,192 @@ class MarketplaceController {
         result.message || 'Template acheté avec succès',
         result.data
       ));
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
+      next(error);
+    }
+  }
+
+  async createReview(req, res, next) {
+    try {
+      const { templateId, rating, comment } = req.body;
+      
+      if (!templateId || rating === undefined) {
+        return res.status(400).json(badRequestResponse('Template ID et rating requis'));
+      }
+
+      if (rating < 1 || rating > 5) {
+        return res.status(400).json(badRequestResponse('Rating doit être entre 1 et 5'));
+      }
+
+      const result = await marketplaceService.createReview(templateId, {
+        rating: parseInt(rating),
+        comment,
+        userId: DEFAULT_USER_ID
+      });
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.status(201).json(createdResponse('Avis créé', result.data));
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
+      next(error);
+    }
+  }
+
+  async getTemplateReviews(req, res, next) {
+    try {
+      const { templateId } = req.params;
+      const { page = 1, limit = 20 } = req.query;
+      
+      if (!templateId || isNaN(parseInt(templateId))) {
+        return res.status(400).json(badRequestResponse('Template ID invalide'));
+      }
+
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        templateId: parseInt(templateId)
+      };
+
+      const result = await marketplaceService.getTemplateReviews(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Avis récupérés', result.data));
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
+      next(error);
+    }
+  }
+
+  async getUserPurchases(req, res, next) {
+    try {
+      const { page = 1, limit = 20, status } = req.query;
+      
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        status,
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await marketplaceService.getUserPurchases(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Achats récupérés', result.data));
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
+      next(error);
+    }
+  }
+
+  async getMarketplaceStats(req, res, next) {
+    try {
+      const result = await marketplaceService.getMarketplaceStats();
+      
+      res.json(successResponse('Statistiques marketplace', result.data));
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
+      next(error);
+    }
+  }
+
+  async approveTemplate(req, res, next) {
+    try {
+      const { templateId } = req.params;
+      const { reason } = req.body;
+      
+      if (!templateId || isNaN(parseInt(templateId))) {
+        return res.status(400).json(badRequestResponse('Template ID requis'));
+      }
+
+      const result = await marketplaceService.approveTemplate(parseInt(templateId), reason, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Template approuvé', result.data));
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
+      next(error);
+    }
+  }
+
+  async rejectTemplate(req, res, next) {
+    try {
+      const { templateId } = req.params;
+      const { reason } = req.body;
+      
+      if (!templateId || isNaN(parseInt(templateId))) {
+        return res.status(400).json(badRequestResponse('Template ID requis'));
+      }
+
+      const result = await marketplaceService.rejectTemplate(parseInt(templateId), reason, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Template rejeté', result.data));
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
+      next(error);
+    }
+  }
+
+  async verifyDesigner(req, res, next) {
+    try {
+      const { designerId } = req.params;
+      const { verified } = req.body;
+      
+      if (!designerId || isNaN(parseInt(designerId))) {
+        return res.status(400).json(badRequestResponse('Designer ID requis'));
+      }
+
+      const result = await marketplaceService.verifyDesigner(parseInt(designerId), verified, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Designer vérifié', result.data));
     } catch (error) {
       if (error instanceof ValidationError) {
         return res.status(400).json(validationErrorResponse(

@@ -336,11 +336,8 @@ class EventsController {
       }
 
       // Vérification des permissions (simplifiée)
-      if (existingEvent.data.organizer_id !== DEFAULT_USER_ID) {
-        return res.status(403).json(errorResponse(
-          'Seul l\'organisateur peut supprimer un événement'
-        ));
-      }
+      // Dans la version pure, tout le monde peut supprimer
+      // La validation métier reste (statut publié, billets vendus)
 
       // Validation: Vérifier si l'événement peut être supprimé
       if (existingEvent.data.status === 'published') {
@@ -407,11 +404,8 @@ class EventsController {
       }
 
       // Vérification des permissions (simplifiée)
-      if (existingEvent.data.organizer_id !== DEFAULT_USER_ID) {
-        return res.status(403).json(errorResponse(
-          'Seul l\'organisateur peut publier un événement'
-        ));
-      }
+      // Dans la version pure, tout le monde peut publier
+      // La validation métier reste (statut draft, champs requis)
 
       // Validation: Vérifier si l'événement peut être publié
       if (existingEvent.data.status !== 'draft') {
@@ -485,11 +479,8 @@ class EventsController {
       }
 
       // Vérification des permissions (simplifiée)
-      if (existingEvent.data.organizer_id !== DEFAULT_USER_ID) {
-        return res.status(403).json(errorResponse(
-          'Seul l\'organisateur peut archiver un événement'
-        ));
-      }
+      // Dans la version pure, tout le monde peut archiver
+      // La validation métier reste (statut déjà archivé)
 
       // Validation: Vérifier si l'événement est déjà archivé
       if (existingEvent.data.status === 'archived') {

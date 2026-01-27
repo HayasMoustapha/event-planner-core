@@ -43,6 +43,31 @@ class AdminController {
     }
   }
 
+  async getUsers(req, res, next) {
+    try {
+      const { page = 1, limit = 20, search, status, role } = req.query;
+      
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        search,
+        status,
+        role,
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await adminService.getUsers(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Utilisateurs récupérés', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getSystemStats(req, res, next) {
     try {
       const { period } = req.query;
@@ -471,6 +496,301 @@ class AdminController {
         'Revenus récupérés avec succès',
         result.data
       ));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getGlobalStats(req, res, next) {
+    try {
+      const result = await adminService.getGlobalStats(DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Statistiques globales', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getRecentActivity(req, res, next) {
+    try {
+      const { page = 1, limit = 20, type } = req.query;
+      
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        type,
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await adminService.getRecentActivity(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Activité récente', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getSystemLogs(req, res, next) {
+    try {
+      const { page = 1, limit = 20, level, startDate, endDate } = req.query;
+      
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        level,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await adminService.getSystemLogs(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Logs système', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createSystemLog(req, res, next) {
+    try {
+      const { message, level = 'info', metadata = {} } = req.body;
+      
+      if (!message) {
+        return res.status(400).json(badRequestResponse('Message requis'));
+      }
+
+      const result = await adminService.createSystemLog({
+        message,
+        level,
+        metadata,
+        userId: DEFAULT_USER_ID
+      });
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.status(201).json(createdResponse('Log créé', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getUserById(req, res, next) {
+    try {
+      const { id } = req.params;
+      
+      if (!id || isNaN(parseInt(id))) {
+        return res.status(400).json(badRequestResponse('ID utilisateur requis'));
+      }
+
+      const result = await adminService.getUserById(parseInt(id), DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Utilisateur'));
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Utilisateur récupéré', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getEvents(req, res, next) {
+    try {
+      const { page = 1, limit = 20, status, search } = req.query;
+      
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        status,
+        search,
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await adminService.getEvents(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Événements récupérés', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getTemplatesPendingApproval(req, res, next) {
+    try {
+      const { page = 1, limit = 20 } = req.query;
+      
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await adminService.getTemplatesPendingApproval(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Templates en attente', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDesignersPendingVerification(req, res, next) {
+    try {
+      const { page = 1, limit = 20 } = req.query;
+      
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await adminService.getDesignersPendingVerification(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Designers en attente', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async moderateContent(req, res, next) {
+    try {
+      const { contentId, action, reason } = req.body;
+      
+      if (!contentId || !action) {
+        return res.status(400).json(badRequestResponse('Content ID et action requis'));
+      }
+
+      const result = await adminService.moderateContent(contentId, action, reason, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Contenu modéré', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getRevenueStats(req, res, next) {
+    try {
+      const { period = 'month', startDate, endDate } = req.query;
+      
+      const options = {
+        period,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await adminService.getRevenueStats(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Statistiques revenus', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getEventGrowthStats(req, res, next) {
+    try {
+      const { period = 'month' } = req.query;
+      
+      const result = await adminService.getEventGrowthStats(period, DEFAULT_USER_ID);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Statistiques croissance événements', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async exportData(req, res, next) {
+    try {
+      const { type, format = 'json', startDate, endDate } = req.query;
+      
+      if (!type) {
+        return res.status(400).json(badRequestResponse('Type de données requis'));
+      }
+
+      const options = {
+        type,
+        format,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await adminService.exportData(options);
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.json(successResponse('Données exportées', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getSystemHealth(req, res, next) {
+    try {
+      const result = await adminService.getSystemHealth();
+      
+      res.json(successResponse('Santé système', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createBackup(req, res, next) {
+    try {
+      const { type = 'full', includeMedia = false } = req.body;
+      
+      const result = await adminService.createBackup({
+        type,
+        includeMedia,
+        userId: DEFAULT_USER_ID
+      });
+      
+      if (!result.success) {
+        throw new ValidationError(result.error, result.details);
+      }
+
+      res.status(201).json(createdResponse('Backup créé', result.data));
     } catch (error) {
       next(error);
     }

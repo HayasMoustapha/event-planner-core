@@ -140,6 +140,86 @@ class TicketTemplatesController {
       });
     }
   }
+
+  async getPopularTemplates(req, res, next) {
+    try {
+      const { limit = 10 } = req.query;
+      
+      const result = await ticketTemplatesService.getPopularTemplates(parseInt(limit));
+      
+      res.json({
+        success: true,
+        data: result.data,
+        message: result.message
+      });
+    } catch (error) {
+      console.error('Controller error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
+
+  async validateTemplateForEvent(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { eventId } = req.body;
+      
+      if (!id || !eventId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Template ID and Event ID required'
+        });
+      }
+
+      const result = await ticketTemplatesService.validateTemplateForEvent(parseInt(id), parseInt(eventId));
+      
+      res.json({
+        success: true,
+        data: result.data,
+        message: result.message
+      });
+    } catch (error) {
+      console.error('Controller error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
+
+  async cloneTemplate(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { name, description } = req.body;
+      
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          error: 'Template ID required'
+        });
+      }
+
+      const result = await ticketTemplatesService.cloneTemplate(parseInt(id), {
+        name,
+        description,
+        userId: DEFAULT_USER_ID
+      });
+      
+      res.status(201).json({
+        success: true,
+        data: result.data,
+        message: result.message
+      });
+    } catch (error) {
+      console.error('Controller error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
 }
 
 module.exports = new TicketTemplatesController();
