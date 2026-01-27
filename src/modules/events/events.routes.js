@@ -1,6 +1,6 @@
 const express = require('express');
 const eventsController = require('./events.controller');
-const { SecurityMiddleware, validate, createEventsValidator, ContextInjector } = require('../../../../shared');
+const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
 
 const router = express.Router();
 
@@ -64,7 +64,7 @@ router.use(ContextInjector.injectEventContext());
  *       403:
  *         description: Permissions insuffisantes
  */
-router.post('/', createEventsValidator('createEvent'), eventsController.createEvent);
+router.post('/', ValidationMiddleware.createEventsValidator('createEvent'), eventsController.createEvent);
 
 /**
  * @swagger
@@ -120,19 +120,19 @@ router.post('/', createEventsValidator('createEvent'), eventsController.createEv
  *       403:
  *         description: Permissions insuffisantes
  */
-router.get('/', createEventsValidator('getEvents'), eventsController.getEvents);
+router.get('/', ValidationMiddleware.createEventsValidator('getEvents'), eventsController.getEvents);
 
-router.get('/stats', createEventsValidator('getEventStats'), eventsController.getEventStats);
+router.get('/stats', ValidationMiddleware.createEventsValidator('getEventStats'), eventsController.getEventStats);
 
-router.get('/:id', createEventsValidator('getEventById'), eventsController.getEventById);
+router.get('/:id', ValidationMiddleware.createEventsValidator('getEventById'), eventsController.getEventById);
 
-router.put('/:id', createEventsValidator('updateEvent'), eventsController.updateEvent);
+router.put('/:id', ValidationMiddleware.createEventsValidator('updateEvent'), eventsController.updateEvent);
 
-router.delete('/:id', createEventsValidator('deleteEvent'), eventsController.deleteEvent);
+router.delete('/:id', ValidationMiddleware.createEventsValidator('deleteEvent'), eventsController.deleteEvent);
 
 // Event Lifecycle Management
-router.post('/:id/publish', createEventsValidator('publishEvent'), eventsController.publishEvent);
+router.post('/:id/publish', ValidationMiddleware.createEventsValidator('publishEvent'), eventsController.publishEvent);
 
-router.post('/:id/archive', createEventsValidator('archiveEvent'), eventsController.archiveEvent);
+router.post('/:id/archive', ValidationMiddleware.createEventsValidator('archiveEvent'), eventsController.archiveEvent);
 
 module.exports = router;

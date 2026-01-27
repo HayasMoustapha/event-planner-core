@@ -1,6 +1,6 @@
 const express = require('express');
 const adminController = require('./admin.controller');
-const { SecurityMiddleware, validate, createAdminValidator, ContextInjector } = require('../../../../shared');
+const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
 
 const router = express.Router();
 

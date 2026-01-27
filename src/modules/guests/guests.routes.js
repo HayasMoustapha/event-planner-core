@@ -1,6 +1,6 @@
 const express = require('express');
 const guestsController = require('./guests.controller');
-const { SecurityMiddleware, createGuestsValidator, ContextInjector } = require('../../../../shared');
+const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
 
 const router = express.Router();
 
@@ -11,13 +11,13 @@ router.use(SecurityMiddleware.authenticated());
 router.use(ContextInjector.injectUserContext());
 
 // Guest CRUD Operations
-router.post('/', createGuestsValidator('createGuest'), guestsController.createGuest);
+router.post('/', ValidationMiddleware.createGuestsValidator('createGuest'), guestsController.createGuest);
 
 router.get('/', guestsController.getGuests);
 
 router.get('/:id', guestsController.getGuestById);
 
-router.put('/:id', updateGuestsValidator('updateGuest'), guestsController.updateGuest);
+router.put('/:id', ValidationMiddleware.createGuestsValidator('updateGuest'), guestsController.updateGuest);
 
 router.delete('/:id', guestsController.deleteGuest);
 

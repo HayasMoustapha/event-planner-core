@@ -1,6 +1,6 @@
 const express = require('express');
 const marketplaceController = require('./marketplace.controller');
-const { SecurityMiddleware, validate, createMarketplaceValidator, ContextInjector } = require('../../../../shared');
+const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
 
 const router = express.Router();
 
@@ -12,7 +12,7 @@ router.use(ContextInjector.injectMarketplaceContext());
 
 // Designer Management
 router.post('/designers', 
-  createMarketplaceValidator('becomeDesigner'), 
+  ValidationMiddleware.createMarketplaceValidator('becomeDesigner'), 
   marketplaceController.becomeDesigner
 );
 
@@ -20,11 +20,11 @@ router.get('/designers', marketplaceController.getDesigners);
 
 router.get('/designers/:id', marketplaceController.getDesignerById);
 
-router.put('/designers/:id', updateMarketplaceValidator('updateDesigner'), marketplaceController.updateDesigner);
+router.put('/designers/:id', ValidationMiddleware.createMarketplaceValidator('updateDesigner'), marketplaceController.updateDesigner);
 
 // Template Management
 router.post('/templates', 
-  createMarketplaceValidator('createTemplate'), 
+  ValidationMiddleware.createMarketplaceValidator('createTemplate'), 
   marketplaceController.createTemplate
 );
 
@@ -34,15 +34,15 @@ router.get('/templates/:id',
   marketplaceController.getTemplateById
 );
 
-router.put('/templates/:id', updateMarketplaceValidator('updateTemplate'), marketplaceController.updateTemplate);
+router.put('/templates/:id', ValidationMiddleware.createMarketplaceValidator('updateTemplate'), marketplaceController.updateTemplate);
 
 // Template Purchase
-router.post('/templates/:templateId/purchase', createMarketplaceValidator('purchaseTemplate'), marketplaceController.purchaseTemplate);
+router.post('/templates/:templateId/purchase', ValidationMiddleware.createMarketplaceValidator('purchaseTemplate'), marketplaceController.purchaseTemplate);
 
 // Template Reviews
 router.get('/templates/:templateId/reviews', marketplaceController.getTemplateReviews);
 
-router.post('/templates/:templateId/reviews', createMarketplaceValidator('createReview'), marketplaceController.createReview);
+router.post('/templates/:templateId/reviews', ValidationMiddleware.createMarketplaceValidator('createReview'), marketplaceController.createReview);
 
 // User Purchases
 router.get('/purchases', marketplaceController.getUserPurchases);
@@ -53,17 +53,17 @@ router.get('/stats',
 );
 
 router.post('/templates/:id/approve', 
-  createMarketplaceValidator('approveTemplate'), 
+  ValidationMiddleware.createMarketplaceValidator('approveTemplate'), 
   marketplaceController.approveTemplate
 );
 
 router.delete('/templates/:id', 
-  createMarketplaceValidator('deleteTemplate'), 
+  ValidationMiddleware.createMarketplaceValidator('deleteTemplate'), 
   marketplaceController.deleteTemplate
 );
 
-router.post('/templates/:id/reject', createMarketplaceValidator('rejectTemplate'), marketplaceController.rejectTemplate);
+router.post('/templates/:id/reject', ValidationMiddleware.createMarketplaceValidator('rejectTemplate'), marketplaceController.rejectTemplate);
 
-router.post('/designers/:id/verify', createMarketplaceValidator('verifyDesigner'), marketplaceController.verifyDesigner);
+router.post('/designers/:id/verify', ValidationMiddleware.createMarketplaceValidator('verifyDesigner'), marketplaceController.verifyDesigner);
 
 module.exports = router;

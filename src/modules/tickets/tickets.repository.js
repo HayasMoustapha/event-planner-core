@@ -10,7 +10,7 @@ class TicketsRepository {
       quantity, 
       available_from, 
       available_to, 
-      created_by 
+      organizer_id  // Utiliser organizer_id injecté au lieu de created_by
     } = ticketTypeData;
     
     const query = `
@@ -24,7 +24,7 @@ class TicketsRepository {
     
     const values = [
       event_id, name, description, type, quantity, 
-      available_from, available_to, created_by
+      available_from, available_to, organizer_id  // organizer_id comme created_by
     ];
     const result = await database.query(query, values);
     
@@ -402,6 +402,42 @@ class TicketsRepository {
     const random = Math.random().toString(36).substring(2, 10).toUpperCase();
     const timestamp = Date.now().toString(36).toUpperCase();
     return `${prefix}-${random}-${timestamp}`;
+  }
+
+  async findTicketTypesByEventId(eventId, options = {}) {
+    const { page = 1, limit = 20 } = options;
+    const offset = (page - 1) * limit;
+    
+    const query = `
+      SELECT tt.*, e.title as event_title
+      FROM ticket_types tt
+      INNER JOIN events e ON tt.event_id = e.id AND e.deleted_at IS NULL
+      WHERE tt.event_id = $1 AND tt.deleted_at IS NULL
+      ORDER BY tt.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+    
+    const result = await database.query(query, [eventId, limit, offset]);
+    
+    // Count total
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM ticket_types tt
+      WHERE tt.event_id = $1 AND tt.deleted_at IS NULL
+    `;
+    
+    const countResult = await database.query(countQuery, [eventId]);
+    const total = parseInt(countResult.rows[0].total);
+    
+    return {
+      ticket_types: result.rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   }
 }
 

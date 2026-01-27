@@ -1,6 +1,6 @@
 const express = require('express');
 const ticketsController = require('./tickets.controller');
-const { SecurityMiddleware, validate, createTicketsValidator, ContextInjector } = require('../../../../shared');
+const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
 
 // Import routes
 const ticketTypesRoutes = require('./ticket-types.routes');
@@ -22,7 +22,7 @@ router.use('/templates', ticketTemplatesRoutes);
 
 // Ticket Management
 router.post('/', 
-  createTicketsValidator('createTicket'), 
+  ValidationMiddleware.createTicketsValidator('createTicket'), 
   ticketsController.createTicket
 );
 

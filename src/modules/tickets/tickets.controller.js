@@ -189,6 +189,28 @@ class TicketsController {
     }
   }
 
+  async getTicketTypesByEvent(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      const { page, limit } = req.query;
+      const userId = req.user?.id;
+      
+      const result = await ticketsService.getTicketTypesByEvent(eventId, {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 10,
+        userId
+      });
+      
+      if (!result.success) {
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.json(ResponseFormatter.paginated('Event ticket types retrieved', result.data, result.pagination));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async validateTicket(req, res, next) {
     try {
       const { id } = req.params;

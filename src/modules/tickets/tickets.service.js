@@ -247,6 +247,29 @@ class TicketsService {
     }
   }
 
+  async getTicketTypesByEvent(eventId, options = {}) {
+    try {
+      const { page, limit, userId } = options;
+      const ticketTypes = await ticketsRepository.findTicketTypesByEventId(eventId, {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 10,
+        userId
+      });
+      
+      return {
+        success: true,
+        data: ticketTypes,
+        pagination: ticketTypes.pagination
+      };
+    } catch (error) {
+      console.error('Error getting event ticket types:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get event ticket types'
+      };
+    }
+  }
+
   async validateTicket(ticketId, userId) {
     try {
       const ticket = await ticketsRepository.findById(ticketId);

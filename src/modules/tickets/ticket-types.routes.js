@@ -1,6 +1,6 @@
 const express = require('express');
 const ticketsController = require('./tickets.controller');
-const { SecurityMiddleware, validate, createTicketsValidator } = require('../../../../shared');
+const { SecurityMiddleware, ValidationMiddleware } = require('../../../../shared');
 
 const router = express.Router();
 
@@ -9,27 +9,28 @@ router.use(SecurityMiddleware.authenticated());
 
 // Ticket Type Management
 router.post('/', 
-  createTicketsValidator('createTicketType'),
+  ValidationMiddleware.createTicketsValidator('createTicketType'),
   ticketsController.createTicketType
 );
 
 router.get('/:id', 
-  createTicketsValidator('getTicketTypeById'),
+  ValidationMiddleware.createTicketsValidator('getTicketTypeById'),
   ticketsController.getTicketTypeById
 );
 
+// Verifier pourauoi ca fait planter le serveur
 router.get('/events/:eventId/types', 
-  createTicketsValidator('getTicketTypesByEvent'),
+  ValidationMiddleware.createTicketsValidator('getTicketTypesByEvent'),
   ticketsController.getTicketTypesByEvent
 );
 
 router.put('/:id', 
-  createTicketsValidator('updateTicketType'),
+  ValidationMiddleware.createTicketsValidator('updateTicketType'),
   ticketsController.updateTicketType
 );
 
 router.delete('/:id', 
-  createTicketsValidator('deleteTicketType'),
+  ValidationMiddleware.createTicketsValidator('deleteTicketType'),
   ticketsController.deleteTicketType
 );
 
