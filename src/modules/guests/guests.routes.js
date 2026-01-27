@@ -2,7 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const guestsController = require('./guests.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
-const { guestsErrorHandler } = require('./guests.errorHandler');
+const guestsErrorHandler = require('./guests.errorHandler');
 
 const router = express.Router();
 

@@ -2,7 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const adminController = require('./admin.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
-const { adminErrorHandler } = require('./admin.errorHandler');
+const adminErrorHandler = require('./admin.errorHandler');
 
 const router = express.Router();
 

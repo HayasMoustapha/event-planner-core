@@ -2,7 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const ticketsController = require('./tickets.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
-const { ticketsErrorHandler } = require('./tickets.errorHandler');
+const ticketsErrorHandler = require('./tickets.errorHandler');
 
 // Import routes
 const ticketTypesRoutes = require('./ticket-types.routes');

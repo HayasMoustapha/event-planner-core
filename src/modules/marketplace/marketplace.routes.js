@@ -2,7 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const marketplaceController = require('./marketplace.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
-const { marketplaceErrorHandler } = require('./marketplace.errorHandler');
+const marketplaceErrorHandler = require('./marketplace.errorHandler');
 
 const router = express.Router();
 

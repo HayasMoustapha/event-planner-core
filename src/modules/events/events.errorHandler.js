@@ -1,11 +1,3 @@
-/**
- * MIDDLEWARE DE GESTION DES ERREURS POUR LE MODULE EVENTS
- * Fournit des messages d'erreur explicites et sécurisés
- * 
- * Ce handler est spécialisé pour le module events avec des types d'erreur
- * spécifiques à la gestion d'événements
- */
-
 const { ErrorHandlerFactory } = require('../../../../shared');
 
 const eventsErrorHandler = ErrorHandlerFactory.create('events', {
@@ -27,19 +19,14 @@ const eventsErrorHandler = ErrorHandlerFactory.create('events', {
       statusCode: 400,
       severity: 'medium'
     },
-    'EventPublishError': {
-      category: 'business',
-      statusCode: 400,
-      severity: 'medium'
-    },
-    'EventArchiveError': {
-      category: 'business',
-      statusCode: 400,
-      severity: 'medium'
-    },
-    'EventOwnershipError': {
+    'EventAccessError': {
       category: 'authorization',
       statusCode: 403,
+      severity: 'medium'
+    },
+    'EventConflictError': {
+      category: 'conflict',
+      statusCode: 409,
       severity: 'medium'
     },
     'EventValidationError': {
@@ -47,31 +34,10 @@ const eventsErrorHandler = ErrorHandlerFactory.create('events', {
       statusCode: 400,
       severity: 'low'
     },
-    'EventConflictError': {
-      category: 'conflict',
-      statusCode: 409,
-      severity: 'medium'
-    },
-    'TicketingError': {
+    'EventStatusError': {
       category: 'business',
       statusCode: 400,
       severity: 'medium'
-    },
-    // Erreurs de sécurité communes
-    'SecurityValidationError': {
-      category: 'security',
-      statusCode: 400,
-      severity: 'high'
-    },
-    'SQLInjectionError': {
-      category: 'security',
-      statusCode: 403,
-      severity: 'high'
-    },
-    'XSSAttemptError': {
-      category: 'security',
-      statusCode: 403,
-      severity: 'high'
     },
     'RateLimitError': {
       category: 'security',
