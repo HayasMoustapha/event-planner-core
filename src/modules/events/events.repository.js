@@ -198,16 +198,18 @@ class EventsRepository {
       };
     }
     
-    values.push(updatedBy);
+    // Ajouter les paramètres pour updated_by et id
+    const updatedByParam = values.length + 1;
+    const idParam = values.length + 2;
     
     const query = `
       UPDATE events 
-      SET ${updates.join(', ')}, updated_by = $${values.length + 1}, updated_at = NOW()
-      WHERE id = $${values.length + 2}
+      SET ${updates.join(', ')}, updated_by = $${updatedByParam}, updated_at = NOW()
+      WHERE id = $${idParam}
       RETURNING *
     `;
     
-    values.push(id);
+    values.push(updatedBy, id);
     
     try {
       const result = await database.query(query, values);

@@ -31,7 +31,8 @@ class AdminController {
         if (result.error && result.error.includes('non autorisé')) {
           return res.status(403).json(errorResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse(
@@ -59,7 +60,8 @@ class AdminController {
       const result = await adminService.getUsers(options);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Utilisateurs récupérés', result.data));
@@ -87,7 +89,8 @@ class AdminController {
         if (result.error && result.error.includes('non autorisé')) {
           return res.status(403).json(errorResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse(
@@ -160,7 +163,8 @@ class AdminController {
         if (result.error && result.error.includes('non autorisé')) {
           return res.status(403).json(errorResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
       
       if (result.pagination) {
@@ -200,7 +204,8 @@ class AdminController {
         if (result.error && result.error.includes('accès')) {
           return res.status(403).json(errorResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse(
@@ -270,7 +275,8 @@ class AdminController {
         if (result.error && result.error.includes('conflit')) {
           return res.status(409).json(conflictResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse(
@@ -342,7 +348,8 @@ class AdminController {
         if (result.error && result.error.includes('non autorisé')) {
           return res.status(403).json(errorResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
       
       if (result.pagination) {
@@ -422,7 +429,8 @@ class AdminController {
         if (result.error && result.error.includes('non autorisé')) {
           return res.status(403).json(errorResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
       
       if (result.pagination) {
@@ -489,7 +497,8 @@ class AdminController {
         if (result.error && result.error.includes('non autorisé')) {
           return res.status(403).json(errorResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse(
@@ -506,7 +515,8 @@ class AdminController {
       const result = await adminService.getGlobalStats(DEFAULT_USER_ID);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Statistiques globales', result.data));
@@ -529,7 +539,8 @@ class AdminController {
       const result = await adminService.getRecentActivity(options);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Activité récente', result.data));
@@ -554,7 +565,8 @@ class AdminController {
       const result = await adminService.getSystemLogs(options);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Logs système', result.data));
@@ -579,7 +591,8 @@ class AdminController {
       });
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.status(201).json(createdResponse('Log créé', result.data));
@@ -602,7 +615,8 @@ class AdminController {
         if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
           return res.status(404).json(notFoundResponse('Utilisateur'));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Utilisateur récupéré', result.data));
@@ -626,7 +640,8 @@ class AdminController {
       const result = await adminService.getEvents(options);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Événements récupérés', result.data));
@@ -648,7 +663,8 @@ class AdminController {
       const result = await adminService.getTemplatesPendingApproval(options);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Templates en attente', result.data));
@@ -670,7 +686,8 @@ class AdminController {
       const result = await adminService.getDesignersPendingVerification(options);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Designers en attente', result.data));
@@ -690,7 +707,8 @@ class AdminController {
       const result = await adminService.moderateContent(contentId, action, reason, DEFAULT_USER_ID);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Contenu modéré', result.data));
@@ -713,7 +731,8 @@ class AdminController {
       const result = await adminService.getRevenueStats(options);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Statistiques revenus', result.data));
@@ -729,7 +748,8 @@ class AdminController {
       const result = await adminService.getEventGrowthStats(period, DEFAULT_USER_ID);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Statistiques croissance événements', result.data));
@@ -757,7 +777,8 @@ class AdminController {
       const result = await adminService.exportData(options);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Données exportées', result.data));
@@ -787,7 +808,8 @@ class AdminController {
       });
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.status(201).json(createdResponse('Backup créé', result.data));

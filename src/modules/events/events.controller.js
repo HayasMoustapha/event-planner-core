@@ -291,7 +291,11 @@ class EventsController {
         if (result.error && result.error.includes('conflit')) {
           return res.status(409).json(conflictResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        if (result.error && result.error.includes('déjà publié')) {
+          return res.status(400).json(badRequestResponse(result.error));
+        }
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse(

@@ -198,7 +198,11 @@ class EventsService {
 
     if (!userId) {
       console.log('🧪 [TEST LOG] EventsService.getEvents - ERROR: Missing userId');
-      throw new ValidationError('User ID is required');
+      return {
+        success: false,
+        error: 'User ID is required',
+        details: null
+      };
     }
 
     console.log('🧪 [TEST LOG] EventsService.getEvents - Calling eventsRepository.findByOrganizer...');
@@ -231,7 +235,11 @@ class EventsService {
 
     // Validate event date if it's being updated
     if (updateData.event_date && new Date(updateData.event_date) <= new Date()) {
-      throw new ValidationError('Event date must be in the future');
+      return {
+        success: false,
+        error: 'Event date must be in the future',
+        details: null
+      };
     }
 
     return await eventsRepository.update(eventId, updateData, userId);

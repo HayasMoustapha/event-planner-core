@@ -40,7 +40,8 @@ class TicketsController {
       });
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.status(201).json(createdResponse('Billet généré', result.data));
@@ -146,7 +147,8 @@ class TicketsController {
         if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
           return res.status(404).json(notFoundResponse('Événement'));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.status(201).json(createdResponse(
@@ -204,7 +206,8 @@ class TicketsController {
         if (result.error && result.error.includes('non autorisé')) {
           return res.status(403).json(errorResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
       
       if (result.pagination) {
@@ -244,7 +247,8 @@ class TicketsController {
         if (result.error && result.error.includes('accès')) {
           return res.status(403).json(errorResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse(
@@ -335,7 +339,8 @@ class TicketsController {
         if (existingTicketType.error && (existingTicketType.error.includes('non trouvé') || existingTicketType.error.includes('not found'))) {
           return res.status(404).json(notFoundResponse('Type de billet'));
         }
-        throw new ValidationError(existingTicketType.error, existingTicketType.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(existingTicketType.error));
       }
 
       const result = await ticketsService.updateTicketType(parseInt(id), updateData, DEFAULT_USER_ID);
@@ -347,7 +352,8 @@ class TicketsController {
         if (result.error && result.error.includes('conflit')) {
           return res.status(409).json(conflictResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse(
@@ -378,7 +384,8 @@ class TicketsController {
       const result = await ticketsService.getTicketTypesByEvent(options);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Types de billets récupérés', result.data));
@@ -404,7 +411,8 @@ class TicketsController {
         if (existingTicketType.error && (existingTicketType.error.includes('non trouvé') || existingTicketType.error.includes('not found'))) {
           return res.status(404).json(notFoundResponse('Type de billet'));
         }
-        throw new ValidationError(existingTicketType.error, existingTicketType.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(existingTicketType.error));
       }
 
       // Validation: Vérifier s'il y a des billets vendus
@@ -423,7 +431,8 @@ class TicketsController {
         if (result.error && result.error.includes('conflit')) {
           return res.status(409).json(conflictResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse(
@@ -481,7 +490,8 @@ class TicketsController {
         if (result.error && result.error.includes('insuffisant')) {
           return res.status(400).json(badRequestResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.status(201).json(createdResponse(
@@ -558,7 +568,8 @@ class TicketsController {
         if (result.error && result.error.includes('non autorisé')) {
           return res.status(403).json(errorResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
       
       if (result.pagination) {
@@ -598,7 +609,8 @@ class TicketsController {
         if (result.error && result.error.includes('accès')) {
           return res.status(403).json(errorResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse(
@@ -641,7 +653,8 @@ class TicketsController {
         if (result.error && result.error.includes('invalide')) {
           return res.status(400).json(badRequestResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse(
@@ -667,7 +680,8 @@ class TicketsController {
         if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
           return res.status(404).json(notFoundResponse('Billet'));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Billet récupéré', result.data));
@@ -696,7 +710,8 @@ class TicketsController {
       const result = await ticketsService.getTicketsByEvent(options);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Billets récupérés', result.data));
@@ -719,7 +734,8 @@ class TicketsController {
         if (result.error && result.error.includes('invalide')) {
           return res.status(400).json(badRequestResponse(result.error));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Billet validé', result.data));
@@ -739,7 +755,8 @@ class TicketsController {
       const result = await ticketsService.bulkGenerateTickets(tickets, DEFAULT_USER_ID);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.status(201).json(createdResponse('Billets générés en masse', result.data));
@@ -759,7 +776,8 @@ class TicketsController {
       const result = await ticketsService.createJob(jobData, DEFAULT_USER_ID);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.status(201).json(createdResponse('Job créé', result.data));
@@ -779,7 +797,8 @@ class TicketsController {
       const result = await ticketsService.processJob(jobId, DEFAULT_USER_ID);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Job traité', result.data));
@@ -800,7 +819,8 @@ class TicketsController {
       const result = await ticketsService.getTicketStats(parseInt(eventId), period, DEFAULT_USER_ID);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Statistiques billets', result.data));
@@ -823,7 +843,8 @@ class TicketsController {
         if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
           return res.status(404).json(notFoundResponse('Billet'));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Téléchargement billet', result.data));
@@ -846,7 +867,8 @@ class TicketsController {
         if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
           return res.status(404).json(notFoundResponse('QR code'));
         }
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Téléchargement QR code', result.data));
@@ -889,7 +911,8 @@ class TicketsController {
       const result = await ticketsService.listJobs(options);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Jobs listés', result.data));
@@ -918,7 +941,8 @@ class TicketsController {
       const result = await ticketsService.getEventTickets(options);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Billets événement', result.data));
@@ -938,7 +962,8 @@ class TicketsController {
       const result = await ticketsService.getEventTicketStats(parseInt(eventId), DEFAULT_USER_ID);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
+        // Gérer les autres erreurs sans lancer d'exception
+        return res.status(400).json(errorResponse(result.error));
       }
 
       res.json(successResponse('Statistiques billets événement', result.data));
