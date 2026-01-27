@@ -261,23 +261,43 @@ class EventsService {
     const publishedEvent = await eventsRepository.publish(eventId, userId);
     
     if (!publishedEvent) {
-      throw new NotFoundError('Event not found or access denied');
+      // L'événement n'existe pas ou est déjà publié
+      // On retourne un résultat d'échec plutôt qu'une erreur 404
+      return {
+        success: false,
+        error: 'Event not found or already published',
+        details: null
+      };
     }
 
     // TODO: Send notifications to guests
     // TODO: Trigger ticket generation if applicable
 
-    return publishedEvent;
+    return {
+      success: true,
+      data: publishedEvent,
+      message: 'Event published successfully'
+    };
   }
 
   async archiveEvent(eventId, userId) {
     const archivedEvent = await eventsRepository.archive(eventId, userId);
     
     if (!archivedEvent) {
-      throw new NotFoundError('Event not found or access denied');
+      // L'événement n'existe pas ou est déjà archivé
+      // On retourne un résultat d'échec plutôt qu'une erreur 404
+      return {
+        success: false,
+        error: 'Event not found or already archived',
+        details: null
+      };
     }
 
-    return archivedEvent;
+    return {
+      success: true,
+      data: archivedEvent,
+      message: 'Event archived successfully'
+    };
   }
 
   async getEventStats(organizerId) {

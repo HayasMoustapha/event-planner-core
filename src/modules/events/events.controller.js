@@ -428,11 +428,11 @@ class EventsController {
       const result = await eventsService.publishEvent(eventId, DEFAULT_USER_ID);
       
       if (!result.success) {
-        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
-          return res.status(404).json(notFoundResponse('Événement'));
+        if (result.error && (result.error.includes('déjà publié'))) {
+          return res.status(400).json(badRequestResponse(result.error));
         }
-        if (result.error && result.error.includes('conflit')) {
-          return res.status(409).json(conflictResponse(result.error));
+        if (result.error && (result.error.includes('non trouvé'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
         }
         throw new ValidationError(result.error, result.details);
       }
@@ -489,11 +489,11 @@ class EventsController {
       const result = await eventsService.archiveEvent(eventId, DEFAULT_USER_ID);
       
       if (!result.success) {
-        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
-          return res.status(404).json(notFoundResponse('Événement'));
+        if (result.error && (result.error.includes('déjà archivé'))) {
+          return res.status(400).json(badRequestResponse(result.error));
         }
-        if (result.error && result.error.includes('conflit')) {
-          return res.status(409).json(conflictResponse(result.error));
+        if (result.error && (result.error.includes('non trouvé'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
         }
         throw new ValidationError(result.error, result.details);
       }
