@@ -1,83 +1,36 @@
 const express = require('express');
 const guestsController = require('./guests.controller');
-const { authenticate, requirePermission } = require("../../../../shared");
-const { validate, schemas } = require("../../middleware/validation");
+const { SecurityMiddleware, validate, createGuestsValidator } = require('../../../../shared');
 
 const router = express.Router();
 
 // Apply authentication to all routes
-router.use(authenticate);
+router.use(SecurityMiddleware.authenticated());
 
 // Guest CRUD Operations
-router.post('/', 
-  requirePermission('guests.create'),
-  validate(schemas.createGuest),
-  guestsController.createGuest
-);
+router.post('/', createGuestsValidator('createGuest'), guestsController.createGuest);
 
-router.get('/', 
-  requirePermission('guests.read'),
-  validate(schemas.pagination, 'query'),
-  guestsController.getGuests
-);
+router.get('/', guestsController.getGuests);
 
-router.get('/:id', 
-  requirePermission('guests.read'),
-  validate(schemas.idParam, 'params'),
-  guestsController.getGuest
-);
+router.get('/:id', guestsController.getGuestById);
 
-router.put('/:id', 
-  requirePermission('guests.update'),
-  validate(schemas.idParam, 'params'),
-  validate(schemas.updateGuest),
-  guestsController.updateGuest
-);
+router.put('/:id', updateGuestsValidator('updateGuest'), guestsController.updateGuest);
 
-router.delete('/:id', 
-  requirePermission('guests.delete'),
-  validate(schemas.idParam, 'params'),
-  guestsController.deleteGuest
-);
+router.delete('/:id', guestsController.deleteGuest);
 
 // Event Guest Management
-router.get('/events/:eventId/guests', 
-  requirePermission('guests.read'),
-  validate(schemas.idParam, 'params'),
-  validate(schemas.pagination, 'query'),
-  guestsController.getEventGuests
-);
+router.get('/events/:eventId/guests', guestsController.getEventGuests);
 
-router.post('/events/:eventId/guests', 
-  requirePermission('guests.create'),
-  validate(schemas.idParam, 'params'),
-  guestsController.addGuestToEvent
-);
+router.post('/events/:eventId/guests', guestsController.addGuestsToEvent);
 
-router.post('/events/:eventId/guests/bulk', 
-  requirePermission('guests.create'),
-  validate(schemas.idParam, 'params'),
-  guestsController.bulkAddGuestsToEvent
-);
+router.post('/events/:eventId/guests/bulk', guestsController.bulkAddGuestsToEvent);
 
 // Check-in Operations
-router.post('/check-in', 
-  requirePermission('guests.update'),
-  validate(schemas.checkInGuest),
-  guestsController.checkInGuest
-);
+router.post('/check-in', guestsController.checkInGuest);
 
-router.post('/events/:eventId/guests/:guestId/checkin', 
-  requirePermission('guests.update'),
-  validate(schemas.idParam, 'params'),
-  guestsController.checkInGuestById
-);
+router.post('/events/:eventId/guests/:guestId/checkin', guestsController.checkInGuestById);
 
 // Statistics
-router.get('/events/:eventId/stats', 
-  requirePermission('guests.read'),
-  validate(schemas.idParam, 'params'),
-  guestsController.getGuestStats
-);
+router.get('/events/:eventId/stats', guestsController.getEventGuestStats);
 
 module.exports = router;

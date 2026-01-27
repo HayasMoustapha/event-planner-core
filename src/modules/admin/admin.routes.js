@@ -1,55 +1,30 @@
 const express = require('express');
 const adminController = require('./admin.controller');
-const { authenticate, requirePermission } = require("../../../../shared");
-const { validate, schemas } = require("../../middleware/validation");
+const { SecurityMiddleware, validate, createAdminValidator } = require('../../../../shared');
 
 const router = express.Router();
 
 // Apply authentication to all routes
-router.use(authenticate);
+router.use(SecurityMiddleware.adminOnly());
 
 // Dashboard
-router.get('/dashboard', 
-  requirePermission('admin.read'),
-  adminController.getDashboard
-);
+router.get('/dashboard', adminController.getDashboard);
 
 // Global Statistics
-router.get('/stats', 
-  requirePermission('admin.read'),
-  adminController.getGlobalStats
-);
+router.get('/stats', adminController.getGlobalStats);
 
 // Recent Activity
-router.get('/activity', 
-  requirePermission('admin.read'),
-  adminController.getRecentActivity
-);
+router.get('/activity', adminController.getRecentActivity);
 
 // System Logs
-router.get('/logs', 
-  requirePermission('admin.read'),
-  validate(schemas.pagination, 'query'),
-  adminController.getSystemLogs
-);
+router.get('/logs', adminController.getSystemLogs);
 
-router.post('/logs', 
-  requirePermission('admin.create'),
-  adminController.createSystemLog
-);
+router.post('/logs', adminController.createSystemLog);
 
 // User Management (via Auth Service)
-router.get('/users', 
-  requirePermission('admin.read'),
-  validate(schemas.pagination, 'query'),
-  adminController.getUsers
-);
+router.get('/users', adminController.getUsers);
 
-router.get('/users/:id', 
-  requirePermission('admin.read'),
-  validate(schemas.idParam, 'params'),
-  adminController.getUserById
-);
+router.get('/users/:id', adminController.getUserById);
 
 // Note: Les routes de modification d'utilisateurs sont gérées par l'Auth Service
 // POST /api/auth/users (création)
@@ -58,57 +33,29 @@ router.get('/users/:id',
 // PUT /api/auth/users/:id/status (changement statut)
 
 // Event Management
-router.get('/events', 
-  requirePermission('admin.read'),
-  validate(schemas.pagination, 'query'),
-  adminController.getEvents
-);
+router.get('/events', adminController.getEvents);
 
 // Content Moderation
-router.get('/templates/pending', 
-  requirePermission('admin.moderate'),
-  validate(schemas.pagination, 'query'),
-  adminController.getTemplatesPendingApproval
-);
+router.get('/templates/pending', adminController.getTemplatesPendingApproval);
 
 router.get('/designers/pending', 
-  requirePermission('admin.moderate'),
-  validate(schemas.pagination, 'query'),
-  adminController.getDesignersPendingVerification
+  adminController.getDesignersPendingApproval
 );
 
-router.post('/moderate', 
-  requirePermission('admin.moderate'),
-  adminController.moderateContent
-);
+router.post('/moderate', adminController.moderateContent);
 
 // Analytics
-router.get('/analytics/revenue', 
-  requirePermission('admin.read'),
-  adminController.getRevenueStats
-);
+router.get('/analytics/revenue', adminController.getRevenueAnalytics);
 
-router.get('/analytics/events', 
-  requirePermission('admin.read'),
-  adminController.getEventGrowthStats
-);
+router.get('/analytics/events', adminController.getEventGrowthStats);
 
 // Data Export
-router.get('/export', 
-  requirePermission('admin.export'),
-  adminController.exportData
-);
+router.get('/export', adminController.exportData);
 
 // System Health
-router.get('/health', 
-  requirePermission('admin.read'),
-  adminController.getSystemHealth
-);
+router.get('/health', adminController.getSystemHealth);
 
 // Backup
-router.post('/backup', 
-  requirePermission('admin.backup'),
-  adminController.createBackup
-);
+router.post('/backup', adminController.createBackup);
 
 module.exports = router;

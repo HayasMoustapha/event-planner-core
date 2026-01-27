@@ -1,99 +1,70 @@
 const express = require('express');
 const marketplaceController = require('./marketplace.controller');
-const { authenticate, requirePermission } = require("../../../../shared");
-const { validate, schemas } = require("../../middleware/validation");
+const { SecurityMiddleware, validate, createMarketplaceValidator } = require('../../../../shared');
 
 const router = express.Router();
 
 // Apply authentication to all routes
-router.use(authenticate);
+router.use(SecurityMiddleware.authenticated());
 
 // Designer Management
 router.post('/designers', 
-  requirePermission('marketplace.create'),
+  createMarketplaceValidator('becomeDesigner'), 
   marketplaceController.becomeDesigner
 );
 
-router.get('/designers', 
-  requirePermission('marketplace.read'),
-  validate(schemas.pagination, 'query'),
-  marketplaceController.getDesigners
-);
+router.get('/designers', marketplaceController.getDesigners);
 
 router.get('/designers/:id', 
   requirePermission('marketplace.read'),
   validate(schemas.idParam, 'params'),
-  marketplaceController.getDesigner
+  marketplaceController.getDesignerById
 );
 
-router.put('/designers/:id', 
-  requirePermission('marketplace.update'),
-  validate(schemas.idParam, 'params'),
-  marketplaceController.updateDesigner
-);
+router.put('/designers/:id', updateMarketplaceValidator('updateDesigner'), marketplaceController.updateDesigner);
 
 // Template Management
 router.post('/templates', 
-  requirePermission('marketplace.create'),
+  createMarketplaceValidator('createTemplate'), 
   marketplaceController.createTemplate
 );
 
-router.get('/templates', 
-  requirePermission('marketplace.read'),
-  validate(schemas.pagination, 'query'),
-  marketplaceController.getTemplates
-);
+router.get('/templates', marketplaceController.getTemplates);
 
 router.get('/templates/:id', 
-  requirePermission('marketplace.read'),
-  validate(schemas.idParam, 'params'),
-  marketplaceController.getTemplate
+  marketplaceController.getTemplateById
 );
 
-router.put('/templates/:id', 
-  requirePermission('marketplace.update'),
-  validate(schemas.idParam, 'params'),
-  marketplaceController.updateTemplate
-);
+router.put('/templates/:id', updateMarketplaceValidator('updateTemplate'), marketplaceController.updateTemplate);
 
 // Template Purchase
-router.post('/templates/:templateId/purchase', 
-  requirePermission('marketplace.purchase'),
-  validate(schemas.idParam, 'params'),
-  marketplaceController.purchaseTemplate
-);
+router.post('/templates/:templateId/purchase', createMarketplaceValidator('purchaseTemplate'), marketplaceController.purchaseTemplate);
 
 // Template Reviews
+router.get('/templates/:templateId/reviews', marketplaceController.getTemplateReviews);
+
 router.post('/templates/:templateId/reviews', 
   requirePermission('marketplace.create'),
   validate(schemas.idParam, 'params'),
   marketplaceController.createReview
 );
 
-router.get('/templates/:templateId/reviews', 
-  requirePermission('marketplace.read'),
-  validate(schemas.idParam, 'params'),
-  validate(schemas.pagination, 'query'),
-  marketplaceController.getTemplateReviews
-);
-
 // User Purchases
-router.get('/purchases', 
-  requirePermission('marketplace.read'),
-  validate(schemas.pagination, 'query'),
-  marketplaceController.getUserPurchases
-);
+router.get('/purchases', marketplaceController.getUserPurchases);
 
 // Admin Operations
 router.get('/stats', 
-  requirePermission('marketplace.read'),
   marketplaceController.getMarketplaceStats
 );
 
 router.post('/templates/:id/approve', 
-  requirePermission('marketplace.moderate'),
-  validate(schemas.idParam, 'params'),
+  createMarketplaceValidator('approveTemplate'), 
   marketplaceController.approveTemplate
+);
+
+router.delete('/templates/:id', 
+  createMarketplaceValidator('deleteTemplate'), 
+  marketplaceController.deleteTemplate
 );
 
 router.post('/templates/:id/reject', 
