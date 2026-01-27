@@ -2,6 +2,10 @@ const Joi = require('joi');
 
 const validate = (schema, property = 'body') => {
   return (req, res, next) => {
+    console.log(`🔍 [VALIDATE] ENTRY - property: ${property}`);
+    console.log(`🔍 [VALIDATE] req[${property}]:`, req[property]);
+    console.log(`🔍 [VALIDATE] schema keys:`, Object.keys(schema.describe().keys));
+    
     // Permettre les champs injectés par le contexte
     const options = {
       abortEarly: false,
@@ -9,15 +13,21 @@ const validate = (schema, property = 'body') => {
       stripUnknown: false // Ne pas supprimer les champs injectés
     };
 
+    console.log(`🔍 [VALIDATE] Starting validation...`);
     const { error, value } = schema.validate(req[property], options);
+    
+    console.log(`🔍 [VALIDATE] Validation result - error:`, !!error);
+    console.log(`🔍 [VALIDATE] Validation result - value:`, value);
 
     if (error) {
+      console.log(`🔍 [VALIDATE] Validation failed - details:`, error.details);
       const errors = error.details.map(detail => ({
         field: detail.path.join('.'),
         message: detail.message,
         value: detail.context.value
       }));
 
+      console.log(`🔍 [VALIDATE] Returning 400 error`);
       return res.status(400).json({
         success: false,
         error: 'Validation failed',
@@ -26,6 +36,8 @@ const validate = (schema, property = 'body') => {
       });
     }
 
+    console.log(`🔍 [VALIDATE] Validation successful - calling next()`);
+    
     // Ne pas écraser req[property] pour préserver les champs injectés
     // Fusionner seulement les champs validés
     req[property] = { ...req[property], ...value };

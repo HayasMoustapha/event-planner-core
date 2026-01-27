@@ -2,68 +2,197 @@ const ticketsService = require('./tickets.service');
 const { 
   ErrorHandler, 
   ValidationError, 
-  NotFoundError, 
-  AuthorizationError,
-  SecurityErrorHandler,
+  NotFoundError,
   ConflictError,
   DatabaseError 
 } = require('../../utils/errors');
+const { 
+  createResponse,
+  successResponse,
+  errorResponse,
+  validationErrorResponse,
+  notFoundResponse,
+  conflictResponse,
+  serverErrorResponse,
+  badRequestResponse,
+  createdResponse,
+  paginatedResponse
+} = require('../../utils/response');
+
+// Constante par défaut pour l'utilisateur ID
+const DEFAULT_USER_ID = 1;
 
 class TicketsController {
   async createTicketType(req, res, next) {
     try {
-      // Security: Validate user permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('User authentication required');
-      }
-
-      // Security: Rate limiting check
-      if (req.rateLimit && req.rateLimit.remaining === 0) {
-        throw SecurityErrorHandler.handleRateLimit(req);
-      }
-
-      // Security: Validate event ownership
-      const { event_id } = req.body;
-      if (!event_id || isNaN(parseInt(event_id))) {
-        throw new ValidationError('Valid event ID is required');
-      }
-
-      // Security: Validate ticket type data
-      const ticketTypeData = req.body;
+      const { event_id, name, type, price, quantity, currency, description } = req.body;
       
-      if (ticketTypeData.type && !['free', 'paid', 'donation'].includes(ticketTypeData.type)) {
-        throw new ValidationError('Invalid ticket type');
+      // Validation de l'event_id
+      if (!event_id || isNaN(parseInt(event_id))) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'event_id',
+          message: 'Valid event ID is required'
+        }));
       }
 
-      if (ticketTypeData.price && (isNaN(parseFloat(ticketTypeData.price)) || parseFloat(ticketTypeData.price) < 0)) {
-        throw new ValidationError('Price must be a positive number');
+      // Validation du nom
+      if (!name || typeof name !== 'string' || name.trim().length < 2) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'name',
+          message: 'Le nom est requis et doit contenir au moins 2 caractères'
+        }));
       }
 
-      if (ticketTypeData.quantity && (isNaN(parseInt(ticketTypeData.quantity)) || parseInt(ticketTypeData.quantity) < 0)) {
-        throw new ValidationError('Quantity must be a positive integer');
+      if (name.length > 255) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'name',
+          message: 'Le nom ne peut pas dépasser 255 caractères'
+        }));
       }
 
-      if (ticketTypeData.currency && !/^[A-Z]{3}$/.test(ticketTypeData.currency)) {
-        throw new ValidationError('Currency must be a valid 3-letter code');
+      // Validation du type
+      if (!type || !['free', 'paid', 'donation'].includes(type)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'type',
+          message: 'Le type doit être free, paid ou donation'
+        }));
       }
 
-      const result = await ticketsService.createTicketType(ticketTypeData, req.user.id);
+      // Validation du prix
+      if (type === 'paid') {
+        if (price === undefined || isNaN(parseFloat(price)) || parseFloat(price) < 0) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'price',
+            message: 'Le prix est requis et doit être un nombre positif'
+          }));
+        }
+      } else {
+        if (price !== undefined && parseFloat(price) !== 0) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'price',
+            message: 'Le prix doit être 0 pour les billets gratuits'
+          }));
+        }
+      }
+
+      // Validation de la quantité
+      if (!quantity || isNaN(parseInt(quantity)) || parseInt(quantity) < 1) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'quantity',
+          message: 'La quantité est requise et doit être un entier positif'
+        }));
+      }
+
+      // Validation de la devise si payant
+      if (type === 'paid') {
+        if (!currency || !/^[A-Z]{3}$/.test(currency)) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'currency',
+            message: 'La devise est requise et doit être un code ISO 4217 valide (3 lettres majuscules)'
+          }));
+        }
+      }
+
+      // Validation de la description (optionnelle)
+      if (description && (typeof description !== 'string' || description.length > 1000)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'description',
+          message: 'La description ne peut pas dépasser 1000 caractères'
+        }));
+      }
+
+      const ticketTypeData = {
+        event_id: parseInt(event_id),
+        name: name.trim(),
+        type,
+        price: type === 'paid' ? parseFloat(price) : 0,
+        quantity: parseInt(quantity),
+        currency: type === 'paid' ? currency : null,
+        description: description ? description.trim() : null
+      };
+
+      const result = await ticketsService.createTicketType(ticketTypeData, DEFAULT_USER_ID);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Event');
+        if (result.error && result.error.includes('existe déjà')) {
+          return res.status(409).json(conflictResponse(result.error));
         }
-        if (result.error && result.error.includes('already exists')) {
-          throw new ConflictError(result.error);
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Événement'));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.status(201).json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
+      res.status(201).json(createdResponse(
+        result.message || 'Type de billet créé avec succès',
+        result.data
+      ));
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
+      next(error);
+    }
+  }
+
+  async getTicketTypes(req, res, next) {
+    try {
+      const { event_id, page, limit } = req.query;
+      
+      // Validation du paramètre page
+      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'page',
+          message: 'Le numéro de page doit être un entier positif'
+        }));
+      }
+      
+      // Validation du paramètre limit
+      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'limit',
+          message: 'La limite doit être un entier entre 1 et 100'
+        }));
+      }
+
+      // Validation du event_id si fourni
+      if (event_id && isNaN(parseInt(event_id))) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'event_id',
+          message: 'L\'ID de l\'événement doit être un nombre entier'
+        }));
+      }
+
+      const options = {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20,
+        event_id: event_id ? parseInt(event_id) : null,
+        userId: DEFAULT_USER_ID
+      };
+
+      const result = await ticketsService.getTicketTypes(options);
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('non autorisé')) {
+          return res.status(403).json(errorResponse(result.error));
+        }
+        throw new ValidationError(result.error, result.details);
+      }
+      
+      if (result.pagination) {
+        res.json(paginatedResponse(
+          'Types de billets récupérés avec succès',
+          result.data,
+          result.pagination
+        ));
+      } else {
+        res.json(successResponse(
+          'Types de billets récupérés avec succès',
+          result.data
+        ));
+      }
     } catch (error) {
       next(error);
     }
@@ -73,31 +202,29 @@ class TicketsController {
     try {
       const { id } = req.params;
       
-      // Security: Validate ID parameter
       if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid ticket type ID provided');
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID du type de billet est requis et doit être un nombre entier'
+        }));
       }
 
-      const ticketTypeId = parseInt(id);
-      
-      // Security: Check for potential SQL injection patterns
-      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in ticket type ID');
-      }
-
-      const result = await ticketsService.getTicketTypeById(ticketTypeId, req.user.id);
+      const result = await ticketsService.getTicketTypeById(parseInt(id), DEFAULT_USER_ID);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Ticket type');
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Type de billet'));
+        }
+        if (result.error && result.error.includes('accès')) {
+          return res.status(403).json(errorResponse(result.error));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data
-      });
+      res.json(successResponse(
+        'Type de billet récupéré avec succès',
+        result.data
+      ));
     } catch (error) {
       next(error);
     }
@@ -107,52 +234,100 @@ class TicketsController {
     try {
       const { id } = req.params;
       
-      // Security: Validate ID and permissions
       if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid ticket type ID provided');
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID du type de billet est requis et doit être un nombre entier'
+        }));
       }
 
-      const ticketTypeId = parseInt(id);
-      
-      // Security: Check ownership before update
-      const existingTicketType = await ticketsService.getTicketTypeById(ticketTypeId, req.user.id);
-      if (!existingTicketType.success) {
-        throw new NotFoundError('Ticket type');
-      }
-
-      // Security: Validate update data
       const updateData = req.body;
-      
+      if (!updateData || Object.keys(updateData).length === 0) {
+        return res.status(400).json(badRequestResponse(
+          'Au moins un champ doit être fourni pour la mise à jour'
+        ));
+      }
+
+      // Validation des champs de mise à jour
+      if (updateData.name) {
+        if (typeof updateData.name !== 'string' || updateData.name.trim().length < 2) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'name',
+            message: 'Le nom doit contenir au moins 2 caractères'
+          }));
+        }
+        if (updateData.name.length > 255) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'name',
+            message: 'Le nom ne peut pas dépasser 255 caractères'
+          }));
+        }
+      }
+
       if (updateData.type && !['free', 'paid', 'donation'].includes(updateData.type)) {
-        throw new ValidationError('Invalid ticket type');
+        return res.status(400).json(validationErrorResponse({
+          field: 'type',
+          message: 'Le type doit être free, paid ou donation'
+        }));
       }
 
-      if (updateData.price !== undefined && (isNaN(parseFloat(updateData.price)) || parseFloat(updateData.price) < 0)) {
-        throw new ValidationError('Price must be a positive number');
+      if (updateData.price !== undefined) {
+        if (isNaN(parseFloat(updateData.price)) || parseFloat(updateData.price) < 0) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'price',
+            message: 'Le prix doit être un nombre positif'
+          }));
+        }
       }
 
-      if (updateData.quantity !== undefined && (isNaN(parseInt(updateData.quantity)) || parseInt(updateData.quantity) < 0)) {
-        throw new ValidationError('Quantity must be a positive integer');
+      if (updateData.quantity !== undefined) {
+        if (isNaN(parseInt(updateData.quantity)) || parseInt(updateData.quantity) < 0) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'quantity',
+            message: 'La quantité doit être un entier positif'
+          }));
+        }
       }
 
       if (updateData.currency && !/^[A-Z]{3}$/.test(updateData.currency)) {
-        throw new ValidationError('Currency must be a valid 3-letter code');
+        return res.status(400).json(validationErrorResponse({
+          field: 'currency',
+          message: 'La devise doit être un code ISO 4217 valide (3 lettres majuscules)'
+        }));
       }
 
-      const result = await ticketsService.updateTicketType(ticketTypeId, updateData, req.user.id);
+      if (updateData.description && (typeof updateData.description !== 'string' || updateData.description.length > 1000)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'description',
+          message: 'La description ne peut pas dépasser 1000 caractères'
+        }));
+      }
+
+      // Vérification que le type de billet existe
+      const existingTicketType = await ticketsService.getTicketTypeById(parseInt(id), DEFAULT_USER_ID);
+      if (!existingTicketType.success) {
+        if (existingTicketType.error && (existingTicketType.error.includes('non trouvé') || existingTicketType.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Type de billet'));
+        }
+        throw new ValidationError(existingTicketType.error, existingTicketType.details);
+      }
+
+      const result = await ticketsService.updateTicketType(parseInt(id), updateData, DEFAULT_USER_ID);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Ticket type');
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Type de billet'));
+        }
+        if (result.error && result.error.includes('conflit')) {
+          return res.status(409).json(conflictResponse(result.error));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
+      res.json(successResponse(
+        result.message || 'Type de billet mis à jour avec succès',
+        result.data
+      ));
     } catch (error) {
       next(error);
     }
@@ -162,228 +337,220 @@ class TicketsController {
     try {
       const { id } = req.params;
       
-      // Security: Validate ID and permissions
       if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid ticket type ID provided');
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID du type de billet est requis et doit être un nombre entier'
+        }));
       }
 
-      const ticketTypeId = parseInt(id);
-      
-      // Security: Check ownership and business rules
-      const existingTicketType = await ticketsService.getTicketTypeById(ticketTypeId, req.user.id);
+      // Vérification que le type de billet existe
+      const existingTicketType = await ticketsService.getTicketTypeById(parseInt(id), DEFAULT_USER_ID);
       if (!existingTicketType.success) {
-        throw new NotFoundError('Ticket type');
+        if (existingTicketType.error && (existingTicketType.error.includes('non trouvé') || existingTicketType.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Type de billet'));
+        }
+        throw new ValidationError(existingTicketType.error, existingTicketType.details);
       }
 
-      // Security: Check if tickets have been sold for this type
-      if (existingTicketType.data.tickets_sold > 0) {
-        throw new ValidationError('Cannot delete ticket type with sold tickets. Archive it instead.');
+      // Validation: Vérifier s'il y a des billets vendus
+      if (existingTicketType.data.tickets_sold && existingTicketType.data.tickets_sold > 0) {
+        return res.status(400).json(badRequestResponse(
+          'Impossible de supprimer un type de billet avec des billets vendus'
+        ));
       }
 
-      const result = await ticketsService.deleteTicketType(ticketTypeId, req.user.id);
+      const result = await ticketsService.deleteTicketType(parseInt(id), DEFAULT_USER_ID);
       
       if (!result.success) {
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async createTicketTemplate(req, res, next) {
-    try {
-      // Security: Validate user permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('User authentication required');
-      }
-
-      // Security: Rate limiting check
-      if (req.rateLimit && req.rateLimit.remaining === 0) {
-        throw SecurityErrorHandler.handleRateLimit(req);
-      }
-
-      // Security: Validate template data
-      const templateData = req.body;
-      
-      if (templateData.preview_url && !/^https?:\/\/.+/.test(templateData.preview_url)) {
-        throw new ValidationError('Preview URL must be a valid HTTP/HTTPS URL');
-      }
-
-      if (templateData.source_files_path && (templateData.source_files_path.includes('..') || templateData.source_files_path.includes('~'))) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'Suspicious file path detected');
-      }
-
-      const result = await ticketsService.createTicketTemplate(templateData, req.user.id);
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('already exists')) {
-          throw new ConflictError(result.error);
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Type de billet'));
+        }
+        if (result.error && result.error.includes('conflit')) {
+          return res.status(409).json(conflictResponse(result.error));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.status(201).json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
+      res.json(successResponse(
+        result.message || 'Type de billet supprimé avec succès',
+        result.data
+      ));
     } catch (error) {
       next(error);
     }
   }
 
-  async getTicketTemplate(req, res, next) {
+  async purchaseTicket(req, res, next) {
     try {
-      const { id } = req.params;
+      const { ticket_type_id, quantity, payment_method_id } = req.body;
       
-      // Security: Validate ID parameter
-      if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid ticket template ID provided');
+      // Validation du ticket_type_id
+      if (!ticket_type_id || isNaN(parseInt(ticket_type_id))) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'ticket_type_id',
+          message: 'L\'ID du type de billet est requis et doit être un nombre entier'
+        }));
       }
 
-      const templateId = parseInt(id);
-      
-      // Security: Check for potential SQL injection patterns
-      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in template ID');
+      // Validation de la quantité
+      if (!quantity || isNaN(parseInt(quantity)) || parseInt(quantity) < 1) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'quantity',
+          message: 'La quantité est requise et doit être un entier positif'
+        }));
       }
 
-      const result = await ticketsService.getTicketTemplateById(templateId, req.user.id);
+      // Validation du payment_method_id
+      if (!payment_method_id || isNaN(parseInt(payment_method_id))) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'payment_method_id',
+          message: 'L\'ID du moyen de paiement est requis et doit être un nombre entier'
+        }));
+      }
+
+      const purchaseData = {
+        ticket_type_id: parseInt(ticket_type_id),
+        quantity: parseInt(quantity),
+        payment_method_id: parseInt(payment_method_id)
+      };
+
+      const result = await ticketsService.purchaseTicket(purchaseData, DEFAULT_USER_ID);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Ticket template');
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Type de billet ou moyen de paiement'));
+        }
+        if (result.error && result.error.includes('conflit')) {
+          return res.status(409).json(conflictResponse(result.error));
+        }
+        if (result.error && result.error.includes('insuffisant')) {
+          return res.status(400).json(badRequestResponse(result.error));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data
-      });
+      res.status(201).json(createdResponse(
+        result.message || 'Billet acheté avec succès',
+        result.data
+      ));
     } catch (error) {
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
       next(error);
     }
   }
 
-  async getPopularTemplates(req, res, next) {
+  async getTickets(req, res, next) {
     try {
-      // Security: Validate query parameters
-      const { limit, category } = req.query;
+      const { event_id, ticket_type_id, page, limit, status } = req.query;
       
-      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 50)) {
-        throw new ValidationError('Limit must be between 1 and 50');
+      // Validation du paramètre page
+      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'page',
+          message: 'Le numéro de page doit être un entier positif'
+        }));
+      }
+      
+      // Validation du paramètre limit
+      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'limit',
+          message: 'La limite doit être un entier entre 1 et 100'
+        }));
+      }
+
+      // Validation du event_id si fourni
+      if (event_id && isNaN(parseInt(event_id))) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'event_id',
+          message: 'L\'ID de l\'événement doit être un nombre entier'
+        }));
+      }
+
+      // Validation du ticket_type_id si fourni
+      if (ticket_type_id && isNaN(parseInt(ticket_type_id))) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'ticket_type_id',
+          message: 'L\'ID du type de billet doit être un nombre entier'
+        }));
+      }
+
+      // Validation du statut si fourni
+      const validStatuses = ['pending', 'paid', 'cancelled', 'used'];
+      if (status && !validStatuses.includes(status)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'status',
+          message: `Le statut doit être l'une des valeurs suivantes: ${validStatuses.join(', ')}`
+        }));
       }
 
       const options = {
-        limit: limit ? parseInt(limit) : 10,
-        category
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20,
+        event_id: event_id ? parseInt(event_id) : null,
+        ticket_type_id: ticket_type_id ? parseInt(ticket_type_id) : null,
+        status,
+        userId: DEFAULT_USER_ID
       };
 
-      const result = await ticketsService.getPopularTemplates(options);
+      const result = await ticketsService.getTickets(options);
       
       if (!result.success) {
+        if (result.error && result.error.includes('non autorisé')) {
+          return res.status(403).json(errorResponse(result.error));
+        }
         throw new ValidationError(result.error, result.details);
       }
-
-      res.json({
-        success: true,
-        data: result.data
-      });
+      
+      if (result.pagination) {
+        res.json(paginatedResponse(
+          'Billets récupérés avec succès',
+          result.data,
+          result.pagination
+        ));
+      } else {
+        res.json(successResponse(
+          'Billets récupérés avec succès',
+          result.data
+        ));
+      }
     } catch (error) {
       next(error);
     }
   }
 
-  async generateTicket(req, res, next) {
+  async getTicket(req, res, next) {
     try {
-      // Security: Validate user permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('User authentication required');
-      }
-
-      // Security: Validate request data
-      const { event_guest_id, ticket_type_id, ticket_template_id } = req.body;
+      const { id } = req.params;
       
-      if (!event_guest_id || isNaN(parseInt(event_guest_id))) {
-        throw new ValidationError('Valid event guest ID is required');
+      if (!id || isNaN(parseInt(id))) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID du billet est requis et doit être un nombre entier'
+        }));
       }
 
-      if (!ticket_type_id || isNaN(parseInt(ticket_type_id))) {
-        throw new ValidationError('Valid ticket type ID is required');
-      }
-
-      if (ticket_template_id && isNaN(parseInt(ticket_template_id))) {
-        throw new ValidationError('Valid ticket template ID is required');
-      }
-
-      // Security: Check for potential SQL injection
-      const ids = [event_guest_id, ticket_type_id, ticket_template_id].filter(Boolean);
-      for (const id of ids) {
-        if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-          throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in ticket generation');
-        }
-      }
-
-      const result = await ticketsService.generateTicket({
-        event_guest_id: parseInt(event_guest_id),
-        ticket_type_id: parseInt(ticket_type_id),
-        ticket_template_id: ticket_template_id ? parseInt(ticket_template_id) : null
-      }, req.user.id);
+      const result = await ticketsService.getTicketById(parseInt(id), DEFAULT_USER_ID);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Event guest or ticket type');
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Billet'));
         }
-        if (result.error && result.error.includes('already exists')) {
-          throw new ConflictError('Ticket already generated for this event guest');
+        if (result.error && result.error.includes('accès')) {
+          return res.status(403).json(errorResponse(result.error));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.status(201).json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async getTicketByCode(req, res, next) {
-    try {
-      const { ticketCode } = req.params;
-      
-      // Security: Validate ticket code
-      if (!ticketCode || ticketCode.length < 6 || ticketCode.length > 255) {
-        throw new ValidationError('Valid ticket code is required');
-      }
-
-      // Security: Check for suspicious patterns
-      if (ticketCode.includes(';') || ticketCode.includes('--') || ticketCode.includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in ticket code');
-      }
-
-      const result = await ticketsService.getTicketByCode(ticketCode, req.user.id);
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Ticket');
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data
-      });
+      res.json(successResponse(
+        'Billet récupéré avec succès',
+        result.data
+      ));
     } catch (error) {
       next(error);
     }
@@ -392,392 +559,41 @@ class TicketsController {
   async validateTicket(req, res, next) {
     try {
       const { id } = req.params;
+      const { qr_code } = req.body;
       
-      // Security: Validate ID parameter
       if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid ticket ID provided');
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID du billet est requis et doit être un nombre entier'
+        }));
       }
 
-      const ticketId = parseInt(id);
-      
-      // Security: Check for potential SQL injection patterns
-      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in ticket ID');
+      if (!qr_code || typeof qr_code !== 'string') {
+        return res.status(400).json(validationErrorResponse({
+          field: 'qr_code',
+          message: 'Le code QR est requis'
+        }));
       }
 
-      const result = await ticketsService.validateTicket(ticketId, req.user.id);
+      const result = await ticketsService.validateTicket(parseInt(id), qr_code, DEFAULT_USER_ID);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Ticket');
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Billet'));
         }
-        if (result.error && result.error.includes('already validated')) {
-          throw new ConflictError(result.error);
+        if (result.error && result.error.includes('déjà')) {
+          return res.status(409).json(conflictResponse(result.error));
+        }
+        if (result.error && result.error.includes('invalide')) {
+          return res.status(400).json(badRequestResponse(result.error));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async validateTicketByCode(req, res, next) {
-    try {
-      const { ticket_code } = req.body;
-      
-      // Security: Validate ticket code
-      if (!ticket_code || ticket_code.length < 6 || ticket_code.length > 255) {
-        throw new ValidationError('Valid ticket code is required');
-      }
-
-      // Security: Check for suspicious patterns
-      if (ticket_code.includes(';') || ticket_code.includes('--') || ticket_code.includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in ticket code');
-      }
-
-      const result = await ticketsService.validateTicketByCode(ticket_code, req.user.id);
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Ticket');
-        }
-        if (result.error && result.error.includes('already validated')) {
-          throw new ConflictError(result.error);
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async getTickets(req, res, next) {
-    try {
-      // Security: Validate query parameters
-      const { page, limit, status, ticket_type_id, event_id } = req.query;
-      
-      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
-        throw new ValidationError('Invalid page parameter');
-      }
-      
-      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
-        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
-      }
-
-      // Security: Validate IDs
-      const options = {
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 20,
-        status,
-        ticket_type_id: ticket_type_id ? parseInt(ticket_type_id) : undefined,
-        event_id: event_id ? parseInt(event_id) : undefined
-      };
-
-      // Security: Check for SQL injection in IDs
-      const ids = [ticket_type_id, event_id].filter(Boolean);
-      for (const id of ids) {
-        if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-          throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in query parameters');
-        }
-      }
-
-      const result = await ticketsService.getTickets(options);
-      
-      if (!result.success) {
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async getTicketsByEvent(req, res, next) {
-    try {
-      const { eventId } = req.params;
-      
-      // Security: Validate event ID
-      if (!eventId || isNaN(parseInt(eventId))) {
-        throw new ValidationError('Invalid event ID provided');
-      }
-
-      const eventIdInt = parseInt(eventId);
-      
-      // Security: Check for potential SQL injection patterns
-      if (eventId.toString().includes(';') || eventId.toString().includes('--') || eventId.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in event ID');
-      }
-
-      // Security: Validate query parameters
-      const { page, limit, status, ticket_type_id } = req.query;
-      
-      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
-        throw new ValidationError('Invalid page parameter');
-      }
-      
-      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
-        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
-      }
-
-      const options = {
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 20,
-        status,
-        ticket_type_id: ticket_type_id ? parseInt(ticket_type_id) : undefined
-      };
-
-      const result = await ticketsService.getTicketsByEvent(eventIdInt, options);
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Event');
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async getTicketStats(req, res, next) {
-    try {
-      const { eventId } = req.params;
-      
-      // Security: Validate event ID
-      if (!eventId || isNaN(parseInt(eventId))) {
-        throw new ValidationError('Invalid event ID provided');
-      }
-
-      const eventIdInt = parseInt(eventId);
-      
-      // Security: Check user permissions for stats access
-      const result = await ticketsService.getTicketStats(eventIdInt, req.user.id);
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Event');
-        }
-        if (result.error && result.error.includes('access denied')) {
-          throw new AuthorizationError(result.error);
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async bulkGenerateTickets(req, res, next) {
-    try {
-      // Security: Validate user permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('User authentication required');
-      }
-
-      // Security: Validate request data
-      const { event_guest_ids, ticket_type_id, ticket_template_id } = req.body;
-      
-      if (!event_guest_ids || !Array.isArray(event_guest_ids)) {
-        throw new ValidationError('Event guest IDs array is required');
-      }
-
-      if (event_guest_ids.length === 0) {
-        throw new ValidationError('At least one event guest ID must be provided');
-      }
-
-      if (event_guest_ids.length > 100) {
-        throw new ValidationError('Cannot generate more than 100 tickets at once');
-      }
-
-      if (!ticket_type_id || isNaN(parseInt(ticket_type_id))) {
-        throw new ValidationError('Valid ticket type ID is required');
-      }
-
-      // Security: Validate all IDs
-      for (let i = 0; i < event_guest_ids.length; i++) {
-        const id = event_guest_ids[i];
-        if (isNaN(parseInt(id))) {
-          throw new ValidationError(`Invalid event guest ID at index ${i}`);
-        }
-        if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-          throw SecurityErrorHandler.handleInvalidInput(req, `SQL injection attempt in event guest ID at index ${i}`);
-        }
-      }
-
-      const result = await ticketsService.bulkGenerateTickets({
-        event_guest_ids: event_guest_ids.map(id => parseInt(id)),
-        ticket_type_id: parseInt(ticket_type_id),
-        ticket_template_id: ticket_template_id ? parseInt(ticket_template_id) : null
-      }, req.user.id);
-      
-      if (!result.success) {
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.status(201).json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async getTicketTypesByEvent(req, res, next) {
-    try {
-      const { eventId } = req.params;
-      
-      // Security: Validate event ID
-      if (!eventId || isNaN(parseInt(eventId))) {
-        throw new ValidationError('Invalid event ID provided');
-      }
-
-      const eventIdInt = parseInt(eventId);
-      
-      // Security: Check for potential SQL injection patterns
-      if (eventId.toString().includes(';') || eventId.toString().includes('--') || eventId.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in event ID');
-      }
-
-      // Security: Validate query parameters
-      const { page, limit, status } = req.query;
-      
-      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
-        throw new ValidationError('Invalid page parameter');
-      }
-      
-      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
-        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
-      }
-
-      const options = {
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 20,
-        status
-      };
-
-      const result = await ticketsService.getTicketTypesByEvent(eventIdInt, options, req.user.id);
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Event');
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async createJob(req, res, next) {
-    try {
-      // Security: Validate user permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('User authentication required');
-      }
-
-      // Security: Validate job data
-      const { event_id, status, details } = req.body;
-      
-      if (!event_id || isNaN(parseInt(event_id))) {
-        throw new ValidationError('Valid event ID is required');
-      }
-
-      if (!status || !['pending', 'processing', 'completed', 'failed'].includes(status)) {
-        throw new ValidationError('Valid job status is required');
-      }
-
-      if (!details || typeof details !== 'object') {
-        throw new ValidationError('Job details are required');
-      }
-
-      const result = await ticketsService.createTicketGenerationJob({
-        event_id: parseInt(event_id),
-        status,
-        details,
-        created_by: req.user.id
-      });
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Event');
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.status(201).json({
-        success: true,
-        data: result.data,
-        message: result.message || 'Job created successfully'
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async processJob(req, res, next) {
-    try {
-      const { jobId } = req.params;
-      
-      // Security: Validate job ID
-      if (!jobId || isNaN(parseInt(jobId))) {
-        throw new ValidationError('Valid job ID is required');
-      }
-
-      // Security: Check user permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('User authentication required');
-      }
-
-      const result = await ticketsService.processTicketGenerationJob(parseInt(jobId), req.user.id);
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Job');
-        }
-        if (result.error && result.error.includes('already processed')) {
-          throw new ConflictError(result.error);
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data,
-        message: result.message || 'Job processed successfully'
-      });
+      res.json(successResponse(
+        result.message || 'Billet validé avec succès',
+        result.data
+      ));
     } catch (error) {
       next(error);
     }

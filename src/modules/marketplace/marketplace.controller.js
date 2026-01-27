@@ -2,156 +2,233 @@ const marketplaceService = require('./marketplace.service');
 const { 
   ErrorHandler, 
   ValidationError, 
-  NotFoundError, 
-  AuthorizationError,
-  SecurityErrorHandler,
+  NotFoundError,
   ConflictError,
   DatabaseError 
 } = require('../../utils/errors');
+const { 
+  createResponse,
+  successResponse,
+  errorResponse,
+  validationErrorResponse,
+  notFoundResponse,
+  conflictResponse,
+  serverErrorResponse,
+  badRequestResponse,
+  createdResponse,
+  paginatedResponse
+} = require('../../utils/response');
+
+// Constante par défaut pour l'utilisateur ID
+const DEFAULT_USER_ID = 1;
 
 class MarketplaceController {
   async becomeDesigner(req, res, next) {
     try {
-      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ENTRY POINT');
-      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - Request body:', req.body);
-      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - User context:', { 
-        id: req.user?.id, 
-        ip: req.ip 
-      });
+      const { portfolio_url, experience_years, specialties, bio } = req.body;
       
-      // Security: Validate user permissions
-      if (!req.user || !req.user.id) {
-        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Missing user authentication');
-        throw new AuthorizationError('User authentication required');
+      // Validation du portfolio_url
+      if (!portfolio_url || typeof portfolio_url !== 'string') {
+        return res.status(400).json(validationErrorResponse({
+          field: 'portfolio_url',
+          message: 'L\'URL du portfolio est requise'
+        }));
       }
 
-      // Security: Rate limiting check
-      if (req.rateLimit && req.rateLimit.remaining === 0) {
-        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Rate limit exceeded');
-        throw SecurityErrorHandler.handleRateLimit(req);
+      // Validation simple de l'URL
+      try {
+        new URL(portfolio_url);
+      } catch {
+        return res.status(400).json(validationErrorResponse({
+          field: 'portfolio_url',
+          message: 'L\'URL du portfolio n\'est pas valide'
+        }));
       }
 
-      // Security: Validate request data
-      const { user_id, brand_name, portfolio_url } = req.body;
-      
-      if (!user_id || isNaN(parseInt(user_id))) {
-        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Invalid user ID:', user_id);
-        throw new ValidationError('Valid user ID is required');
+      if (portfolio_url.length > 500) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'portfolio_url',
+          message: 'L\'URL du portfolio ne peut pas dépasser 500 caractères'
+        }));
       }
 
-      if (!brand_name || brand_name.length < 2 || brand_name.length > 255) {
-        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Invalid brand name:', brand_name);
-        throw new ValidationError('Brand name must be between 2 and 255 characters');
+      // Validation de l'expérience
+      if (experience_years !== undefined) {
+        if (isNaN(parseInt(experience_years)) || parseInt(experience_years) < 0 || parseInt(experience_years) > 50) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'experience_years',
+            message: 'Les années d\'expérience doivent être un entier entre 0 et 50'
+          }));
+        }
       }
 
-      // Security: Check for suspicious patterns in brand name
-      if (brand_name.includes('<script>') || brand_name.includes('javascript:') || brand_name.includes('onload=')) {
-        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: XSS attempt in brand name');
-        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in brand name');
+      // Validation des spécialités (optionnel)
+      if (specialties) {
+        if (!Array.isArray(specialties)) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'specialties',
+            message: 'Les spécialités doivent être un tableau'
+          }));
+        }
+        
+        if (specialties.length > 10) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'specialties',
+            message: 'Le nombre de spécialités ne peut pas dépasser 10'
+          }));
+        }
+
+        for (const specialty of specialties) {
+          if (typeof specialty !== 'string' || specialty.trim().length < 2) {
+            return res.status(400).json(validationErrorResponse({
+              field: 'specialties',
+              message: 'Chaque spécialité doit contenir au moins 2 caractères'
+            }));
+          }
+          if (specialty.length > 100) {
+            return res.status(400).json(validationErrorResponse({
+              field: 'specialties',
+              message: 'Chaque spécialité ne peut pas dépasser 100 caractères'
+            }));
+          }
+        }
       }
 
-      if (portfolio_url && !/^https?:\/\/.+/.test(portfolio_url)) {
-        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Invalid portfolio URL:', portfolio_url);
-        throw new ValidationError('Portfolio URL must be a valid HTTP/HTTPS URL');
+      // Validation de la bio (optionnelle)
+      if (bio && (typeof bio !== 'string' || bio.length > 2000)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'bio',
+          message: 'La biographie ne peut pas dépasser 2000 caractères'
+        }));
       }
 
-      // Security: Check for SQL injection in user ID
-      if (user_id.toString().includes(';') || user_id.toString().includes('--') || user_id.toString().includes('/*')) {
-        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: SQL injection attempt in user ID');
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in user ID');
-      }
+      const designerData = {
+        portfolio_url: portfolio_url.trim(),
+        experience_years: experience_years ? parseInt(experience_years) : 0,
+        specialties: specialties ? specialties.map(s => s.trim()) : [],
+        bio: bio ? bio.trim() : null
+      };
 
-      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - Validation passed, calling service...');
-      const result = await marketplaceService.becomeDesigner(parseInt(user_id), { brand_name, portfolio_url }, req.user.id);
-      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - Service result:', result);
+      const result = await marketplaceService.becomeDesigner(designerData, DEFAULT_USER_ID);
       
       if (!result.success) {
-        if (result.error && result.error.includes('already exists')) {
-          console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Conflict - designer already exists');
-          throw new ConflictError(result.error);
+        if (result.error && result.error.includes('existe déjà')) {
+          return res.status(409).json(conflictResponse(result.error));
         }
-        if (result.error && result.error.includes('not found')) {
-          console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: User not found');
-          throw new NotFoundError('User');
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Utilisateur'));
         }
-        console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR: Validation failed:', result.error);
         throw new ValidationError(result.error, result.details);
       }
 
-      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - SUCCESS PATH');
-      res.status(201).json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
+      res.status(201).json(createdResponse(
+        result.message || 'Demande de designer soumise avec succès',
+        result.data
+      ));
     } catch (error) {
-      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR PATH:', error.message);
-      console.log('🧪 [TEST LOG] MarketplaceController.becomeDesigner - ERROR STACK:', error.stack);
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
       next(error);
     }
   }
 
   async getDesigners(req, res, next) {
     try {
-      console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - ENTRY POINT');
-      console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - Request query:', req.query);
+      const { page, limit, search, experience_min, experience_max, specialties } = req.query;
       
-      // Security: Validate query parameters
-      const { page, limit, is_verified, search } = req.query;
-      
+      // Validation du paramètre page
       if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
-        console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - ERROR: Invalid page parameter:', page);
-        throw new ValidationError('Invalid page parameter');
+        return res.status(400).json(validationErrorResponse({
+          field: 'page',
+          message: 'Le numéro de page doit être un entier positif'
+        }));
       }
       
+      // Validation du paramètre limit
       if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
-        console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - ERROR: Invalid limit parameter:', limit);
-        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
+        return res.status(400).json(validationErrorResponse({
+          field: 'limit',
+          message: 'La limite doit être un entier entre 1 et 100'
+        }));
       }
 
+      // Validation du paramètre search
       if (search && search.length > 255) {
-        console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - ERROR: Search query too long:', search.length);
-        throw new ValidationError('Search query too long (max 255 characters)');
+        return res.status(400).json(validationErrorResponse({
+          field: 'search',
+          message: 'La recherche ne peut pas dépasser 255 caractères'
+        }));
       }
 
-      // Security: Check for XSS patterns in search
-      if (search && (search.includes('<script>') || search.includes('javascript:') || search.includes('onload='))) {
-        console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - ERROR: XSS attempt in search query');
-        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in search query');
+      // Validation de l'expérience minimale
+      if (experience_min && (isNaN(parseInt(experience_min)) || parseInt(experience_min) < 0)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'experience_min',
+          message: 'L\'expérience minimale doit être un entier positif'
+        }));
       }
 
-      if (is_verified !== undefined && !['true', 'false'].includes(is_verified)) {
-        console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - ERROR: Invalid is_verified parameter:', is_verified);
-        throw new ValidationError('Invalid is_verified parameter');
+      // Validation de l'expérience maximale
+      if (experience_max && (isNaN(parseInt(experience_max)) || parseInt(experience_max) < 0 || parseInt(experience_max) > 50)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'experience_max',
+          message: 'L\'expérience maximale doit être un entier entre 0 et 50'
+        }));
       }
 
-      console.log('🧪 [TEST LOG] MarketplaceController.getDesigners - Parameters validated:', { page, limit, is_verified, search });
+      // Validation des spécialités
+      let parsedSpecialties = [];
+      if (specialties) {
+        if (typeof specialties === 'string') {
+          parsedSpecialties = specialties.split(',').map(s => s.trim()).filter(s => s);
+        } else if (Array.isArray(specialties)) {
+          parsedSpecialties = specialties;
+        } else {
+          return res.status(400).json(validationErrorResponse({
+            field: 'specialties',
+            message: 'Les spécialités doivent être une chaîne séparée par des virgules ou un tableau'
+          }));
+        }
+
+        if (parsedSpecialties.length > 10) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'specialties',
+            message: 'Le nombre de spécialités ne peut pas dépasser 10'
+          }));
+        }
+      }
 
       const options = {
         page: page ? parseInt(page) : 1,
         limit: limit ? parseInt(limit) : 20,
-        is_verified: is_verified !== undefined ? is_verified === 'true' : undefined,
-        search
+        search,
+        experience_min: experience_min ? parseInt(experience_min) : null,
+        experience_max: experience_max ? parseInt(experience_max) : null,
+        specialties: parsedSpecialties
       };
 
-      console.log(' [TEST LOG] MarketplaceController.getDesigners - Calling marketplaceService.getDesigners...');
       const result = await marketplaceService.getDesigners(options);
-      console.log(' [TEST LOG] MarketplaceController.getDesigners - Service result:', result);
       
       if (!result.success) {
-        console.log(' [TEST LOG] MarketplaceController.getDesigners - ERROR: Service failed:', result.error);
         throw new ValidationError(result.error, result.details);
       }
-
-      console.log(' [TEST LOG] MarketplaceController.getDesigners - SUCCESS PATH');
-      res.json({
-        success: true,
-        data: result.data,
-        pagination: result.pagination
-      });
+      
+      if (result.pagination) {
+        res.json(paginatedResponse(
+          'Designers récupérés avec succès',
+          result.data,
+          result.pagination
+        ));
+      } else {
+        res.json(successResponse(
+          'Designers récupérés avec succès',
+          result.data
+        ));
+      }
     } catch (error) {
-      console.log(' [TEST LOG] MarketplaceController.getDesigners - ERROR PATH:', error.message);
-      console.log(' [TEST LOG] MarketplaceController.getDesigners - ERROR STACK:', error.stack);
       next(error);
     }
   }
@@ -160,87 +237,55 @@ class MarketplaceController {
     try {
       const { id } = req.params;
       
-      // Security: Validate ID parameter
       if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid designer ID provided');
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID du designer est requis et doit être un nombre entier'
+        }));
       }
 
-      const designerId = parseInt(id);
-      
-      // Security: Check for potential SQL injection patterns
-      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in designer ID');
-      }
-
-      const result = await marketplaceService.getDesignerById(designerId);
+      const result = await marketplaceService.getDesignerById(parseInt(id));
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Designer');
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Designer'));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data
-      });
+      res.json(successResponse(
+        'Designer récupéré avec succès',
+        result.data
+      ));
     } catch (error) {
       next(error);
     }
   }
 
-  async updateDesigner(req, res, next) {
+  async getDesignerPortfolio(req, res, next) {
     try {
       const { id } = req.params;
       
-      // Security: Validate ID and permissions
       if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid designer ID provided');
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID du designer est requis et doit être un nombre entier'
+        }));
       }
 
-      const designerId = parseInt(id);
-      
-      // Security: Check ownership before update
-      const existingDesigner = await marketplaceService.getDesignerById(designerId);
-      if (!existingDesigner.success) {
-        throw new NotFoundError('Designer');
-      }
-
-      if (existingDesigner.data.user_id !== req.user.id) {
-        throw new AuthorizationError('Only designers can update their own profiles');
-      }
-
-      // Security: Validate update data
-      const updateData = req.body;
-      
-      if (updateData.brand_name && (updateData.brand_name.length < 2 || updateData.brand_name.length > 255)) {
-        throw new ValidationError('Brand name must be between 2 and 255 characters');
-      }
-
-      if (updateData.portfolio_url && !/^https?:\/\/.+/.test(updateData.portfolio_url)) {
-        throw new ValidationError('Portfolio URL must be a valid HTTP/HTTPS URL');
-      }
-
-      // Security: Check for XSS patterns in brand name
-      if (updateData.brand_name && (updateData.brand_name.includes('<script>') || updateData.brand_name.includes('javascript:'))) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in brand name');
-      }
-
-      const result = await marketplaceService.updateDesigner(designerId, updateData, req.user.id);
+      const result = await marketplaceService.getDesignerPortfolio(parseInt(id));
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Designer');
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Portfolio du designer'));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
+      res.json(successResponse(
+        'Portfolio récupéré avec succès',
+        result.data
+      ));
     } catch (error) {
       next(error);
     }
@@ -248,129 +293,212 @@ class MarketplaceController {
 
   async createTemplate(req, res, next) {
     try {
-      // Security: Validate user permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('User authentication required');
-      }
-
-      // Security: Rate limiting check
-      if (req.rateLimit && req.rateLimit.remaining === 0) {
-        throw SecurityErrorHandler.handleRateLimit(req);
-      }
-
-      // Security: Validate request data
-      const { designer_id, name, description, preview_url, source_files_path, price, currency } = req.body;
+      const { name, description, category, price, preview_url, files } = req.body;
       
-      if (!designer_id || isNaN(parseInt(designer_id))) {
-        throw new ValidationError('Valid designer ID is required');
+      // Validation du nom
+      if (!name || typeof name !== 'string' || name.trim().length < 2) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'name',
+          message: 'Le nom est requis et doit contenir au moins 2 caractères'
+        }));
       }
 
-      if (!name || name.length < 3 || name.length > 255) {
-        throw new ValidationError('Template name must be between 3 and 255 characters');
+      if (name.length > 255) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'name',
+          message: 'Le nom ne peut pas dépasser 255 caractères'
+        }));
       }
 
-      if (price !== undefined && (isNaN(parseFloat(price)) || parseFloat(price) < 0)) {
-        throw new ValidationError('Price must be a positive number');
+      // Validation de la description
+      if (!description || typeof description !== 'string' || description.trim().length < 10) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'description',
+          message: 'La description est requise et doit contenir au moins 10 caractères'
+        }));
       }
 
-      if (currency && !/^[A-Z]{3}$/.test(currency)) {
-        throw new ValidationError('Currency must be a valid 3-letter code');
+      if (description.length > 2000) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'description',
+          message: 'La description ne peut pas dépasser 2000 caractères'
+        }));
       }
 
-      if (preview_url && !/^https?:\/\/.+/.test(preview_url)) {
-        throw new ValidationError('Preview URL must be a valid HTTP/HTTPS URL');
+      // Validation de la catégorie
+      const validCategories = ['invitation', 'ticket', 'poster', 'banner', 'social', 'other'];
+      if (!category || !validCategories.includes(category)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'category',
+          message: `La catégorie doit être l'une des valeurs suivantes: ${validCategories.join(', ')}`
+        }));
       }
 
-      // Security: Check for suspicious patterns
-      if (name.includes('<script>') || name.includes('javascript:')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in template name');
+      // Validation du prix
+      if (price === undefined || isNaN(parseFloat(price)) || parseFloat(price) < 0) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'price',
+          message: 'Le prix est requis et doit être un nombre positif'
+        }));
       }
 
-      if (source_files_path && (source_files_path.includes('..') || source_files_path.includes('~'))) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'Suspicious file path detected');
+      // Validation de l'URL de prévisualisation
+      if (!preview_url || typeof preview_url !== 'string') {
+        return res.status(400).json(validationErrorResponse({
+          field: 'preview_url',
+          message: 'L\'URL de prévisualisation est requise'
+        }));
       }
 
-      // Security: Check for SQL injection in designer ID
-      if (designer_id.toString().includes(';') || designer_id.toString().includes('--') || designer_id.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in designer ID');
+      try {
+        new URL(preview_url);
+      } catch {
+        return res.status(400).json(validationErrorResponse({
+          field: 'preview_url',
+          message: 'L\'URL de prévisualisation n\'est pas valide'
+        }));
       }
 
-      const result = await marketplaceService.createTemplate({
-        designer_id: parseInt(designer_id),
-        name,
-        description,
-        preview_url,
-        source_files_path,
-        price: price ? parseFloat(price) : 0,
-        currency: currency || 'EUR'
-      }, req.user.id);
+      // Validation des fichiers
+      if (!files || !Array.isArray(files) || files.length === 0) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'files',
+          message: 'Au moins un fichier est requis'
+        }));
+      }
+
+      for (const file of files) {
+        if (!file.name || !file.url || !file.type) {
+          return res.status(400).json(validationErrorResponse({
+            field: 'files',
+            message: 'Chaque fichier doit avoir un nom, une URL et un type'
+          }));
+        }
+      }
+
+      const templateData = {
+        name: name.trim(),
+        description: description.trim(),
+        category,
+        price: parseFloat(price),
+        preview_url: preview_url.trim(),
+        files
+      };
+
+      const result = await marketplaceService.createTemplate(templateData, DEFAULT_USER_ID);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Designer');
+        if (result.error && result.error.includes('existe déjà')) {
+          return res.status(409).json(conflictResponse(result.error));
         }
-        if (result.error && result.error.includes('already exists')) {
-          throw new ConflictError(result.error);
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Designer'));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.status(201).json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
+      res.status(201).json(createdResponse(
+        result.message || 'Template créé avec succès',
+        result.data
+      ));
     } catch (error) {
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
+      }
       next(error);
     }
   }
 
   async getTemplates(req, res, next) {
     try {
-      // Security: Validate query parameters
-      const { page, limit, status, designer_id, category, min_price, max_price } = req.query;
+      const { page, limit, search, category, designer_id, price_min, price_max } = req.query;
       
+      // Validation du paramètre page
       if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
-        throw new ValidationError('Invalid page parameter');
+        return res.status(400).json(validationErrorResponse({
+          field: 'page',
+          message: 'Le numéro de page doit être un entier positif'
+        }));
       }
       
+      // Validation du paramètre limit
       if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
-        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
+        return res.status(400).json(validationErrorResponse({
+          field: 'limit',
+          message: 'La limite doit être un entier entre 1 et 100'
+        }));
       }
 
-      if (status && !['pending_review', 'approved', 'rejected'].includes(status)) {
-        throw new ValidationError('Invalid status parameter');
+      // Validation du paramètre search
+      if (search && search.length > 255) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'search',
+          message: 'La recherche ne peut pas dépasser 255 caractères'
+        }));
       }
 
-      // Security: Validate numeric parameters
+      // Validation de la catégorie
+      const validCategories = ['invitation', 'ticket', 'poster', 'banner', 'social', 'other'];
+      if (category && !validCategories.includes(category)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'category',
+          message: `La catégorie doit être l'une des valeurs suivantes: ${validCategories.join(', ')}`
+        }));
+      }
+
+      // Validation du designer_id
+      if (designer_id && isNaN(parseInt(designer_id))) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'designer_id',
+          message: 'L\'ID du designer doit être un nombre entier'
+        }));
+      }
+
+      // Validation des prix
+      if (price_min && (isNaN(parseFloat(price_min)) || parseFloat(price_min) < 0)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'price_min',
+          message: 'Le prix minimum doit être un nombre positif'
+        }));
+      }
+
+      if (price_max && (isNaN(parseFloat(price_max)) || parseFloat(price_max) < 0)) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'price_max',
+          message: 'Le prix maximum doit être un nombre positif'
+        }));
+      }
+
       const options = {
         page: page ? parseInt(page) : 1,
         limit: limit ? parseInt(limit) : 20,
-        status,
-        designer_id: designer_id ? parseInt(designer_id) : undefined,
+        search,
         category,
-        min_price: min_price ? parseFloat(min_price) : undefined,
-        max_price: max_price ? parseFloat(max_price) : undefined
+        designer_id: designer_id ? parseInt(designer_id) : null,
+        price_min: price_min ? parseFloat(price_min) : null,
+        price_max: price_max ? parseFloat(price_max) : null
       };
-
-      // Security: Check for SQL injection in IDs
-      const ids = [designer_id].filter(Boolean);
-      for (const id of ids) {
-        if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-          throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in query parameters');
-        }
-      }
 
       const result = await marketplaceService.getTemplates(options);
       
       if (!result.success) {
         throw new ValidationError(result.error, result.details);
       }
-
-      res.json({
-        success: true,
-        data: result.data
-      });
+      
+      if (result.pagination) {
+        res.json(paginatedResponse(
+          'Templates récupérés avec succès',
+          result.data,
+          result.pagination
+        ));
+      } else {
+        res.json(successResponse(
+          'Templates récupérés avec succès',
+          result.data
+        ));
+      }
     } catch (error) {
       next(error);
     }
@@ -380,139 +508,26 @@ class MarketplaceController {
     try {
       const { id } = req.params;
       
-      // Security: Validate ID parameter
       if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid template ID provided');
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID du template est requis et doit être un nombre entier'
+        }));
       }
 
-      const templateId = parseInt(id);
-      
-      // Security: Check for potential SQL injection patterns
-      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in template ID');
-      }
-
-      const result = await marketplaceService.getTemplateById(templateId);
+      const result = await marketplaceService.getTemplateById(parseInt(id));
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Template');
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Template'));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async updateTemplate(req, res, next) {
-    try {
-      const { id } = req.params;
-      
-      // Security: Validate ID and permissions
-      if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid template ID provided');
-      }
-
-      const templateId = parseInt(id);
-      
-      // Security: Check ownership before update
-      const existingTemplate = await marketplaceService.getTemplateById(templateId);
-      if (!existingTemplate.success) {
-        throw new NotFoundError('Template');
-      }
-
-      // Security: Check if user is the template designer
-      if (existingTemplate.data.designer.user_id !== req.user.id) {
-        throw new AuthorizationError('Only template designers can update their own templates');
-      }
-
-      // Security: Validate update data
-      const updateData = req.body;
-      
-      if (updateData.name && (updateData.name.length < 3 || updateData.name.length > 255)) {
-        throw new ValidationError('Template name must be between 3 and 255 characters');
-      }
-
-      if (updateData.price !== undefined && (isNaN(parseFloat(updateData.price)) || parseFloat(updateData.price) < 0)) {
-        throw new ValidationError('Price must be a positive number');
-      }
-
-      if (updateData.currency && !/^[A-Z]{3}$/.test(updateData.currency)) {
-        throw new ValidationError('Currency must be a valid 3-letter code');
-      }
-
-      if (updateData.preview_url && !/^https?:\/\/.+/.test(updateData.preview_url)) {
-        throw new ValidationError('Preview URL must be a valid HTTP/HTTPS URL');
-      }
-
-      // Security: Check for XSS patterns
-      if (updateData.name && (updateData.name.includes('<script>') || updateData.name.includes('javascript:'))) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in template name');
-      }
-
-      const result = await marketplaceService.updateTemplate(templateId, updateData, req.user.id);
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Template');
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async deleteTemplate(req, res, next) {
-    try {
-      const { id } = req.params;
-      
-      // Security: Validate ID and permissions
-      if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Invalid template ID provided');
-      }
-
-      const templateId = parseInt(id);
-      
-      // Security: Check ownership and business rules
-      const existingTemplate = await marketplaceService.getTemplateById(templateId);
-      if (!existingTemplate.success) {
-        throw new NotFoundError('Template');
-      }
-
-      // Security: Check if user is the template designer
-      if (existingTemplate.data.designer.user_id !== req.user.id) {
-        throw new AuthorizationError('Only template designers can delete their own templates');
-      }
-
-      // Security: Check if template has been sold
-      if (existingTemplate.data.purchases_count > 0) {
-        throw new ValidationError('Cannot delete template with purchases. Archive it instead.');
-      }
-
-      const result = await marketplaceService.deleteTemplate(templateId, req.user.id);
-      
-      if (!result.success) {
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
+      res.json(successResponse(
+        'Template récupéré avec succès',
+        result.data
+      ));
     } catch (error) {
       next(error);
     }
@@ -520,414 +535,48 @@ class MarketplaceController {
 
   async purchaseTemplate(req, res, next) {
     try {
-      // Security: Validate user permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('User authentication required');
-      }
-
-      // Security: Rate limiting check
-      if (req.rateLimit && req.rateLimit.remaining === 0) {
-        throw SecurityErrorHandler.handleRateLimit(req);
-      }
-
-      // Security: Validate request data
-      const { template_id, amount, currency, transaction_id } = req.body;
-      
-      if (!template_id || isNaN(parseInt(template_id))) {
-        throw new ValidationError('Valid template ID is required');
-      }
-
-      if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-        throw new ValidationError('Valid positive amount is required');
-      }
-
-      if (!currency || !/^[A-Z]{3}$/.test(currency)) {
-        throw new ValidationError('Valid 3-letter currency code is required');
-      }
-
-      if (!transaction_id || transaction_id.length < 6 || transaction_id.length > 255) {
-        throw new ValidationError('Valid transaction ID is required');
-      }
-
-      // Security: Check for suspicious patterns in transaction ID
-      if (transaction_id.includes(';') || transaction_id.includes('--') || transaction_id.includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in transaction ID');
-      }
-
-      const result = await marketplaceService.purchaseTemplate({
-        template_id: parseInt(template_id),
-        amount: parseFloat(amount),
-        currency,
-        transaction_id,
-        user_id: req.user.id
-      });
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Template');
-        }
-        if (result.error && result.error.includes('already purchased')) {
-          throw new ConflictError(result.error);
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.status(201).json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async createReview(req, res, next) {
-    try {
-      // Security: Validate user permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('User authentication required');
-      }
-
-      // Security: Rate limiting check
-      if (req.rateLimit && req.rateLimit.remaining === 0) {
-        throw SecurityErrorHandler.handleRateLimit(req);
-      }
-
-      // Security: Validate request data
-      const { template_id, rating, comment } = req.body;
-      
-      if (!template_id || isNaN(parseInt(template_id))) {
-        throw new ValidationError('Valid template ID is required');
-      }
-
-      if (!rating || isNaN(parseInt(rating)) || parseInt(rating) < 1 || parseInt(rating) > 5) {
-        throw new ValidationError('Rating must be between 1 and 5');
-      }
-
-      if (comment && comment.length > 1000) {
-        throw new ValidationError('Comment too long (max 1000 characters)');
-      }
-
-      // Security: Check for XSS patterns in comment
-      if (comment && (comment.includes('<script>') || comment.includes('javascript:') || comment.includes('onload='))) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in review comment');
-      }
-
-      const result = await marketplaceService.createReview({
-        template_id: parseInt(template_id),
-        rating: parseInt(rating),
-        comment,
-        user_id: req.user.id
-      });
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Template');
-        }
-        if (result.error && result.error.includes('already reviewed')) {
-          throw new ConflictError(result.error);
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.status(201).json({
-        success: true,
-        data: result.data,
-        message: result.message
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async getUserPurchases(req, res, next) {
-    try {
-      // Security: Validate user permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('User authentication required');
-      }
-
-      // Security: Validate query parameters
-      const { page, limit, status } = req.query;
-      
-      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
-        throw new ValidationError('Invalid page parameter');
-      }
-      
-      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
-        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
-      }
-
-      if (status && !['pending', 'completed', 'failed'].includes(status)) {
-        throw new ValidationError('Invalid status parameter');
-      }
-
-      const options = {
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 20,
-        status
-      };
-
-      const result = await marketplaceService.getUserPurchases(req.user.id, options);
-      
-      if (!result.success) {
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async approveTemplate(req, res, next) {
-    try {
       const { id } = req.params;
+      const { payment_method_id } = req.body;
       
-      // Security: Validate admin permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('Admin authentication required');
-      }
-
-      // Security: Check if user has admin role
-      if (!req.user.roles || !req.user.roles.includes('admin')) {
-        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user approving template');
-      }
-
-      // Security: Validate template ID
       if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Valid template ID is required');
+        return res.status(400).json(validationErrorResponse({
+          field: 'id',
+          message: 'L\'ID du template est requis et doit être un nombre entier'
+        }));
       }
 
-      const templateId = parseInt(id);
-      
-      // Security: Check for SQL injection
-      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in template ID');
+      if (!payment_method_id || isNaN(parseInt(payment_method_id))) {
+        return res.status(400).json(validationErrorResponse({
+          field: 'payment_method_id',
+          message: 'L\'ID du moyen de paiement est requis et doit être un nombre entier'
+        }));
       }
 
-      // Security: Log template approval
-      console.warn('Template approved by admin:', {
-        adminId: req.user.id,
-        templateId,
-        ip: req.ip,
-        timestamp: new Date().toISOString()
-      });
-
-      const result = await marketplaceService.approveTemplate(templateId, req.user.id);
+      const result = await marketplaceService.purchaseTemplate(parseInt(id), parseInt(payment_method_id), DEFAULT_USER_ID);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Template');
+        if (result.error && (result.error.includes('non trouvé') || result.error.includes('not found'))) {
+          return res.status(404).json(notFoundResponse('Template ou moyen de paiement'));
+        }
+        if (result.error && result.error.includes('déjà')) {
+          return res.status(409).json(conflictResponse(result.error));
+        }
+        if (result.error && result.error.includes('insuffisant')) {
+          return res.status(400).json(badRequestResponse(result.error));
         }
         throw new ValidationError(result.error, result.details);
       }
 
-      res.json({
-        success: true,
-        data: result.data,
-        message: 'Template approved successfully'
-      });
+      res.status(201).json(createdResponse(
+        result.message || 'Template acheté avec succès',
+        result.data
+      ));
     } catch (error) {
-      next(error);
-    }
-  }
-
-  async rejectTemplate(req, res, next) {
-    try {
-      const { id } = req.params;
-      const { reason } = req.body;
-      
-      // Security: Validate admin permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('Admin authentication required');
+      if (error instanceof ValidationError) {
+        return res.status(400).json(validationErrorResponse(
+          error.message || 'Erreur de validation'
+        ));
       }
-
-      // Security: Check if user has admin role
-      if (!req.user.roles || !req.user.roles.includes('admin')) {
-        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user rejecting template');
-      }
-
-      // Security: Validate template ID
-      if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Valid template ID is required');
-      }
-
-      const templateId = parseInt(id);
-      
-      // Security: Validate reason
-      if (!reason || reason.length < 10 || reason.length > 1000) {
-        throw new ValidationError('Reason must be between 10 and 1000 characters');
-      }
-
-      // Security: Check for XSS in reason
-      if (reason.includes('<script>') || reason.includes('javascript:') || reason.includes('onload=')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in rejection reason');
-      }
-
-      // Security: Check for SQL injection
-      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in template ID');
-      }
-
-      // Security: Log template rejection
-      console.warn('Template rejected by admin:', {
-        adminId: req.user.id,
-        templateId,
-        reason,
-        ip: req.ip,
-        timestamp: new Date().toISOString()
-      });
-
-      const result = await marketplaceService.rejectTemplate(templateId, reason, req.user.id);
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Template');
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data,
-        message: 'Template rejected successfully'
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async getTemplateReviews(req, res, next) {
-    try {
-      const { templateId } = req.params;
-      
-      // Security: Validate template ID
-      if (!templateId || isNaN(parseInt(templateId))) {
-        throw new ValidationError('Invalid template ID provided');
-      }
-
-      const templateIdInt = parseInt(templateId);
-      
-      // Security: Check for potential SQL injection patterns
-      if (templateId.toString().includes(';') || templateId.toString().includes('--') || templateId.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in template ID');
-      }
-
-      // Security: Validate query parameters
-      const { page, limit, rating } = req.query;
-      
-      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
-        throw new ValidationError('Invalid page parameter');
-      }
-      
-      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
-        throw new ValidationError('Invalid limit parameter (must be between 1 and 100)');
-      }
-
-      if (rating && (isNaN(parseInt(rating)) || parseInt(rating) < 1 || parseInt(rating) > 5)) {
-        throw new ValidationError('Rating must be between 1 and 5');
-      }
-
-      const options = {
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 20,
-        rating: rating ? parseInt(rating) : undefined
-      };
-
-      const result = await marketplaceService.getTemplateReviews(templateIdInt, options);
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Template');
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async getMarketplaceStats(req, res, next) {
-    try {
-      // Security: Check user permissions for stats access
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('User authentication required');
-      }
-
-      const result = await marketplaceService.getMarketplaceStats(req.user.id);
-      
-      if (!result.success) {
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async verifyDesigner(req, res, next) {
-    try {
-      const { id } = req.params;
-      
-      // Security: Validate admin permissions
-      if (!req.user || !req.user.id) {
-        throw new AuthorizationError('Admin authentication required');
-      }
-
-      // Security: Check if user has admin role
-      if (!req.user.roles || !req.user.roles.includes('admin')) {
-        throw SecurityErrorHandler.handleSuspiciousActivity(req, 'Non-admin user verifying designer');
-      }
-
-      // Security: Validate designer ID
-      if (!id || isNaN(parseInt(id))) {
-        throw new ValidationError('Valid designer ID is required');
-      }
-
-      const designerId = parseInt(id);
-      
-      // Security: Check for SQL injection
-      if (id.toString().includes(';') || id.toString().includes('--') || id.toString().includes('/*')) {
-        throw SecurityErrorHandler.handleInvalidInput(req, 'SQL injection attempt in designer ID');
-      }
-
-      // Security: Log designer verification
-      console.warn('Designer verified by admin:', {
-        adminId: req.user.id,
-        designerId,
-        ip: req.ip,
-        timestamp: new Date().toISOString()
-      });
-
-      const result = await marketplaceService.verifyDesigner(designerId, req.user.id);
-      
-      if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
-          throw new NotFoundError('Designer');
-        }
-        throw new ValidationError(result.error, result.details);
-      }
-
-      res.json({
-        success: true,
-        data: result.data,
-        message: 'Designer verified successfully'
-      });
-    } catch (error) {
       next(error);
     }
   }
