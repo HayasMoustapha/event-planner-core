@@ -8,8 +8,6 @@ class TicketsRepository {
       description, 
       type, 
       quantity, 
-      price, 
-      currency, 
       available_from, 
       available_to, 
       created_by 
@@ -17,15 +15,15 @@ class TicketsRepository {
     
     const query = `
       INSERT INTO ticket_types (
-        event_id, name, description, type, quantity, price, currency, 
+        event_id, name, description, type, quantity, 
         available_from, available_to, created_by, updated_by
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)
       RETURNING *
     `;
     
     const values = [
-      event_id, name, description, type, quantity, price, currency,
+      event_id, name, description, type, quantity, 
       available_from, available_to, created_by
     ];
     const result = await database.query(query, values);
@@ -38,7 +36,6 @@ class TicketsRepository {
       ticket_code, 
       qr_code_data, 
       ticket_type_id, 
-      ticket_template_id,
       event_guest_id, 
       price, 
       currency, 
@@ -47,15 +44,15 @@ class TicketsRepository {
     
     const query = `
       INSERT INTO tickets (
-        ticket_code, qr_code_data, ticket_type_id, ticket_template_id,
+        ticket_code, qr_code_data, ticket_type_id, 
         event_guest_id, price, currency, created_by, updated_by
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
       RETURNING *
     `;
     
     const values = [
-      ticket_code, qr_code_data, ticket_type_id, ticket_template_id,
+      ticket_code, qr_code_data, ticket_type_id, 
       event_guest_id, price, currency, created_by
     ];
     const result = await database.query(query, values);
