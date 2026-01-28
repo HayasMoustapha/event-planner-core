@@ -169,14 +169,42 @@ class GuestsService {
 
   async addGuestsToEvent(eventId, guests, userId) {
     try {
-      const guestsWithIds = guests.map(guest => ({
-        ...guest,
-        id: uuidv4(),
-        event_id: eventId,
-        created_by: userId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }));
+      // Validation des entrées
+      if (!eventId) {
+        throw new Error('Event ID is required');
+      }
+      
+      if (!guests || !Array.isArray(guests)) {
+        throw new Error('Guests must be an array');
+      }
+      
+      if (guests.length === 0) {
+        throw new Error('At least one guest is required');
+      }
+      
+      const guestsWithIds = guests.map(guest => {
+        // Gérer le nom (split name en first_name et last_name)
+        let firstName = guest.first_name;
+        let lastName = guest.last_name;
+        
+        if (guest.name && !guest.first_name && !guest.last_name) {
+          const nameParts = guest.name.trim().split(' ');
+          firstName = nameParts[0] || '';
+          lastName = nameParts.slice(1).join(' ') || '';
+        }
+        
+        return {
+          ...guest,
+          first_name: firstName,
+          last_name: lastName,
+          id: uuidv4(),
+          event_id: eventId,
+          created_by: userId,
+          updated_by: userId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+      });
 
       const addedGuests = await guestsRepository.bulkCreate(guestsWithIds);
       

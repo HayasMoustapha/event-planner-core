@@ -140,6 +140,31 @@ class GuestsController {
       const { guests } = req.body;
       const userId = req.user?.id;
       
+      // Validation des entrées
+      if (!eventId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation Error',
+          message: 'Event ID is required'
+        });
+      }
+      
+      if (!guests || !Array.isArray(guests)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation Error',
+          message: 'Guests must be an array'
+        });
+      }
+      
+      if (guests.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation Error',
+          message: 'At least one guest is required'
+        });
+      }
+      
       const result = await guestsService.addGuestsToEvent(eventId, guests, userId);
       
       if (!result.success) {
