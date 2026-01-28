@@ -130,7 +130,7 @@ class EventsRepository {
   }
 
   async update(id, updateData, updatedBy) {
-    const allowedFields = ['title', 'description', 'event_date', 'location', 'status'];
+    const allowedFields = ['title', 'description', 'event_date', 'location', 'status', 'organizer_id'];
     const updates = [];
     const values = [];
     
@@ -153,7 +153,7 @@ class EventsRepository {
       };
     }
     
-    values.push(updatedBy, updatedBy, id);
+    values.push(updatedBy, id);
     
     const query = `
       UPDATE events 
@@ -163,6 +163,8 @@ class EventsRepository {
     `;
     
     try {
+      console.log('Query:', query);
+      console.log('Values:', values);
       const result = await database.query(query, values);
       return {
         success: true,
@@ -170,6 +172,7 @@ class EventsRepository {
         message: 'Event updated successfully'
       };
     } catch (error) {
+      console.error('Database error:', error);
       return {
         success: false,
         error: 'Failed to update event',
