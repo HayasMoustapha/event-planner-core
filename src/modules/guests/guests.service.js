@@ -208,6 +208,16 @@ class GuestsService {
 
       const addedGuests = await guestsRepository.bulkCreate(guestsWithIds);
       
+      // Créer les liaisons event_guests
+      const eventGuestsData = addedGuests.map(guest => ({
+        guest_id: guest.id,
+        event_id: eventId,
+        created_by: userId,
+        updated_by: userId
+      }));
+      
+      await guestsRepository.bulkCreateEventGuests(eventGuestsData);
+      
       return {
         success: true,
         data: addedGuests
@@ -252,8 +262,7 @@ class GuestsService {
       const checkInData = {
         guest_id: guestId,
         event_id: eventId,
-        checked_in_at: new Date().toISOString(),
-        checked_in_by: userId
+        checked_in_at: new Date().toISOString()
       };
 
       const checkIn = await guestsRepository.checkIn(checkInData);
@@ -273,16 +282,10 @@ class GuestsService {
 
   async checkInGuestById(guestId, eventId, userId) {
     try {
-      const guest = await guestsRepository.findById(guestId);
+      // Vérifier si l'invité existe et est lié à l'événement
+      const eventGuest = await guestsRepository.findEventGuest(guestId, eventId);
       
-      if (!guest) {
-        return {
-          success: false,
-          error: 'Guest not found'
-        };
-      }
-
-      if (guest.event_id !== eventId) {
+      if (!eventGuest) {
         return {
           success: false,
           error: 'Guest does not belong to this event'
@@ -292,8 +295,7 @@ class GuestsService {
       const checkInData = {
         guest_id: guestId,
         event_id: eventId,
-        checked_in_at: new Date().toISOString(),
-        checked_in_by: userId
+        checked_in_at: new Date().toISOString()
       };
 
       const checkIn = await guestsRepository.checkIn(checkInData);

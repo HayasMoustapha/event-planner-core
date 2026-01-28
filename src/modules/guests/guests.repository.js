@@ -110,7 +110,7 @@ class GuestsRepository {
       };
     }
     
-    values.push(updatedBy, updatedBy, id);
+    values.push(updatedBy, id);
     
     const query = `
       UPDATE guests 
@@ -155,7 +155,7 @@ class GuestsRepository {
     const offset = (page - 1) * limit;
     
     let query = `
-      SELECT g.*, eg.is_present, eg.check_in_time, eg.invitation_code, eg.status as event_guest_status
+      SELECT g.*, eg.is_present, eg.check_in_time, eg.status as event_guest_status
       FROM guests g
       INNER JOIN event_guests eg ON g.id = eg.guest_id AND eg.deleted_at IS NULL
       WHERE eg.event_id = $1 AND g.deleted_at IS NULL
@@ -273,20 +273,75 @@ class GuestsRepository {
     return result.rows;
   }
 
+  async bulkCreateEventGuests(eventGuestsData) {
+    if (!eventGuestsData || eventGuestsData.length === 0) {
+      return [];
+    }
+
+    const values = eventGuestsData.map((eventGuest, index) => {
+      const baseIndex = index * 4;
+      return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4})`;
+    }).join(', ');
+
+    const flatEventGuests = eventGuestsData.flatMap(eventGuest => [
+      eventGuest.guest_id,
+      eventGuest.event_id,
+      eventGuest.created_by,
+      eventGuest.updated_by
+    ]);
+
+    const query = `
+      INSERT INTO event_guests (guest_id, event_id, created_by, updated_by)
+      VALUES ${values}
+      RETURNING guest_id, event_id, created_at
+    `;
+
+    const result = await database.query(query, flatEventGuests);
+    return result.rows;
+  }
+
+  async getEventStats(eventId) {
+    const query = `
+      SELECT 
+        COUNT(*) as total_guests,
+        COUNT(CASE WHEN eg.is_present = true THEN 1 END) as checked_in_guests,
+        COUNT(CASE WHEN eg.is_present = false THEN 1 END) as pending_guests
+      FROM event_guests eg
+      WHERE eg.event_id = $1 AND eg.deleted_at IS NULL
+    `;
+    
+    const result = await database.query(query, [eventId]);
+    return result.rows[0] || {
+      total_guests: 0,
+      checked_in_guests: 0,
+      pending_guests: 0
+    };
+  }
+
+  async findEventGuest(guestId, eventId) {
+    const query = `
+      SELECT * FROM event_guests 
+      WHERE guest_id = $1 AND event_id = $2 AND deleted_at IS NULL
+    `;
+    
+    const result = await database.query(query, [guestId, eventId]);
+    return result.rows[0] || null;
+  }
+
   /**
    * Check in a guest
    */
   async checkIn(checkInData) {
-    const { guest_id, event_id, checked_in_at, checked_in_by } = checkInData;
+    const { guest_id, event_id, checked_in_at } = checkInData;
 
     const query = `
       UPDATE event_guests 
-      SET is_present = true, check_in_time = $1, checked_in_by = $2, updated_at = NOW()
-      WHERE guest_id = $3 AND event_id = $4
+      SET is_present = true, check_in_time = $1, updated_at = NOW()
+      WHERE guest_id = $2 AND event_id = $3
       RETURNING *
     `;
 
-    const result = await database.query(query, [checked_in_at, checked_in_by, guest_id, event_id]);
+    const result = await database.query(query, [checked_in_at, guest_id, event_id]);
     return result.rows[0] || null;
   }
 
@@ -308,8 +363,7 @@ class GuestsRepository {
     const whereClause = whereConditions.join(' AND ');
 
     const query = `
-      SELECT g.*, eg.invitation_code, eg.is_present, eg.check_in_time, eg.checked_in_by,
-             eg.status as event_guest_status, eg.created_at as event_guest_created_at
+      SELECT g.*, eg.is_present, eg.check_in_time
       FROM guests g
       JOIN event_guests eg ON g.id = eg.guest_id
       WHERE ${whereClause} AND g.deleted_at IS NULL

@@ -128,7 +128,7 @@ router.post('/', SecurityMiddleware.withPermissions('events.create'), Validation
 // GET routes - avec permission spécifique
 router.get('/', SecurityMiddleware.withPermissions('events.read'), eventsController.getEvents);
 
-router.get('/stats', SecurityMiddleware.withPermissions('events.stats.read'), eventsController.getEventStats);
+router.get('/:id/stats', SecurityMiddleware.withPermissions('events.stats.read'), eventsController.getEventStats);
 
 router.get('/:id', SecurityMiddleware.withPermissions('events.read'), eventsController.getEventById);
 
