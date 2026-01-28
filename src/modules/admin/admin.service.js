@@ -37,9 +37,10 @@ class AdminService {
     }
   }
 
-  async getRecentActivity(userId) {
+  async getRecentActivity(options = {}) {
     try {
-      const activity = await adminRepository.getRecentActivity(userId);
+      const { userId, token, limit = 50 } = options;
+      const activity = await adminRepository.getRecentActivity(limit, token);
       
       return {
         success: true,
@@ -117,14 +118,14 @@ class AdminService {
 
   async getUsers(options = {}) {
     try {
-      const { page, limit, status, search, role, userId } = options;
-      const users = await adminRepository.getUsers({ 
-        page, limit, status, search, role, userId 
-      });
+      const { page, limit, status, search, role, userId, token } = options;
+      const users = await adminRepository.getUsersList({ 
+        page, limit, status, search, role 
+      }, token);
       
       return {
         success: true,
-        data: users,
+        data: users.users,
         pagination: users.pagination
       };
     } catch (error) {

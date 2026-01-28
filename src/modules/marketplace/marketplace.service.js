@@ -1,10 +1,10 @@
 const marketplaceRepository = require('./marketplace.repository');
 
 class MarketplaceService {
-  async becomeDesigner(userId, designerData) {
+  async becomeDesigner(userId, designerData, token) {
     try {
       // Check if user is already a designer
-      const existingDesigner = await marketplaceRepository.findDesignerByUserId(userId);
+      const existingDesigner = await marketplaceRepository.findDesignerByUserId(userId, token);
       if (existingDesigner) {
         return {
           success: false,
@@ -266,11 +266,11 @@ class MarketplaceService {
 
   async getTemplateReviews(templateId, options = {}) {
     try {
-      const { page, limit } = options;
+      const { page, limit, token } = options;
       const reviews = await marketplaceRepository.getTemplateReviews(templateId, {
         page: page ? parseInt(page) : 1,
         limit: limit ? parseInt(limit) : 10
-      });
+      }, token);
       
       return {
         success: true,

@@ -1,4 +1,5 @@
-const { database } = require('../../config');
+const database = require('../../config/database');
+const authApiService = require('../../services/auth-api-service');
 const { v4: uuidv4 } = require('uuid');
 
 class AdminRepository {
@@ -36,80 +37,111 @@ class AdminRepository {
     return result.rows[0];
   }
 
-  async getRecentActivity(limit = 50) {
-    const query = `
-      SELECT 
-        'event_created' as activity_type,
-        e.title as description,
-        e.created_at as timestamp,
-        u.first_name || ' ' || u.last_name as user_name,
-        e.id as entity_id
-      FROM events e
-      INNER JOIN users u ON e.organizer_id = u.id
+  async getRecentActivity(limit = 50, token) {
+    try {
+      // CORRECTION: Remplacer les JOIN avec users par des appels API
+      // D'abord récupérer les activités locales sans les noms d'utilisateurs
+      const query = `
+        SELECT 
+          'event_created' as activity_type,
+          e.title as description,
+          e.created_at as timestamp,
+          e.organizer_id as user_id,
+          e.id as entity_id
+        FROM events e
+        
+        UNION ALL
+        
+        SELECT 
+          'event_published' as activity_type,
+          'Event published: ' || e.title as description,
+          e.updated_at as timestamp,
+          e.organizer_id as user_id,
+          e.id as entity_id
+        FROM events e
+        WHERE e.status = 'published'
+        
+        UNION ALL
+        
+        SELECT 
+          'guest_added' as activity_type,
+          'Guest added to event' as description,
+          eg.created_at as timestamp,
+          eg.created_by as user_id,
+          eg.id as entity_id
+        FROM event_guests eg
+        
+        UNION ALL
+        
+        SELECT 
+          'ticket_generated' as activity_type,
+          'Ticket generated' as description,
+          t.created_at as timestamp,
+          t.created_by as user_id,
+          t.id as entity_id
+        FROM tickets t
+        
+        UNION ALL
+        
+        SELECT 
+          'template_created' as activity_type,
+          'Template created: ' || t.name as description,
+          t.created_at as timestamp,
+          d.user_id as user_id,
+          t.id as entity_id
+        FROM templates t
+        INNER JOIN designers d ON t.designer_id = d.id
+        
+        UNION ALL
+        
+        SELECT 
+          'purchase_made' as activity_type,
+          'Template purchased' as description,
+          p.purchase_date as timestamp,
+          p.user_id as user_id,
+          p.id as entity_id
+        FROM purchases p
+        
+        ORDER BY timestamp DESC
+        LIMIT $1
+      `;
       
-      UNION ALL
+      const result = await database.query(query, [limit]);
       
-      SELECT 
-        'event_published' as activity_type,
-        'Event published: ' || e.title as description,
-        e.updated_at as timestamp,
-        u.first_name || ' ' || u.last_name as user_name,
-        e.id as entity_id
-      FROM events e
-      INNER JOIN users u ON e.organizer_id = u.id
-      WHERE e.status = 'published'
+      // Récupérer les IDs uniques des utilisateurs concernés
+      const userIds = [...new Set(result.rows.map(row => row.user_id).filter(id => id))];
       
-      UNION ALL
+      // Récupérer les informations utilisateurs depuis l'Auth Service
+      let usersMap = {};
+      if (userIds.length > 0) {
+        try {
+          const usersResponse = await authApiService.getUsersBatch(userIds, token);
+          const users = usersResponse.data?.users || usersResponse.data || [];
+          usersMap = users.reduce((map, user) => {
+            map[user.id] = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User';
+            return map;
+          }, {});
+        } catch (apiError) {
+          console.warn('Failed to fetch user names from Auth Service:', apiError.message);
+          // Utiliser des noms par défaut si l'API échoue
+          userIds.forEach(id => {
+            usersMap[id] = 'Unknown User';
+          });
+        }
+      }
       
-      SELECT 
-        'guest_added' as activity_type,
-        'Guest added to event' as description,
-        eg.created_at as timestamp,
-        u.first_name || ' ' || u.last_name as user_name,
-        eg.id as entity_id
-      FROM event_guests eg
-      INNER JOIN users u ON eg.created_by = u.id
+      // Enrichir les activités avec les noms d'utilisateurs
+      const enrichedActivities = result.rows.map(activity => ({
+        ...activity,
+        user_name: usersMap[activity.user_id] || 'Unknown User'
+      }));
       
-      UNION ALL
+      return enrichedActivities;
       
-      SELECT 
-        'ticket_generated' as activity_type,
-        'Ticket generated' as description,
-        t.created_at as timestamp,
-        u.first_name || ' ' || u.last_name as user_name,
-        t.id as entity_id
-      FROM tickets t
-      INNER JOIN users u ON t.created_by = u.id
-      
-      UNION ALL
-      
-      SELECT 
-        'template_created' as activity_type,
-        'Template created: ' || t.name as description,
-        t.created_at as timestamp,
-        u.first_name || ' ' || u.last_name as user_name,
-        t.id as entity_id
-      FROM templates t
-      INNER JOIN designers d ON t.designer_id = d.id
-      INNER JOIN users u ON d.user_id = u.id
-      
-      UNION ALL
-      
-      SELECT 
-        'purchase_made' as activity_type,
-        'Template purchased' as description,
-        p.purchase_date as timestamp,
-        u.first_name || ' ' || u.last_name as user_name,
-        p.id as entity_id
-      FROM purchases p
-      INNER JOIN users u ON p.user_id = u.id
-      
-      ORDER BY timestamp DESC
-      LIMIT $1
-    `;
-    
-    const result = await database.query(query, [limit]);
-    return result.rows;
+    } catch (error) {
+      console.error('Error in getRecentActivity:', error);
+      throw new Error(`Failed to get recent activity: ${error.message}`);
+    }
   }
 
   async getSystemLogs(options = {}) {
@@ -180,74 +212,58 @@ class AdminRepository {
     };
   }
 
-  async getUsersList(options = {}) {
-    const { page = 1, limit = 50, search, status } = options;
-    const offset = (page - 1) * limit;
-    
-    let query = `
-      SELECT u.id, u.email, u.first_name, u.last_name, u.status, u.created_at,
-             COUNT(DISTINCT e.id) as events_count,
-             COUNT(DISTINCT d.id) as designer_profile
-      FROM users u
-      LEFT JOIN events e ON u.id = e.organizer_id
-      LEFT JOIN designers d ON u.id = d.user_id
-      WHERE 1=1
-    `;
-    
-    const values = [];
-    let paramCount = 0;
-    
-    if (search) {
-      paramCount++;
-      query += ` AND (u.first_name ILIKE $${paramCount} OR u.last_name ILIKE $${paramCount} OR u.email ILIKE $${paramCount})`;
-      values.push(`%${search}%`);
-    }
-    
-    if (status) {
-      paramCount++;
-      query += ` AND u.status = $${paramCount}`;
-      values.push(status);
-    }
-    
-    query += `
-      GROUP BY u.id, u.email, u.first_name, u.last_name, u.status, u.created_at
-      ORDER BY u.created_at DESC
-      LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
-    `;
-    
-    values.push(limit, offset);
-    
-    const result = await database.query(query, values);
-    
-    // Get total count
-    let countQuery = 'SELECT COUNT(*) as total FROM users WHERE 1=1';
-    const countValues = [];
-    let countParamCount = 0;
-    
-    if (search) {
-      countParamCount++;
-      countQuery += ` AND (first_name ILIKE $${countParamCount} OR last_name ILIKE $${countParamCount} OR email ILIKE $${countParamCount})`;
-      countValues.push(`%${search}%`);
-    }
-    
-    if (status) {
-      countParamCount++;
-      countQuery += ` AND status = $${countParamCount}`;
-      countValues.push(status);
-    }
-    
-    const countResult = await database.query(countQuery, countValues);
-    const total = parseInt(countResult.rows[0].total);
-    
-    return {
-      users: result.rows,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+  async getUsersList(options = {}, token) {
+    try {
+      // CORRECTION: Utiliser l'Auth Service API au lieu de l'accès direct à la base de données
+      const authResponse = await authApiService.getAllUsers(options, token);
+      
+      // Récupérer les utilisateurs depuis l'Auth Service
+      const users = authResponse.data?.users || authResponse.data || [];
+      
+      // Enrichir avec les données locales (events_count, designer_profile)
+      const enrichedUsers = [];
+      
+      for (const user of users) {
+        // Récupérer le nombre d'évents organisés par cet utilisateur
+        const eventsQuery = `
+          SELECT COUNT(*) as events_count
+          FROM events 
+          WHERE organizer_id = $1 AND deleted_at IS NULL
+        `;
+        const eventsResult = await database.query(eventsQuery, [user.id]);
+        const eventsCount = parseInt(eventsResult.rows[0]?.events_count || 0);
+        
+        // Récupérer le profil designer si existant
+        const designerQuery = `
+          SELECT id as designer_id, brand_name, is_verified
+          FROM designers 
+          WHERE user_id = $1 AND deleted_at IS NULL
+        `;
+        const designerResult = await database.query(designerQuery, [user.id]);
+        const designerProfile = designerResult.rows[0] || null;
+        
+        enrichedUsers.push({
+          ...user,
+          events_count: eventsCount,
+          designer_profile: designerProfile ? designerProfile.designer_id : null,
+          designer_data: designerProfile
+        });
       }
-    };
+      
+      return {
+        users: enrichedUsers,
+        pagination: authResponse.data?.pagination || {
+          page: options.page || 1,
+          limit: options.limit || 50,
+          total: enrichedUsers.length,
+          totalPages: Math.ceil(enrichedUsers.length / (options.limit || 50))
+        }
+      };
+      
+    } catch (error) {
+      console.error('Error in getUsersList:', error);
+      throw new Error(`Failed to get users list: ${error.message}`);
+    }
   }
 
   async getEventsList(options = {}) {
@@ -402,22 +418,15 @@ class AdminRepository {
     return result.rows[0];
   }
 
-  async updateUserStatus(userId, status, updatedBy) {
-    // CORRECTION: Cette méthode ne peut pas fonctionner car la table users n'existe pas dans cette base de données
-    // Elle devrait utiliser l'Auth Service pour mettre à jour le statut utilisateur
-    // Pour l'instant, nous retournons une erreur explicite
-    throw new Error('updateUserStatus: La table users n\'existe pas dans event_planner_core. Utiliser l\'Auth Service via auth-client.js');
-    
-    // Code original commenté (ne fonctionne pas):
-    // const query = `
-    //   UPDATE users 
-    //   SET status = $2, updated_by = $3, updated_at = NOW()
-    //   WHERE id = $1
-    //   RETURNING *
-    // `;
-    // 
-    // const result = await database.query(query, [userId, status, updatedBy]);
-    // return result.rows[0] || null;
+  async updateUserStatus(userId, status, token) {
+    try {
+      // CORRECTION: Utiliser l'Auth Service API pour mettre à jour le statut utilisateur
+      const response = await authApiService.updateUserStatus(userId, status, token);
+      return response;
+    } catch (error) {
+      console.error('Error in updateUserStatus:', error);
+      throw new Error(`Failed to update user status: ${error.message}`);
+    }
   }
 
   async getRevenueStats(period = 'month') {

@@ -1,4 +1,5 @@
-const { database } = require('../../config');
+const database = require('../../config/database');
+const authApiService = require('../../services/auth-api-service');
 
 class MarketplaceRepository {
   async createDesigner(designerData) {
@@ -95,28 +96,86 @@ class MarketplaceRepository {
     return result.rows[0];
   }
 
-  async findDesignerById(id) {
-    // CORRECTION: Supprimer le JOIN avec la table users qui n'existe pas dans cette base de données
-    const query = `
-      SELECT d.*
-      FROM designers d
-      WHERE d.id = $1 AND d.deleted_at IS NULL
-    `;
-    const result = await database.query(query, [id]);
-    
-    return result.rows[0] || null;
+  async findDesignerById(id, token) {
+    try {
+      // CORRECTION: D'abord récupérer le designer depuis la base locale
+      const query = `
+        SELECT d.*
+        FROM designers d
+        WHERE d.id = $1 AND d.deleted_at IS NULL
+      `;
+      const result = await database.query(query, [id]);
+      
+      if (result.rows.length === 0) {
+        return null;
+      }
+      
+      const designer = result.rows[0];
+      
+      // Enrichir avec les informations utilisateur depuis l'Auth Service
+      if (designer.user_id) {
+        try {
+          const userResponse = await authApiService.getUserById(designer.user_id, token);
+          const userData = userResponse.data || userResponse;
+          
+          return {
+            ...designer,
+            email: userData.email,
+            first_name: userData.first_name,
+            last_name: userData.last_name
+          };
+        } catch (apiError) {
+          console.warn('Failed to fetch user data from Auth Service:', apiError.message);
+          // Retourner le designer sans les infos utilisateur
+          return designer;
+        }
+      }
+      
+      return designer;
+      
+    } catch (error) {
+      console.error('Error in findDesignerById:', error);
+      throw new Error(`Failed to find designer: ${error.message}`);
+    }
   }
 
-  async findDesignerByUserId(userId) {
-    // CORRECTION: Supprimer le JOIN avec la table users qui n'existe pas dans cette base de données
-    const query = `
-      SELECT d.*
-      FROM designers d
-      WHERE d.user_id = $1 AND d.deleted_at IS NULL
-    `;
-    const result = await database.query(query, [userId]);
-    
-    return result.rows[0] || null;
+  async findDesignerByUserId(userId, token) {
+    try {
+      // CORRECTION: D'abord récupérer le designer depuis la base locale
+      const query = `
+        SELECT d.*
+        FROM designers d
+        WHERE d.user_id = $1 AND d.deleted_at IS NULL
+      `;
+      const result = await database.query(query, [userId]);
+      
+      if (result.rows.length === 0) {
+        return null;
+      }
+      
+      const designer = result.rows[0];
+      
+      // Enrichir avec les informations utilisateur depuis l'Auth Service
+      try {
+        const userResponse = await authApiService.getUserById(userId, token);
+        const userData = userResponse.data || userResponse;
+        
+        return {
+          ...designer,
+          email: userData.email,
+          first_name: userData.first_name,
+          last_name: userData.last_name
+        };
+      } catch (apiError) {
+        console.warn('Failed to fetch user data from Auth Service:', apiError.message);
+        // Retourner le designer sans les infos utilisateur
+        return designer;
+      }
+      
+    } catch (error) {
+      console.error('Error in findDesignerByUserId:', error);
+      throw new Error(`Failed to find designer by user ID: ${error.message}`);
+    }
   }
 
   async findTemplateById(id) {
@@ -317,35 +376,79 @@ class MarketplaceRepository {
     };
   }
 
-  async getTemplateReviews(templateId, options = {}) {
-    const { page = 1, limit = 20 } = options;
-    const offset = (page - 1) * limit;
-    
-    // CORRECTION: Supprimer le JOIN avec la table users qui n'existe pas dans cette base de données
-    const query = `
-      SELECT r.*
-      FROM reviews r
-      WHERE r.template_id = $1
-      ORDER BY r.created_at DESC
-      LIMIT $2 OFFSET $3
-    `;
-    
-    const result = await database.query(query, [templateId, limit, offset]);
-    
-    // Get total count
-    const countQuery = 'SELECT COUNT(*) as total FROM reviews WHERE template_id = $1';
-    const countResult = await database.query(countQuery, [templateId]);
-    const total = parseInt(countResult.rows[0].total);
-    
-    return {
-      reviews: result.rows,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+  async getTemplateReviews(templateId, options = {}, token) {
+    try {
+      const { page = 1, limit = 20 } = options;
+      const offset = (page - 1) * limit;
+      
+      // CORRECTION: D'abord récupérer les reviews sans les infos utilisateur
+      const query = `
+        SELECT r.*
+        FROM reviews r
+        WHERE r.template_id = $1
+        ORDER BY r.created_at DESC
+        LIMIT $2 OFFSET $3
+      `;
+      
+      const result = await database.query(query, [templateId, limit, offset]);
+      
+      // Récupérer les IDs uniques des utilisateurs concernés
+      const userIds = [...new Set(result.rows.map(row => row.user_id).filter(id => id))];
+      
+      // Récupérer les informations utilisateurs depuis l'Auth Service
+      let usersMap = {};
+      if (userIds.length > 0) {
+        try {
+          const usersResponse = await authApiService.getUsersBatch(userIds, token);
+          const users = usersResponse.data?.users || usersResponse.data || [];
+          usersMap = users.reduce((map, user) => {
+            map[user.id] = {
+              first_name: user.first_name,
+              last_name: user.last_name,
+              email: user.email
+            };
+            return map;
+          }, {});
+        } catch (apiError) {
+          console.warn('Failed to fetch user names from Auth Service:', apiError.message);
+          // Utiliser des données par défaut si l'API échoue
+          userIds.forEach(id => {
+            usersMap[id] = {
+              first_name: 'Unknown',
+              last_name: 'User',
+              email: 'unknown@example.com'
+            };
+          });
+        }
       }
-    };
+      
+      // Enrichir les reviews avec les informations utilisateurs
+      const enrichedReviews = result.rows.map(review => ({
+        ...review,
+        first_name: usersMap[review.user_id]?.first_name || 'Unknown',
+        last_name: usersMap[review.user_id]?.last_name || 'User',
+        email: usersMap[review.user_id]?.email || 'unknown@example.com'
+      }));
+      
+      // Get total count
+      const countQuery = 'SELECT COUNT(*) as total FROM reviews WHERE template_id = $1';
+      const countResult = await database.query(countQuery, [templateId]);
+      const total = parseInt(countResult.rows[0].total);
+      
+      return {
+        reviews: enrichedReviews,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+      
+    } catch (error) {
+      console.error('Error in getTemplateReviews:', error);
+      throw new Error(`Failed to get template reviews: ${error.message}`);
+    }
   }
 
   async getUserPurchases(userId, options = {}) {

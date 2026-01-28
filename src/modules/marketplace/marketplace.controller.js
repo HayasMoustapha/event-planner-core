@@ -6,12 +6,13 @@ class MarketplaceController {
     try {
       const { brand_name, portfolio_url } = req.body;
       const userId = req.user?.id;
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.token;
       
       if (!userId) {
         return res.status(401).json(ResponseFormatter.unauthorized('Authentication required'));
       }
 
-      const result = await marketplaceService.becomeDesigner(userId, { brand_name, portfolio_url });
+      const result = await marketplaceService.becomeDesigner(userId, { brand_name, portfolio_url }, token);
       
       if (!result.success) {
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
@@ -203,10 +204,12 @@ class MarketplaceController {
     try {
       const { templateId } = req.params;
       const { page, limit } = req.query;
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.token;
       
       const result = await marketplaceService.getTemplateReviews(templateId, {
         page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 10
+        limit: limit ? parseInt(limit) : 10,
+        token
       });
       
       if (!result.success) {

@@ -33,7 +33,14 @@ class AdminController {
 
   async getRecentActivity(req, res, next) {
     try {
-      const result = await adminService.getRecentActivity(req.user.id);
+      const { limit } = req.query;
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.token;
+      
+      const result = await adminService.getRecentActivity({ 
+        userId: req.user.id, 
+        token,
+        limit: limit ? parseInt(limit) : 50 
+      });
       
       if (!result.success) {
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
@@ -82,15 +89,17 @@ class AdminController {
   async getUsers(req, res, next) {
     try {
       const { page, limit, status, search, role } = req.query;
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.token;
+      
       const result = await adminService.getUsers({ 
-        page, limit, status, search, role, userId: req.user.id 
+        page, limit, status, search, role, userId: req.user.id, token 
       });
       
       if (!result.success) {
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
       }
 
-      res.json(ResponseFormatter.paginated('Users retrieved', result.data, result.pagination));
+      res.json(ResponseFormatter.success('Users retrieved', result.data, result.pagination));
     } catch (error) {
       next(error);
     }
