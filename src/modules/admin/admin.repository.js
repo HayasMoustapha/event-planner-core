@@ -359,11 +359,12 @@ class AdminRepository {
     const { page = 1, limit = 20 } = options;
     const offset = (page - 1) * limit;
     
+    // CORRECTION: Supprimer le JOIN avec la table users qui n'existe pas dans cette base de données
+    // Les informations utilisateur seront récupérées via l'Auth Service si nécessaire
     const query = `
-      SELECT d.*, u.first_name, u.last_name, u.email
+      SELECT d.*
       FROM designers d
-      INNER JOIN users u ON d.user_id = u.id
-      WHERE d.is_verified = false
+      WHERE d.is_verified = false AND d.deleted_at IS NULL
       ORDER BY d.created_at ASC
       LIMIT $1 OFFSET $2
     `;
@@ -371,7 +372,7 @@ class AdminRepository {
     const result = await database.query(query, [limit, offset]);
     
     // Get total count
-    const countQuery = 'SELECT COUNT(*) as total FROM designers WHERE is_verified = $1';
+    const countQuery = 'SELECT COUNT(*) as total FROM designers WHERE is_verified = $1 AND deleted_at IS NULL';
     const countResult = await database.query(countQuery, [false]);
     const total = parseInt(countResult.rows[0].total);
     
@@ -402,15 +403,21 @@ class AdminRepository {
   }
 
   async updateUserStatus(userId, status, updatedBy) {
-    const query = `
-      UPDATE users 
-      SET status = $2, updated_by = $3, updated_at = NOW()
-      WHERE id = $1
-      RETURNING *
-    `;
+    // CORRECTION: Cette méthode ne peut pas fonctionner car la table users n'existe pas dans cette base de données
+    // Elle devrait utiliser l'Auth Service pour mettre à jour le statut utilisateur
+    // Pour l'instant, nous retournons une erreur explicite
+    throw new Error('updateUserStatus: La table users n\'existe pas dans event_planner_core. Utiliser l\'Auth Service via auth-client.js');
     
-    const result = await database.query(query, [userId, status, updatedBy]);
-    return result.rows[0] || null;
+    // Code original commenté (ne fonctionne pas):
+    // const query = `
+    //   UPDATE users 
+    //   SET status = $2, updated_by = $3, updated_at = NOW()
+    //   WHERE id = $1
+    //   RETURNING *
+    // `;
+    // 
+    // const result = await database.query(query, [userId, status, updatedBy]);
+    // return result.rows[0] || null;
   }
 
   async getRevenueStats(period = 'month') {
@@ -659,10 +666,10 @@ class AdminRepository {
     const { page = 1, limit = 20, userId } = options;
     const offset = (page - 1) * limit;
     
+    // CORRECTION: Supprimer le JOIN avec la table users qui n'existe pas dans cette base de données
     const query = `
-      SELECT d.*, u.first_name, u.last_name, u.email, u.created_at as user_created_at
+      SELECT d.*
       FROM designers d
-      JOIN users u ON u.id = d.user_id
       WHERE d.is_verified = false AND d.deleted_at IS NULL
       ORDER BY d.created_at DESC
       LIMIT $1 OFFSET $2
@@ -725,7 +732,8 @@ class AdminRepository {
           WHERE user_id = $4 AND deleted_at IS NULL
           RETURNING *
         `;
-        params = [action === 'approve', reason, userId, entityId];
+        // CORRECTION: Le paramètre $1 doit être un boolean pour is_verified
+        params = [action === 'approve' ? true : false, reason, userId, entityId];
         break;
         
       case 'event':
