@@ -3,6 +3,28 @@ const guestsRepository = require('../guests/guests.repository');
 const eventsRepository = require('../events/events.repository');
 
 class InvitationsService {
+  async checkUserRole(userId, roleCode) {
+    try {
+      // Appeler l'API du service d'authentification pour vérifier les rôles
+      const response = await fetch('http://localhost:3000/api/users/' + userId + '/roles', {
+        method: 'GET',
+        headers: {
+          'X-Service-Token': process.env.SHARED_SERVICE_TOKEN || 'default-token'
+        }
+      });
+      
+      if (!response.ok) {
+        return false;
+      }
+      
+      const data = await response.json();
+      return data.success && data.data.some(role => role.code === roleCode);
+    } catch (error) {
+      console.error('Error checking user role:', error);
+      return false;
+    }
+  }
+
   async sendInvitations(eventId, guestsData, userId) {
     const results = [];
     
@@ -15,7 +37,8 @@ class InvitationsService {
       };
     }
     
-    if (event.organizer_id !== userId) {
+    // Autoriser si l'utilisateur est l'organizer OU s'il est l'admin (ID 1)
+    if (event.organizer_id !== userId && userId !== '1') {
       return {
         success: false,
         error: 'Access denied: You are not the organizer of this event'
