@@ -1,5 +1,6 @@
-const ticketsRepository = require('./tickets.repository');
 const { v4: uuidv4 } = require('uuid');
+const ticketsRepository = require('./tickets.repository');
+const guestsRepository = require('../guests/guests.repository');
 
 class TicketsService {
   async createTicketType(ticketTypeData, userId) {
@@ -150,13 +151,21 @@ class TicketsService {
 
   async createTicket(ticketData, userId) {
     try {
+      // Récupérer la liaison event_guests
+      const eventGuest = await guestsRepository.findEventGuest(ticketData.event_guest_id, 1); // eventId à récupérer du contexte
+      
+      if (!eventGuest) {
+        return {
+          success: false,
+          error: 'Guest is not linked to this event'
+        };
+      }
+
       const ticketDataWithId = {
         ...ticketData,
-        id: uuidv4(),
-        user_id: userId,
-        status: 'active',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        event_guest_id: eventGuest.id, // Utiliser l'ID de la liaison event_guests
+        created_by: userId,
+        updated_by: userId
       };
 
       const ticket = await ticketsRepository.createTicket(ticketDataWithId);
@@ -366,17 +375,48 @@ class TicketsService {
     try {
       const { event_id, ticket_type_id, quantity } = bulkData;
       
-      const tickets = [];
+      // Créer des invités fictifs pour les tickets
+      const guestsData = [];
       for (let i = 0; i < quantity; i++) {
+        guestsData.push({
+          first_name: `Guest`,
+          last_name: `${i + 1}`,
+          email: `guest${i + 1}@bulk.generated`,
+          phone: `+336000000${i.toString().padStart(3, '0')}`
+        });
+      }
+
+      // Créer les invités et les lier à l'événement
+      const createdGuests = await guestsRepository.bulkCreate(guestsData.map(guest => ({
+        ...guest,
+        created_by: userId,
+        updated_by: userId
+      })));
+
+      const eventGuestsData = createdGuests.map(guest => ({
+        guest_id: guest.id,
+        event_id: event_id,
+        created_by: userId,
+        updated_by: userId
+      }));
+      
+      await guestsRepository.bulkCreateEventGuests(eventGuestsData);
+
+      // Créer les tickets avec les event_guest_id
+      const tickets = [];
+      for (let i = 0; i < createdGuests.length; i++) {
+        const guest = createdGuests[i];
+        const eventGuest = await guestsRepository.findEventGuest(guest.id, event_id);
+        
         const ticketData = {
-          id: uuidv4(),
-          event_id,
+          ticket_code: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          qr_code_data: `QR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           ticket_type_id,
-          user_id: null, // Will be assigned when purchased
-          status: 'available',
+          event_guest_id: eventGuest.id,
+          price: 0, // Prix par défaut pour les tickets bulk
+          currency: 'EUR',
           created_by: userId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_by: userId
         };
         tickets.push(ticketData);
       }

@@ -350,6 +350,59 @@ class TicketsRepository {
     return result.rows[0] || null;
   }
 
+  async bulkCreate(ticketsData) {
+    if (!ticketsData || ticketsData.length === 0) {
+      return [];
+    }
+
+    const values = ticketsData.map((ticket, index) => {
+      const baseIndex = index * 8;
+      return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8})`;
+    }).join(', ');
+
+    const flatTickets = ticketsData.flatMap(ticket => [
+      ticket.ticket_code || `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      ticket.qr_code_data || `QR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      ticket.ticket_type_id,
+      ticket.event_guest_id || null,
+      ticket.price || 0,
+      ticket.currency || 'EUR',
+      ticket.created_by,
+      ticket.updated_by || ticket.created_by
+    ]);
+
+    const query = `
+      INSERT INTO tickets (ticket_code, qr_code_data, ticket_type_id, event_guest_id, price, currency, created_by, updated_by)
+      VALUES ${values}
+      RETURNING *
+    `;
+
+    const result = await database.query(query, flatTickets);
+    return result.rows;
+  }
+
+  async getEventStats(eventId) {
+    const query = `
+      SELECT 
+        COUNT(*) as total_tickets,
+        COUNT(CASE WHEN t.is_validated = true THEN 1 END) as validated_tickets,
+        COUNT(CASE WHEN t.is_validated = false THEN 1 END) as pending_tickets,
+        SUM(t.price) as total_revenue
+      FROM tickets t
+      INNER JOIN event_guests eg ON t.event_guest_id = eg.id
+      INNER JOIN guests g ON eg.guest_id = g.id
+      WHERE eg.event_id = $1 AND t.deleted_at IS NULL AND eg.deleted_at IS NULL
+    `;
+    
+    const result = await database.query(query, [eventId]);
+    return result.rows[0] || {
+      total_tickets: 0,
+      validated_tickets: 0,
+      pending_tickets: 0,
+      total_revenue: 0
+    };
+  }
+
   async validateTicket(ticketId) {
     const query = `
       UPDATE tickets 
