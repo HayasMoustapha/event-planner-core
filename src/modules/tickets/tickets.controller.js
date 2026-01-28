@@ -1,5 +1,7 @@
 const ticketsService = require('./tickets.service');
 const { ResponseFormatter } = require('../../../../shared');
+const eventQueueService = require('../../core/queue/event-queue.service');
+const logger = require('../../utils/logger');
 
 class TicketsController {
   async createTicketType(req, res, next) {
@@ -254,6 +256,7 @@ class TicketsController {
         return res.status(401).json(ResponseFormatter.unauthorized('Authentication required'));
       }
 
+      // Étape 1: Création des tickets en base de données (statut PENDING)
       const result = await ticketsService.bulkGenerateTickets({
         event_id,
         ticket_type_id,
@@ -264,7 +267,62 @@ class TicketsController {
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
       }
 
-      res.json(ResponseFormatter.success('Tickets bulk generated', result.data));
+      // Étape 2: Envoi asynchrone de la demande de génération à ticket-generator
+      try {
+        const queueResult = await eventQueueService.sendTicketGenerationRequest(
+          event_id,
+          result.data.tickets, // Les tickets créés avec statut PENDING
+          {
+            priority: 1, // Priorité normale
+            delay: 0    // Pas de délai
+          }
+        );
+
+        logger.info('📤 Demande de génération envoyée à ticket-generator', {
+          eventId: event_id,
+          correlationId: queueResult.correlationId,
+          ticketCount: result.data.tickets.length,
+          jobId: queueResult.jobId
+        });
+
+        // Étape 3: Retour immédiat avec les informations de suivi
+        return res.json(ResponseFormatter.success('Tickets created and generation queued', {
+          tickets: result.data.tickets,
+          generation: {
+            status: 'PENDING',
+            correlationId: queueResult.correlationId,
+            jobId: queueResult.jobId,
+            queuedAt: new Date().toISOString()
+          },
+          summary: {
+            totalTickets: result.data.tickets.length,
+            eventId: event_id,
+            userId: userId
+          }
+        }));
+
+      } catch (queueError) {
+        // Si l'envoi à la queue échoue, on met les tickets en erreur
+        logger.error('❌ Erreur envoi à la queue', {
+          eventId: event_id,
+          error: queueError.message
+        });
+
+        // Marquer les tickets comme en erreur de queue
+        await ticketsService.updateTicketsStatus(
+          result.data.tickets.map(t => t.id),
+          'QUEUE_ERROR'
+        );
+
+        return res.status(500).json(
+          ResponseFormatter.error(
+            'Tickets created but queue processing failed',
+            { queueError: queueError.message },
+            'QUEUE_ERROR'
+          )
+        );
+      }
+
     } catch (error) {
       next(error);
     }

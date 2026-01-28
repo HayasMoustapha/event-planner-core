@@ -23,6 +23,9 @@ const invitationsRoutes = require('./modules/invitations/invitations.routes');
 const marketplaceRoutes = require('./modules/marketplace/marketplace.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 
+// Service de communication Redis Queue pour la communication asynchrone
+const eventQueueService = require('./core/queue/event-queue.service');
+
 // Import database migrator
 const migrator = require('./database/migrator');
 
@@ -158,8 +161,16 @@ app.use(ErrorHandler.notFoundHandler);
 app.use(ErrorHandler.globalHandler);
 
 // Graceful shutdown handling
-const gracefulShutdown = (signal) => {
+const gracefulShutdown = async (signal) => {
   console.log(`\n📡 Received ${signal}. Starting graceful shutdown...`);
+  
+  try {
+    // Arrêt du service Redis Queue
+    await eventQueueService.shutdown();
+    console.log('✅ Redis Queue service closed');
+  } catch (error) {
+    console.error('❌ Error shutting down Redis Queue service:', error.message);
+  }
   
   // Close server
   server.close(() => {
@@ -202,6 +213,9 @@ async function startServer() {
   try {
     // Bootstrap automatique de l'application (crée la BD et applique les migrations)
     await bootstrap.initialize();
+    
+    // Initialisation du service Redis Queue pour la communication asynchrone
+    await eventQueueService.initialize();
     
     console.log('🚀 Starting Event Planner Core server...');
     
