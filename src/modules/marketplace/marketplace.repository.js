@@ -96,11 +96,11 @@ class MarketplaceRepository {
   }
 
   async findDesignerById(id) {
+    // CORRECTION: Supprimer le JOIN avec la table users qui n'existe pas dans cette base de données
     const query = `
-      SELECT d.*, u.email, u.first_name, u.last_name
+      SELECT d.*
       FROM designers d
-      INNER JOIN users u ON d.user_id = u.id
-      WHERE d.id = $1
+      WHERE d.id = $1 AND d.deleted_at IS NULL
     `;
     const result = await database.query(query, [id]);
     
@@ -108,11 +108,11 @@ class MarketplaceRepository {
   }
 
   async findDesignerByUserId(userId) {
+    // CORRECTION: Supprimer le JOIN avec la table users qui n'existe pas dans cette base de données
     const query = `
-      SELECT d.*, u.email, u.first_name, u.last_name
+      SELECT d.*
       FROM designers d
-      INNER JOIN users u ON d.user_id = u.id
-      WHERE d.user_id = $1
+      WHERE d.user_id = $1 AND d.deleted_at IS NULL
     `;
     const result = await database.query(query, [userId]);
     
@@ -139,15 +139,14 @@ class MarketplaceRepository {
     const { page = 1, limit = 20, is_verified, search } = options;
     const offset = (page - 1) * limit;
     
+    // CORRECTION: Supprimer le JOIN avec la table users qui n'existe pas dans cette base de données
     let query = `
-      SELECT d.*, u.email, u.first_name, u.last_name,
-             COUNT(t.id) as template_count,
+      SELECT d.*, COUNT(t.id) as template_count,
              AVG(r.rating) as average_rating
       FROM designers d
-      INNER JOIN users u ON d.user_id = u.id
       LEFT JOIN templates t ON d.id = t.designer_id
       LEFT JOIN reviews r ON t.id = r.template_id
-      WHERE 1=1
+      WHERE d.deleted_at IS NULL
     `;
     
     const values = [];
@@ -161,12 +160,12 @@ class MarketplaceRepository {
     
     if (search) {
       paramCount++;
-      query += ` AND (d.brand_name ILIKE $${paramCount} OR u.first_name ILIKE $${paramCount} OR u.last_name ILIKE $${paramCount})`;
+      query += ` AND d.brand_name ILIKE $${paramCount}`;
       values.push(`%${search}%`);
     }
     
     query += `
-      GROUP BY d.id, u.email, u.first_name, u.last_name
+      GROUP BY d.id
       ORDER BY d.created_at DESC
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `;
@@ -179,8 +178,7 @@ class MarketplaceRepository {
     let countQuery = `
       SELECT COUNT(DISTINCT d.id) as total
       FROM designers d
-      INNER JOIN users u ON d.user_id = u.id
-      WHERE 1=1
+      WHERE d.deleted_at IS NULL
     `;
     const countValues = [];
     let countParamCount = 0;
@@ -193,7 +191,7 @@ class MarketplaceRepository {
     
     if (search) {
       countParamCount++;
-      countQuery += ` AND (d.brand_name ILIKE $${countParamCount} OR u.first_name ILIKE $${countParamCount} OR u.last_name ILIKE $${countParamCount})`;
+      countQuery += ` AND d.brand_name ILIKE $${countParamCount}`;
       countValues.push(`%${search}%`);
     }
     
@@ -323,10 +321,10 @@ class MarketplaceRepository {
     const { page = 1, limit = 20 } = options;
     const offset = (page - 1) * limit;
     
+    // CORRECTION: Supprimer le JOIN avec la table users qui n'existe pas dans cette base de données
     const query = `
-      SELECT r.*, u.first_name, u.last_name, u.email
+      SELECT r.*
       FROM reviews r
-      INNER JOIN users u ON r.user_id = u.id
       WHERE r.template_id = $1
       ORDER BY r.created_at DESC
       LIMIT $2 OFFSET $3
