@@ -6,6 +6,7 @@ const adminErrorHandler = require('./admin.errorHandler');
 
 const router = express.Router();
 
+
 // Apply authentication to all routes
 router.use(SecurityMiddleware.adminOnly());
 

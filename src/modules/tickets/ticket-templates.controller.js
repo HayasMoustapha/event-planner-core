@@ -187,6 +187,31 @@ class TicketTemplatesController {
     }
   }
 
+  async getTemplateById(req, res) {
+    try {
+      const { id } = req.params;
+      const result = await ticketTemplatesService.getTemplateById(parseInt(id));
+      
+      if (!result.success) {
+        return res.status(404).json({
+          success: false,
+          error: result.error
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } catch (error) {
+      console.error('Controller error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
+
   async cloneTemplate(req, res) {
     try {
       const { id } = req.params;
