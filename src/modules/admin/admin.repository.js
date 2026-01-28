@@ -218,7 +218,10 @@ class AdminRepository {
       const authResponse = await authApiService.getAllUsers(options, token);
       
       // Récupérer les utilisateurs depuis l'Auth Service
-      const users = authResponse.data?.users || authResponse.data || [];
+      const usersData = authResponse.data?.data || authResponse.data || [];
+      
+      // S'assurer que usersData est un tableau
+      const users = Array.isArray(usersData) ? usersData : [];
       
       // Enrichir avec les données locales (events_count, designer_profile)
       const enrichedUsers = [];
