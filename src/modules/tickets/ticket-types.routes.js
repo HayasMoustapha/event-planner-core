@@ -9,27 +9,24 @@ router.use(SecurityMiddleware.authenticated());
 
 // Ticket Type Management
 router.post('/', 
+  SecurityMiddleware.withPermissions('tickets.types.create'),
   ValidationMiddleware.createTicketsValidator('createTicketType'),
   ticketsController.createTicketType
 );
 
-router.get('/:id', 
-  ValidationMiddleware.createTicketsValidator('getTicketTypeById'),
-  ticketsController.getTicketTypeById
-);
+router.get('/:id', SecurityMiddleware.withPermissions('tickets.types.read'), ticketsController.getTicketTypeById);
 
 // Verifier pourauoi ca fait planter le serveur
-router.get('/events/:eventId/types', 
-  ValidationMiddleware.createTicketsValidator('getTicketTypesByEvent'),
-  ticketsController.getTicketTypesByEvent
-);
+router.get('/events/:eventId/types', SecurityMiddleware.withPermissions('tickets.types.read'), ticketsController.getTicketTypesByEvent);
 
 router.put('/:id', 
+  SecurityMiddleware.withPermissions('tickets.types.update'),
   ValidationMiddleware.createTicketsValidator('updateTicketType'),
   ticketsController.updateTicketType
 );
 
 router.delete('/:id', 
+  SecurityMiddleware.withPermissions('tickets.types.delete'),
   ValidationMiddleware.createTicketsValidator('deleteTicketType'),
   ticketsController.deleteTicketType
 );

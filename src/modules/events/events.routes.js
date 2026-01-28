@@ -69,7 +69,7 @@ router.use(eventsErrorHandler);
  *       403:
  *         description: Permissions insuffisantes
  */
-router.post('/', ValidationMiddleware.createEventsValidator('createEvent'), eventsController.createEvent);
+router.post('/', SecurityMiddleware.withPermissions('events.create'), ValidationMiddleware.createEventsValidator('createEvent'), eventsController.createEvent);
 
 /**
  * @swagger
@@ -125,29 +125,20 @@ router.post('/', ValidationMiddleware.createEventsValidator('createEvent'), even
  *       403:
  *         description: Permissions insuffisantes
  */
-// GET routes - validation simple et cohérente
-router.get('/', ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20),
-  status: Joi.string().valid('draft', 'published', 'archived').optional(),
-  search: Joi.string().max(100).optional()
-}), eventsController.getEvents);
+// GET routes - avec permission spécifique
+router.get('/', SecurityMiddleware.withPermissions('events.read'), eventsController.getEvents);
 
-router.get('/stats', ValidationMiddleware.validateQuery({
-  event_id: Joi.number().integer().positive().optional()
-}), eventsController.getEventStats);
+router.get('/stats', SecurityMiddleware.withPermissions('events.stats.read'), eventsController.getEventStats);
 
-router.get('/:id', ValidationMiddleware.validateParams({
-  id: Joi.number().integer().positive().required()
-}), eventsController.getEventById);
+router.get('/:id', SecurityMiddleware.withPermissions('events.read'), eventsController.getEventById);
 
-router.put('/:id', ValidationMiddleware.createEventsValidator('updateEvent'), eventsController.updateEvent);
+router.put('/:id', SecurityMiddleware.withPermissions('events.update'), ValidationMiddleware.createEventsValidator('updateEvent'), eventsController.updateEvent);
 
-router.delete('/:id', ValidationMiddleware.createEventsValidator('deleteEvent'), eventsController.deleteEvent);
+router.delete('/:id', SecurityMiddleware.withPermissions('events.delete'), ValidationMiddleware.createEventsValidator('deleteEvent'), eventsController.deleteEvent);
 
 // Event Lifecycle Management
-router.post('/:id/publish', ValidationMiddleware.createEventsValidator('publishEvent'), eventsController.publishEvent);
+router.post('/:id/publish', SecurityMiddleware.withPermissions('events.publish'), ValidationMiddleware.createEventsValidator('publishEvent'), eventsController.publishEvent);
 
-router.post('/:id/archive', ValidationMiddleware.createEventsValidator('archiveEvent'), eventsController.archiveEvent);
+router.post('/:id/archive', SecurityMiddleware.withPermissions('events.archive'), ValidationMiddleware.createEventsValidator('archiveEvent'), eventsController.archiveEvent);
 
 module.exports = router;

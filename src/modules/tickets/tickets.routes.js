@@ -27,44 +27,30 @@ router.use('/templates', ticketTemplatesRoutes);
 
 // Ticket Management
 router.post('/', 
+  SecurityMiddleware.withPermissions('tickets.create'), 
   ValidationMiddleware.createTicketsValidator('createTicket'), 
   ticketsController.createTicket
 );
 
-router.get('/', ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20),
-  status: Joi.string().valid('pending', 'validated', 'used', 'cancelled').optional(),
-  event_id: Joi.number().integer().positive().optional()
-}), ticketsController.getTickets);
+router.get('/', SecurityMiddleware.withPermissions('tickets.read'), ticketsController.getTickets);
 
-router.get('/code/:ticketCode', ValidationMiddleware.validateParams({
-  ticketCode: Joi.string().required()
-}), ticketsController.getTicketByCode);
+router.get('/code/:ticketCode', SecurityMiddleware.withPermissions('tickets.read'), ticketsController.getTicketByCode);
 
-router.get('/events/:eventId/tickets', ValidationMiddleware.validateParams({
-  eventId: Joi.number().integer().positive().required()
-}), ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20),
-  status: Joi.string().valid('pending', 'validated', 'used', 'cancelled').optional()
-}), ticketsController.getEventTickets);
+router.get('/events/:eventId/tickets', SecurityMiddleware.withPermissions('tickets.read'), ticketsController.getEventTickets);
 
 // Ticket Validation
-router.post('/:id/validate', ticketsController.validateTicket);
+router.post('/:id/validate', SecurityMiddleware.withPermissions('tickets.validate'), ticketsController.validateTicket);
 
-router.post('/validate', ticketsController.validateTicketByCode);
+router.post('/validate', SecurityMiddleware.withPermissions('tickets.validate'), ticketsController.validateTicketByCode);
 
 // Bulk Operations
-router.post('/bulk/generate', ticketsController.bulkGenerateTickets);
+router.post('/bulk/generate', SecurityMiddleware.withPermissions('tickets.create'), ticketsController.bulkGenerateTickets);
 
-router.post('/jobs', ticketsController.createJob);
+router.post('/jobs', SecurityMiddleware.withPermissions('tickets.jobs.create'), ticketsController.createJob);
 
-router.post('/jobs/:jobId/process', ticketsController.processJob);
+router.post('/jobs/:jobId/process', SecurityMiddleware.withPermissions('tickets.jobs.process'), ticketsController.processJob);
 
-// Statistics - GET routes avec validation
-router.get('/events/:eventId/stats', ValidationMiddleware.validateParams({
-  eventId: Joi.number().integer().positive().required()
-}), ticketsController.getEventTicketStats);
+// Statistics - GET routes avec permission spécifique
+router.get('/events/:eventId/stats', SecurityMiddleware.withPermissions('tickets.stats.read'), ticketsController.getEventTicketStats);
 
 module.exports = router;

@@ -16,44 +16,30 @@ router.use(ContextInjector.injectUserContext());
 router.use(guestsErrorHandler);
 
 // Guest CRUD Operations
-router.post('/', ValidationMiddleware.createGuestsValidator('createGuest'), guestsController.createGuest);
+router.post('/', SecurityMiddleware.withPermissions('guests.create'), ValidationMiddleware.createGuestsValidator('createGuest'), guestsController.createGuest);
 
-// GET routes - validation simple et cohérente
-router.get('/', ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20),
-  status: Joi.string().valid('pending', 'confirmed', 'cancelled').optional()
-}), guestsController.getGuests);
+// GET routes - avec permission spécifique
+router.get('/', SecurityMiddleware.withPermissions('guests.read'), guestsController.getGuests);
 
-router.get('/:id', ValidationMiddleware.validateParams({
-  id: Joi.number().integer().positive().required()
-}), guestsController.getGuestById);
+router.get('/:id', SecurityMiddleware.withPermissions('guests.read'), guestsController.getGuestById);
 
-router.put('/:id', ValidationMiddleware.createGuestsValidator('updateGuest'), guestsController.updateGuest);
+router.put('/:id', SecurityMiddleware.withPermissions('guests.update'), ValidationMiddleware.createGuestsValidator('updateGuest'), guestsController.updateGuest);
 
-router.delete('/:id', guestsController.deleteGuest);
+router.delete('/:id', SecurityMiddleware.withPermissions('guests.delete'), guestsController.deleteGuest);
 
-// Event Guest Management - GET routes avec validation
-router.get('/events/:eventId/guests', ValidationMiddleware.validateParams({
-  eventId: Joi.number().integer().positive().required()
-}), ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20),
-  status: Joi.string().valid('pending', 'confirmed', 'cancelled').optional()
-}), guestsController.getEventGuests);
+// Event Guest Management - GET routes avec permission spécifique
+router.get('/events/:eventId/guests', SecurityMiddleware.withPermissions('guests.read'), guestsController.getEventGuests);
 
-router.post('/events/:eventId/guests', guestsController.addGuestsToEvent);
+router.post('/events/:eventId/guests', SecurityMiddleware.withPermissions('guests.create'), guestsController.addGuestsToEvent);
 
-router.post('/events/:eventId/guests/bulk', guestsController.bulkAddGuestsToEvent);
+router.post('/events/:eventId/guests/bulk', SecurityMiddleware.withPermissions('guests.create'), guestsController.bulkAddGuestsToEvent);
 
 // Check-in Operations
-router.post('/check-in', guestsController.checkInGuest);
+router.post('/check-in', SecurityMiddleware.withPermissions('guests.checkin'), guestsController.checkInGuest);
 
-router.post('/events/:eventId/guests/:guestId/checkin', guestsController.checkInGuestById);
+router.post('/events/:eventId/guests/:guestId/checkin', SecurityMiddleware.withPermissions('guests.checkin'), guestsController.checkInGuestById);
 
-// Statistics - GET routes avec validation
-router.get('/events/:eventId/stats', ValidationMiddleware.validateParams({
-  eventId: Joi.number().integer().positive().required()
-}), guestsController.getEventGuestStats);
+// Statistics - GET routes avec permission spécifique
+router.get('/events/:eventId/stats', SecurityMiddleware.withPermissions('guests.stats.read'), guestsController.getEventGuestStats);
 
 module.exports = router;

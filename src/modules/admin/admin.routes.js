@@ -15,46 +15,24 @@ router.use(ContextInjector.injectAdminContext());
 // Apply error handler for all routes
 router.use(adminErrorHandler);
 
-// Dashboard - GET routes avec validation
-router.get('/dashboard', ValidationMiddleware.validateQuery({
-  period: Joi.string().valid('day', 'week', 'month', 'year').default('month')
-}), adminController.getDashboard);
+// Dashboard - GET routes avec permission spécifique
+router.get('/dashboard', SecurityMiddleware.withPermissions('admin.dashboard.read'), adminController.getDashboard);
 
-// Global Statistics - GET routes avec validation
-router.get('/stats', ValidationMiddleware.validateQuery({
-  period: Joi.string().valid('day', 'week', 'month', 'year').default('month')
-}), adminController.getGlobalStats);
+// Global Statistics - GET routes avec permission spécifique
+router.get('/stats', SecurityMiddleware.withPermissions('admin.stats.read'), adminController.getGlobalStats);
 
-// Recent Activity - GET routes avec validation
-router.get('/activity', ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(50),
-  type: Joi.string().valid('all', 'events', 'tickets', 'users', 'payments').default('all')
-}), adminController.getRecentActivity);
+// Recent Activity - GET routes avec permission spécifique
+router.get('/activity', SecurityMiddleware.withPermissions('admin.activity.read'), adminController.getRecentActivity);
 
-// System Logs - GET routes avec validation
-router.get('/logs', ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(200).default(100),
-  level: Joi.string().valid('error', 'warning', 'info', 'debug').optional(),
-  start_date: Joi.date().optional(),
-  end_date: Joi.date().optional()
-}), adminController.getSystemLogs);
+// System Logs - GET routes avec permission spécifique
+router.get('/logs', SecurityMiddleware.withPermissions('admin.logs.read'), adminController.getSystemLogs);
 
-router.post('/logs', adminController.createSystemLog);
+router.post('/logs', SecurityMiddleware.withPermissions('admin.logs.create'), adminController.createSystemLog);
 
-// User Management (via Auth Service) - GET routes avec validation
-router.get('/users', ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20),
-  status: Joi.string().valid('active', 'inactive', 'suspended').optional(),
-  role: Joi.string().valid('user', 'organizer', 'designer', 'admin').optional(),
-  search: Joi.string().max(100).optional()
-}), adminController.getUsers);
+// User Management (via Auth Service) - GET routes avec permission spécifique
+router.get('/users', SecurityMiddleware.withPermissions('admin.users.read'), adminController.getUsers);
 
-router.get('/users/:id', ValidationMiddleware.validateParams({
-  id: Joi.number().integer().positive().required()
-}), adminController.getUserById);
+router.get('/users/:id', SecurityMiddleware.withPermissions('admin.users.read'), adminController.getUserById);
 
 // Note: Les routes de modification d'utilisateurs sont gérées par l'Auth Service
 // POST /api/auth/users (création)
@@ -62,53 +40,28 @@ router.get('/users/:id', ValidationMiddleware.validateParams({
 // DELETE /api/auth/users/:id (suppression)
 // PUT /api/auth/users/:id/status (changement statut)
 
-// Event Management - GET routes avec validation
-router.get('/events', ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20),
-  status: Joi.string().valid('draft', 'published', 'archived').optional(),
-  organizer_id: Joi.number().integer().positive().optional(),
-  search: Joi.string().max(100).optional()
-}), adminController.getEvents);
+// Event Management - GET routes avec permission spécifique
+router.get('/events', SecurityMiddleware.withPermissions('admin.events.read'), adminController.getEvents);
 
-// Content Moderation - GET routes avec validation
-router.get('/templates/pending', ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20)
-}), adminController.getTemplatesPendingApproval);
+// Content Moderation - GET routes avec permission spécifique
+router.get('/templates/pending', SecurityMiddleware.withPermissions('admin.templates.read'), adminController.getTemplatesPendingApproval);
 
-router.get('/designers/pending', ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20)
-}), adminController.getDesignersPendingApproval);
+router.get('/designers/pending', SecurityMiddleware.withPermissions('admin.designers.read'), adminController.getDesignersPendingApproval);
 
-router.post('/moderate', adminController.moderateContent);
+router.post('/moderate', SecurityMiddleware.withPermissions('admin.moderate'), adminController.moderateContent);
 
-// Analytics - GET routes avec validation
-router.get('/analytics/revenue', ValidationMiddleware.validateQuery({
-  period: Joi.string().valid('day', 'week', 'month', 'year').default('month'),
-  start_date: Joi.date().optional(),
-  end_date: Joi.date().optional()
-}), adminController.getRevenueAnalytics);
+// Analytics - GET routes avec permission spécifique
+router.get('/analytics/revenue', SecurityMiddleware.withPermissions('admin.analytics.revenue'), adminController.getRevenueAnalytics);
 
-router.get('/analytics/events', ValidationMiddleware.validateQuery({
-  period: Joi.string().valid('day', 'week', 'month', 'year').default('month'),
-  start_date: Joi.date().optional(),
-  end_date: Joi.date().optional()
-}), adminController.getEventGrowthStats);
+router.get('/analytics/events', SecurityMiddleware.withPermissions('admin.analytics.events'), adminController.getEventGrowthStats);
 
-// Data Export - GET routes avec validation
-router.get('/export', ValidationMiddleware.validateQuery({
-  type: Joi.string().valid('users', 'events', 'tickets', 'payments', 'all').default('all'),
-  format: Joi.string().valid('json', 'csv', 'xlsx').default('json'),
-  start_date: Joi.date().optional(),
-  end_date: Joi.date().optional()
-}), adminController.exportData);
+// Data Export - GET routes avec permission spécifique
+router.get('/export', SecurityMiddleware.withPermissions('admin.export'), adminController.exportData);
 
-// System Health - GET routes sans validation (monitoring)
-router.get('/health', adminController.getSystemHealth);
+// System Health - GET routes avec permission spécifique (monitoring)
+router.get('/health', SecurityMiddleware.withPermissions('admin.health.read'), adminController.getSystemHealth);
 
 // Backup
-router.post('/backup', adminController.createBackup);
+router.post('/backup', SecurityMiddleware.withPermissions('admin.backup.create'), adminController.createBackup);
 
 module.exports = router;

@@ -15,74 +15,54 @@ router.use(ContextInjector.injectMarketplaceContext());
 // Apply error handler for all routes
 router.use(marketplaceErrorHandler);
 
-// Designer Management - GET routes avec validation
-router.get('/designers', ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20),
-  status: Joi.string().valid('pending', 'approved', 'rejected').optional()
-}), marketplaceController.getDesigners);
+// Designer Management - GET routes avec permission spécifique
+router.get('/designers', SecurityMiddleware.withPermissions('marketplace.designers.read'), marketplaceController.getDesigners);
 
-router.get('/designers/:id', ValidationMiddleware.validateParams({
-  id: Joi.number().integer().positive().required()
-}), marketplaceController.getDesignerById);
+router.get('/designers/:id', SecurityMiddleware.withPermissions('marketplace.designers.read'), marketplaceController.getDesignerById);
 
-router.put('/designers/:id', ValidationMiddleware.createMarketplaceValidator('updateDesigner'), marketplaceController.updateDesigner);
+router.put('/designers/:id', SecurityMiddleware.withPermissions('marketplace.designers.update'), ValidationMiddleware.createMarketplaceValidator('updateDesigner'), marketplaceController.updateDesigner);
 
 // Template Management
 router.post('/templates', 
+  SecurityMiddleware.withPermissions('marketplace.templates.create'),
   ValidationMiddleware.createMarketplaceValidator('createTemplate'), 
   marketplaceController.createTemplate
 );
 
-router.get('/templates', ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20),
-  designer_id: Joi.number().integer().positive().optional(),
-  status: Joi.string().valid('pending_review', 'approved', 'rejected').optional()
-}), marketplaceController.getTemplates);
+router.get('/templates', SecurityMiddleware.withPermissions('marketplace.templates.read'), marketplaceController.getTemplates);
 
-router.get('/templates/:id', ValidationMiddleware.validateParams({
-  id: Joi.number().integer().positive().required()
-}), marketplaceController.getTemplateById);
+router.get('/templates/:id', SecurityMiddleware.withPermissions('marketplace.templates.read'), marketplaceController.getTemplateById);
 
-router.put('/templates/:id', ValidationMiddleware.createMarketplaceValidator('updateTemplate'), marketplaceController.updateTemplate);
+router.put('/templates/:id', SecurityMiddleware.withPermissions('marketplace.templates.update'), ValidationMiddleware.createMarketplaceValidator('updateTemplate'), marketplaceController.updateTemplate);
 
 // Template Purchase
-router.post('/templates/:templateId/purchase', ValidationMiddleware.createMarketplaceValidator('purchaseTemplate'), marketplaceController.purchaseTemplate);
+router.post('/templates/:templateId/purchase', SecurityMiddleware.withPermissions('marketplace.templates.purchase'), ValidationMiddleware.createMarketplaceValidator('purchaseTemplate'), marketplaceController.purchaseTemplate);
 
-// Template Reviews - GET routes avec validation
-router.get('/templates/:templateId/reviews', ValidationMiddleware.validateParams({
-  templateId: Joi.number().integer().positive().required()
-}), ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(50).default(20)
-}), marketplaceController.getTemplateReviews);
+// Template Reviews - GET routes avec permission spécifique
+router.get('/templates/:templateId/reviews', SecurityMiddleware.withPermissions('marketplace.reviews.read'), marketplaceController.getTemplateReviews);
 
-router.post('/templates/:templateId/reviews', ValidationMiddleware.createMarketplaceValidator('createReview'), marketplaceController.createReview);
+router.post('/templates/:templateId/reviews', SecurityMiddleware.withPermissions('marketplace.reviews.create'), ValidationMiddleware.createMarketplaceValidator('createReview'), marketplaceController.createReview);
 
-// User Purchases - GET routes avec validation
-router.get('/purchases', ValidationMiddleware.validateQuery({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20)
-}), marketplaceController.getUserPurchases);
+// User Purchases - GET routes avec permission spécifique
+router.get('/purchases', SecurityMiddleware.withPermissions('marketplace.purchases.read'), marketplaceController.getUserPurchases);
 
-// Admin Operations - GET routes avec validation
-router.get('/stats', ValidationMiddleware.validateQuery({
-  period: Joi.string().valid('day', 'week', 'month', 'year').default('month')
-}), marketplaceController.getMarketplaceStats);
+// Admin Operations - GET routes avec permission spécifique
+router.get('/stats', SecurityMiddleware.withPermissions('marketplace.stats.read'), marketplaceController.getMarketplaceStats);
 
 router.post('/templates/:id/approve', 
+  SecurityMiddleware.withPermissions('marketplace.templates.approve'),
   ValidationMiddleware.createMarketplaceValidator('approveTemplate'), 
   marketplaceController.approveTemplate
 );
 
 router.delete('/templates/:id', 
+  SecurityMiddleware.withPermissions('marketplace.templates.delete'),
   ValidationMiddleware.createMarketplaceValidator('deleteTemplate'), 
   marketplaceController.deleteTemplate
 );
 
-router.post('/templates/:id/reject', ValidationMiddleware.createMarketplaceValidator('rejectTemplate'), marketplaceController.rejectTemplate);
+router.post('/templates/:id/reject', SecurityMiddleware.withPermissions('marketplace.templates.reject'), ValidationMiddleware.createMarketplaceValidator('rejectTemplate'), marketplaceController.rejectTemplate);
 
-router.post('/designers/:id/verify', ValidationMiddleware.createMarketplaceValidator('verifyDesigner'), marketplaceController.verifyDesigner);
+router.post('/designers/:id/verify', SecurityMiddleware.withPermissions('marketplace.designers.verify'), ValidationMiddleware.createMarketplaceValidator('verifyDesigner'), marketplaceController.verifyDesigner);
 
 module.exports = router;
