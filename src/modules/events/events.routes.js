@@ -137,8 +137,8 @@ router.put('/:id', SecurityMiddleware.withPermissions('events.update'), Validati
 router.delete('/:id', SecurityMiddleware.withPermissions('events.delete'), ValidationMiddleware.createEventsValidator('deleteEvent'), eventsController.deleteEvent);
 
 // Event Lifecycle Management
-router.post('/:id/publish', SecurityMiddleware.withPermissions('events.publish'), ValidationMiddleware.createEventsValidator('publishEvent'), eventsController.publishEvent);
+router.post('/:id/publish', SecurityMiddleware.withPermissions('events.publish'), eventsController.publishEvent);
 
-router.post('/:id/archive', SecurityMiddleware.withPermissions('events.archive'), ValidationMiddleware.createEventsValidator('archiveEvent'), eventsController.archiveEvent);
+router.post('/:id/archive', SecurityMiddleware.withPermissions('events.archive'), eventsController.archiveEvent);
 
 module.exports = router;
