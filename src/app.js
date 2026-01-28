@@ -102,13 +102,15 @@ if (process.env.NODE_ENV !== 'test') {
 // Metrics middleware (collecte les métriques de performance)
 app.use(metricsMiddleware);
 
-// Health check routes (remplace l'endpoint simple)
-app.use('/health', healthRoutes);
+// API routes avec middleware d'authentification robuste
+const RobustAuthMiddleware = require('../../shared/middlewares/robust-auth-middleware');
 
-// Metrics endpoint for Prometheus
+// Routes publiques (sans authentification)
+app.use('/health', healthRoutes);
 app.get('/metrics', metricsEndpoint);
 
-// API routes
+// Routes protégées (avec authentification)
+app.use('/api', RobustAuthMiddleware.authenticate());
 app.use('/api/events', eventsRoutes);
 app.use('/api/guests', guestsRoutes);
 app.use('/api/tickets', ticketsRoutes);

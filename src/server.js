@@ -4,11 +4,16 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const compression = require('compression');
 const morgan = require('morgan');
+const dotenv = require('dotenv');
 
 const config = require('./config');
 const { ErrorHandler } = require('./utils/errors');
 const bootstrap = require('./bootstrap');
 const { specs, swaggerUi } = require('./config/swagger');
+const UnifiedJWTSecret = require('../../shared/config/unified-jwt-secret');
+
+// CONFIGURATION JWT UNIFIÉ - ÉTAPE CRUCIALE
+UnifiedJWTSecret.configureService('event-planner-core');
 
 // Import routes
 const eventsRoutes = require('./modules/events/events.routes');
