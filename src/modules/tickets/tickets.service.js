@@ -183,6 +183,40 @@ class TicketsService {
     }
   }
 
+  async processJob(jobId, userId) {
+    try {
+      // Appeler le service ticket-generator pour traiter le job
+      const response = await fetch(`http://localhost:3003/api/jobs/${jobId}/process`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.TICKET_GENERATOR_TOKEN || 'default-token'}`
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          service: 'event-planner-core'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ticket generator service error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      return {
+        success: true,
+        data: result
+      };
+    } catch (error) {
+      console.error('Error processing job:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to process job'
+      };
+    }
+  }
+
   async getTickets(options = {}) {
     try {
       const { page, limit, status, event_id, userId } = options;
@@ -438,16 +472,25 @@ class TicketsService {
 
   async createJob(jobData, userId) {
     try {
-      const jobDataWithId = {
-        ...jobData,
-        id: uuidv4(),
-        user_id: userId,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
+      // Appeler le service ticket-generator pour créer le job
+      const response = await fetch('http://localhost:3003/api/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.TICKET_GENERATOR_TOKEN || 'default-token'}`
+        },
+        body: JSON.stringify({
+          ...jobData,
+          user_id: userId,
+          service: 'event-planner-core'
+        })
+      });
 
-      const job = await ticketsRepository.createJob(jobDataWithId);
+      if (!response.ok) {
+        throw new Error(`Ticket generator service error: ${response.status}`);
+      }
+
+      const job = await response.json();
       
       return {
         success: true,

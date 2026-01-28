@@ -19,6 +19,7 @@ UnifiedJWTSecret.configureService('event-planner-core');
 const eventsRoutes = require('./modules/events/events.routes');
 const guestsRoutes = require('./modules/guests/guests.routes');
 const ticketsRoutes = require('./modules/tickets/tickets.routes');
+const invitationsRoutes = require('./modules/invitations/invitations.routes');
 const marketplaceRoutes = require('./modules/marketplace/marketplace.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 
@@ -146,6 +147,7 @@ app.get('/api', (req, res) => {
 app.use('/api/events', eventsRoutes);
 app.use('/api/guests', guestsRoutes);
 app.use('/api/tickets', ticketsRoutes);
+app.use('/api/invitations', invitationsRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/admin', adminRoutes);
 
