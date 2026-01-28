@@ -72,7 +72,7 @@ class AuthApiService {
    */
   async getAllUsers(options = {}, token) {
     try {
-      const response = await this.client.get('/api/auth/internal/users', {
+      const response = await this.client.get('/api/internal/auth/users', {
         params: options
       });
       
@@ -89,7 +89,7 @@ class AuthApiService {
    */
   async getUserById(userId, token) {
     try {
-      const response = await this.client.get(`/api/auth/internal/users/${userId}`);
+      const response = await this.client.get(`/api/internal/auth/users/${userId}`);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch user ${userId}: ${error.response?.data?.message || error.message}`);
@@ -103,7 +103,7 @@ class AuthApiService {
    */
   async getUserByEmail(email, token) {
     try {
-      const response = await this.client.get(`/api/auth/internal/users/email/${email}`);
+      const response = await this.client.get(`/api/internal/auth/users/email/${email}`);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch user by email ${email}: ${error.response?.data?.message || error.message}`);
@@ -117,7 +117,7 @@ class AuthApiService {
    */
   async getUserByUsername(username, token) {
     try {
-      const response = await this.client.get(`/api/auth/internal/users/username/${username}`);
+      const response = await this.client.get(`/api/internal/auth/users/username/${username}`);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch user by username ${username}: ${error.response?.data?.message || error.message}`);
@@ -131,7 +131,7 @@ class AuthApiService {
    */
   async searchUsers(searchParams, token) {
     try {
-      const response = await this.client.get('/api/auth/internal/users/search', {
+      const response = await this.client.get('/api/internal/auth/users/search', {
         params: searchParams
       });
       return response.data;
@@ -146,7 +146,7 @@ class AuthApiService {
    */
   async getUsersStats(token) {
     try {
-      const response = await this.client.get('/api/auth/internal/users/stats');
+      const response = await this.client.get('/api/internal/auth/users/stats');
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch users stats: ${error.response?.data?.message || error.message}`);
@@ -160,7 +160,7 @@ class AuthApiService {
    */
   async checkUserExists(userId, token) {
     try {
-      const response = await this.client.get(`/api/auth/internal/users/${userId}/exists`);
+      const response = await this.client.get(`/api/internal/auth/users/${userId}/exists`);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to check user existence: ${error.response?.data?.message || error.message}`);
@@ -174,7 +174,7 @@ class AuthApiService {
    */
   async getUsersBatch(userIds, token) {
     try {
-      const response = await this.client.get('/api/auth/internal/users/search', {
+      const response = await this.client.get('/api/internal/auth/users/search', {
         params: {
           ids: userIds.join(','),
           limit: userIds.length
