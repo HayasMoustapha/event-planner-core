@@ -3,12 +3,16 @@ const axios = require('axios');
 /**
  * Service de communication avec l'Auth Service (event-planner-auth)
  * Fournit des méthodes pour récupérer les données utilisateur via API
- * Utilise le token JWT fourni par le middleware commun pour l'authentification
+ * NOTE: Pour la communication inter-services, nous utilisons un token de service dédié
+ * SEULEMENT les méthodes de lecture sont autorisées pour respecter l'isolation des services
  */
 class AuthApiService {
   constructor() {
     this.baseURL = process.env.AUTH_SERVICE_URL || 'http://localhost:3000';
     this.timeout = parseInt(process.env.AUTH_SERVICE_TIMEOUT) || 10000;
+    
+    // Token de service pour la communication inter-services
+    this.serviceToken = process.env.SHARED_SERVICE_TOKEN || 'shared-service-token-abcdef12345678901234567890';
     
     // Configuration Axios pour les appels inter-services
     this.client = axios.create({
@@ -16,18 +20,10 @@ class AuthApiService {
       timeout: this.timeout,
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'event-planner-core/1.0.0'
+        'User-Agent': 'event-planner-core/1.0.0',
+        'X-Service-Token': this.serviceToken
       }
     });
-    
-    // Intercepteur pour ajouter le token JWT
-    this.client.interceptors.request.use(
-      (config) => {
-        // Le token sera ajouté via les méthodes qui l'appellent
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
     
     // Intercepteur pour gérer les erreurs
     this.client.interceptors.response.use(
@@ -40,26 +36,44 @@ class AuthApiService {
   }
 
   /**
-   * Configure le token JWT pour les requêtes
-   * @param {string} token - Token JWT récupéré du middleware
+   * Helper method pour faire des requêtes avec authentification
+   * @param {string} method - Méthode HTTP
+   * @param {string} url - URL de la requête
+   * @param {Object} options - Options de la requête
+   * @param {string} token - Token JWT
+   * @returns {Promise} Response Axios
    */
-  setAuthToken(token) {
-    this.client.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  async makeAuthenticatedRequest(method, url, options = {}, token) {
+    if (!token) {
+      throw new Error('Token is required for API calls');
+    }
+    
+    const config = {
+      method,
+      url,
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    };
+    
+    if (method.toLowerCase() === 'get' && options.params) {
+      config.params = options.params;
+    } else if (options.data) {
+      config.data = options.data;
+    }
+    
+    return this.client.request(config);
   }
 
   /**
    * Récupère tous les utilisateurs avec pagination et filtres
    * @param {Object} options - Options de pagination et filtres
-   * @param {string} token - Token JWT d'authentification
+   * @param {string} token - Token JWT d'authentification (non utilisé pour inter-services)
    */
   async getAllUsers(options = {}, token) {
-    this.setAuthToken(token);
-    
-    const { page = 1, limit = 20, search, status, role } = options;
-    
     try {
-      const response = await this.client.get('/api/users', {
-        params: { page, limit, search, status, role }
+      const response = await this.client.get('/api/auth/internal/users', {
+        params: options
       });
       
       return response.data;
@@ -71,13 +85,11 @@ class AuthApiService {
   /**
    * Récupère un utilisateur par son ID
    * @param {number} userId - ID de l'utilisateur
-   * @param {string} token - Token JWT d'authentification
+   * @param {string} token - Token JWT d'authentification (non utilisé pour inter-services)
    */
   async getUserById(userId, token) {
-    this.setAuthToken(token);
-    
     try {
-      const response = await this.client.get(`/api/users/${userId}`);
+      const response = await this.client.get(`/api/auth/internal/users/${userId}`);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch user ${userId}: ${error.response?.data?.message || error.message}`);
@@ -87,13 +99,11 @@ class AuthApiService {
   /**
    * Récupère un utilisateur par son email
    * @param {string} email - Email de l'utilisateur
-   * @param {string} token - Token JWT d'authentification
+   * @param {string} token - Token JWT d'authentification (non utilisé pour inter-services)
    */
   async getUserByEmail(email, token) {
-    this.setAuthToken(token);
-    
     try {
-      const response = await this.client.get(`/api/users/email/${email}`);
+      const response = await this.client.get(`/api/auth/internal/users/email/${email}`);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch user by email ${email}: ${error.response?.data?.message || error.message}`);
@@ -103,13 +113,11 @@ class AuthApiService {
   /**
    * Récupère un utilisateur par son username
    * @param {string} username - Username de l'utilisateur
-   * @param {string} token - Token JWT d'authentification
+   * @param {string} token - Token JWT d'authentification (non utilisé pour inter-services)
    */
   async getUserByUsername(username, token) {
-    this.setAuthToken(token);
-    
     try {
-      const response = await this.client.get(`/api/users/username/${username}`);
+      const response = await this.client.get(`/api/auth/internal/users/username/${username}`);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch user by username ${username}: ${error.response?.data?.message || error.message}`);
@@ -117,81 +125,13 @@ class AuthApiService {
   }
 
   /**
-   * Met à jour le statut d'un utilisateur
-   * @param {number} userId - ID de l'utilisateur
-   * @param {string} status - Nouveau statut
-   * @param {string} token - Token JWT d'authentification
-   */
-  async updateUserStatus(userId, status, token) {
-    this.setAuthToken(token);
-    
-    try {
-      const response = await this.client.patch(`/api/users/${userId}/status`, { status });
-      return response.data;
-    } catch (error) {
-      throw new Error(`Failed to update user status: ${error.response?.data?.message || error.message}`);
-    }
-  }
-
-  /**
-   * Met à jour les informations d'un utilisateur
-   * @param {number} userId - ID de l'utilisateur
-   * @param {Object} updateData - Données à mettre à jour
-   * @param {string} token - Token JWT d'authentification
-   */
-  async updateUser(userId, updateData, token) {
-    this.setAuthToken(token);
-    
-    try {
-      const response = await this.client.put(`/api/users/${userId}`, updateData);
-      return response.data;
-    } catch (error) {
-      throw new Error(`Failed to update user: ${error.response?.data?.message || error.message}`);
-    }
-  }
-
-  /**
-   * Crée un nouvel utilisateur
-   * @param {Object} userData - Données de l'utilisateur
-   * @param {string} token - Token JWT d'authentification
-   */
-  async createUser(userData, token) {
-    this.setAuthToken(token);
-    
-    try {
-      const response = await this.client.post('/api/users', userData);
-      return response.data;
-    } catch (error) {
-      throw new Error(`Failed to create user: ${error.response?.data?.message || error.message}`);
-    }
-  }
-
-  /**
-   * Supprime un utilisateur (soft delete)
-   * @param {number} userId - ID de l'utilisateur
-   * @param {string} token - Token JWT d'authentification
-   */
-  async deleteUser(userId, token) {
-    this.setAuthToken(token);
-    
-    try {
-      const response = await this.client.delete(`/api/users/${userId}`);
-      return response.data;
-    } catch (error) {
-      throw new Error(`Failed to delete user: ${error.response?.data?.message || error.message}`);
-    }
-  }
-
-  /**
    * Recherche des utilisateurs
    * @param {Object} searchParams - Paramètres de recherche
-   * @param {string} token - Token JWT d'authentification
+   * @param {string} token - Token JWT d'authentification (non utilisé pour inter-services)
    */
   async searchUsers(searchParams, token) {
-    this.setAuthToken(token);
-    
     try {
-      const response = await this.client.get('/api/users/search', {
+      const response = await this.client.get('/api/auth/internal/users/search', {
         params: searchParams
       });
       return response.data;
@@ -202,29 +142,25 @@ class AuthApiService {
 
   /**
    * Récupère les statistiques des utilisateurs
-   * @param {string} token - Token JWT d'authentification
+   * @param {string} token - Token JWT d'authentification (non utilisé pour inter-services)
    */
-  async getUserStats(token) {
-    this.setAuthToken(token);
-    
+  async getUsersStats(token) {
     try {
-      const response = await this.client.get('/api/users/stats');
+      const response = await this.client.get('/api/auth/internal/users/stats');
       return response.data;
     } catch (error) {
-      throw new Error(`Failed to fetch user stats: ${error.response?.data?.message || error.message}`);
+      throw new Error(`Failed to fetch users stats: ${error.response?.data?.message || error.message}`);
     }
   }
 
   /**
-   * Vérifie si un utilisateur existe
+   * Vérifie l'existence d'un utilisateur
    * @param {number} userId - ID de l'utilisateur
-   * @param {string} token - Token JWT d'authentification
+   * @param {string} token - Token JWT d'authentification (non utilisé pour inter-services)
    */
-  async userExists(userId, token) {
-    this.setAuthToken(token);
-    
+  async checkUserExists(userId, token) {
     try {
-      const response = await this.client.get(`/api/users/${userId}/exists`);
+      const response = await this.client.get(`/api/auth/internal/users/${userId}/exists`);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to check user existence: ${error.response?.data?.message || error.message}`);
@@ -234,15 +170,12 @@ class AuthApiService {
   /**
    * Récupère plusieurs utilisateurs par leurs IDs (batch)
    * @param {Array<number>} userIds - Liste des IDs d'utilisateurs
-   * @param {string} token - Token JWT d'authentification
+   * @param {string} token - Token JWT d'authentification (non utilisé pour inter-services)
    */
   async getUsersBatch(userIds, token) {
-    this.setAuthToken(token);
-    
     try {
-      // Utiliser search avec des IDs pour récupérer en batch
-      const response = await this.client.get('/api/users/search', {
-        params: { 
+      const response = await this.client.get('/api/auth/internal/users/search', {
+        params: {
           ids: userIds.join(','),
           limit: userIds.length
         }

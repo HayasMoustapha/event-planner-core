@@ -418,17 +418,6 @@ class AdminRepository {
     return result.rows[0];
   }
 
-  async updateUserStatus(userId, status, token) {
-    try {
-      // CORRECTION: Utiliser l'Auth Service API pour mettre à jour le statut utilisateur
-      const response = await authApiService.updateUserStatus(userId, status, token);
-      return response;
-    } catch (error) {
-      console.error('Error in updateUserStatus:', error);
-      throw new Error(`Failed to update user status: ${error.message}`);
-    }
-  }
-
   async getRevenueStats(period = 'month') {
     let query;
     let dateFormat;
