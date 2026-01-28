@@ -9,10 +9,11 @@ const router = express.Router();
 router.use(SecurityMiddleware.authenticated());
 
 // Ticket Templates CRUD Operations
-// router.post('/', 
-//   ValidationMiddleware.createTicketsValidator('createTemplate'),
-//   ticketTemplatesController.createTemplate
-// );
+router.post('/', 
+  SecurityMiddleware.withPermissions('tickets.templates.create'),
+  ValidationMiddleware.createTicketTemplatesValidator('createTemplate'),
+  ticketTemplatesController.createTemplate
+);
 
 router.get('/', SecurityMiddleware.withPermissions('tickets.templates.read'), ticketTemplatesController.getTemplates);
 
@@ -35,12 +36,15 @@ router.delete('/:id',
 // Template Operations
 router.post('/:id/validate', 
   SecurityMiddleware.withPermissions('tickets.templates.validate'),
-  ValidationMiddleware.createTicketTemplatesValidator('validateTemplateForEvent'),
+  ValidationMiddleware.validateParams({ id: Joi.number().integer().positive().required() }),
   ticketTemplatesController.validateTemplateForEvent
 );
 
-router.post('/:id/clone', SecurityMiddleware.withPermissions('tickets.templates.create'), ValidationMiddleware.validate({
-  name: Joi.string().min(1).max(100).required()
-}), ticketTemplatesController.cloneTemplate);
+router.post('/:id/clone', 
+  SecurityMiddleware.withPermissions('tickets.templates.create'),
+  ValidationMiddleware.validateParams({ id: Joi.number().integer().positive().required() }),
+  ValidationMiddleware.createTicketTemplatesValidator('cloneTemplate'),
+  ticketTemplatesController.cloneTemplate
+);
 
 module.exports = router;

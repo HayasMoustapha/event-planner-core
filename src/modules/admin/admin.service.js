@@ -2,10 +2,10 @@ const adminRepository = require('./admin.repository');
 const db = require('../../config/database');
 
 class AdminService {
-  async getDashboardData(userId) {
+  async getDashboardData(userId, token) {
     try {
-      const dashboardData = await adminRepository.getDashboardData(userId);
-      
+      const dashboardData = await adminRepository.getDashboardData(userId, token);
+
       return {
         success: true,
         data: dashboardData
@@ -139,9 +139,9 @@ class AdminService {
 
   async getUserById(options = {}) {
     try {
-      const { id, userId } = options;
-      const user = await adminRepository.getUserById({ id, userId });
-      
+      const { id, userId, token } = options;
+      const user = await adminRepository.getUserById({ id, userId }, token);
+
       return {
         success: true,
         data: user
@@ -157,11 +157,11 @@ class AdminService {
 
   async getEvents(options = {}) {
     try {
-      const { page, limit, status, search, userId } = options;
-      const events = await adminRepository.getEvents({ 
-        page, limit, status, search, userId 
-      });
-      
+      const { page, limit, status, search, userId, token } = options;
+      const events = await adminRepository.getEvents({
+        page, limit, status, search, userId
+      }, token);
+
       return {
         success: true,
         data: events,
@@ -178,11 +178,11 @@ class AdminService {
 
   async getTemplatesPendingApproval(options = {}) {
     try {
-      const { page, limit, userId } = options;
-      const templates = await adminRepository.getTemplatesPendingApproval({ 
-        page, limit, userId 
-      });
-      
+      const { page, limit, userId, token } = options;
+      const templates = await adminRepository.getTemplatesPendingApproval({
+        page, limit, userId
+      }, token);
+
       return {
         success: true,
         data: templates,
@@ -280,11 +280,11 @@ class AdminService {
 
   async exportData(options = {}) {
     try {
-      const { type, format, filters, userId } = options;
-      const exportResult = await adminRepository.exportData({ 
-        type, format, filters, userId 
-      });
-      
+      const { type, format, filters, userId, token } = options;
+      const exportResult = await adminRepository.exportData({
+        type, format, filters, userId
+      }, token);
+
       return {
         success: true,
         data: exportResult
@@ -300,9 +300,9 @@ class AdminService {
 
   async getSystemHealth(options = {}) {
     try {
-      const { userId } = options;
-      const health = await adminRepository.getSystemHealth({ userId });
-      
+      const { userId, token } = options;
+      const health = await adminRepository.getSystemHealth({ userId }, token);
+
       return {
         success: true,
         data: health

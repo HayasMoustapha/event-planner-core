@@ -186,11 +186,11 @@ class MarketplaceRepository {
       FROM templates t
       INNER JOIN designers d ON t.designer_id = d.id
       LEFT JOIN reviews r ON t.id = r.template_id
-      WHERE t.id = $1
+      WHERE t.id = $1 AND t.deleted_at IS NULL
       GROUP BY t.id, d.brand_name, d.user_id
     `;
     const result = await database.query(query, [id]);
-    
+
     return result.rows[0] || null;
   }
 
@@ -271,7 +271,7 @@ class MarketplaceRepository {
   async getTemplates(options = {}) {
     const { page = 1, limit = 20, designer_id, status, min_price, max_price, search } = options;
     const offset = (page - 1) * limit;
-    
+
     let query = `
       SELECT t.*, d.brand_name,
              AVG(r.rating) as average_rating,
@@ -281,7 +281,7 @@ class MarketplaceRepository {
       INNER JOIN designers d ON t.designer_id = d.id
       LEFT JOIN reviews r ON t.id = r.template_id
       LEFT JOIN purchases p ON t.id = p.template_id
-      WHERE 1=1
+      WHERE t.deleted_at IS NULL
     `;
     
     const values = [];
@@ -328,40 +328,40 @@ class MarketplaceRepository {
     const result = await database.query(query, values);
     
     // Get total count
-    let countQuery = 'SELECT COUNT(*) as total FROM templates t WHERE 1=1';
+    let countQuery = 'SELECT COUNT(*) as total FROM templates t WHERE deleted_at IS NULL';
     const countValues = [];
     let countParamCount = 0;
-    
+
     if (designer_id) {
       countParamCount++;
       countQuery += ` AND designer_id = $${countParamCount}`;
       countValues.push(designer_id);
     }
-    
+
     if (status) {
       countParamCount++;
       countQuery += ` AND status = $${countParamCount}`;
       countValues.push(status);
     }
-    
+
     if (min_price) {
       countParamCount++;
       countQuery += ` AND price >= $${countParamCount}`;
       countValues.push(min_price);
     }
-    
+
     if (max_price) {
       countParamCount++;
       countQuery += ` AND price <= $${countParamCount}`;
       countValues.push(max_price);
     }
-    
+
     if (search) {
       countParamCount++;
       countQuery += ` AND (name ILIKE $${countParamCount} OR description ILIKE $${countParamCount})`;
       countValues.push(`%${search}%`);
     }
-    
+
     const countResult = await database.query(countQuery, countValues);
     const total = parseInt(countResult.rows[0].total);
     
@@ -573,13 +573,17 @@ class MarketplaceRepository {
     }
   }
 
+  /**
+   * Get marketplace statistics
+   * Includes soft delete filters for accurate counts
+   */
   async getMarketplaceStats() {
     const query = `
-      SELECT 
-        COUNT(DISTINCT d.id) as total_designers,
-        COUNT(DISTINCT d.id) FILTER (WHERE d.is_verified = true) as verified_designers,
-        COUNT(DISTINCT t.id) as total_templates,
-        COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'approved') as approved_templates,
+      SELECT
+        COUNT(DISTINCT d.id) FILTER (WHERE d.deleted_at IS NULL) as total_designers,
+        COUNT(DISTINCT d.id) FILTER (WHERE d.is_verified = true AND d.deleted_at IS NULL) as verified_designers,
+        COUNT(DISTINCT t.id) FILTER (WHERE t.deleted_at IS NULL) as total_templates,
+        COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'approved' AND t.deleted_at IS NULL) as approved_templates,
         COUNT(DISTINCT p.id) as total_purchases,
         COALESCE(SUM(p.amount), 0) as total_revenue,
         COUNT(DISTINCT r.id) as total_reviews,
@@ -589,35 +593,10 @@ class MarketplaceRepository {
       LEFT JOIN purchases p ON t.id = p.template_id
       LEFT JOIN reviews r ON t.id = r.template_id
     `;
-    
-    const result = await database.query(query);
-    
-    return result.rows;
-  }
 
-  /**
-   * Get marketplace statistics
-   */
-  async getMarketplaceStats() {
-    const query = `
-      SELECT 
-        COUNT(DISTINCT d.id) as total_designers,
-        COUNT(DISTINCT d.id) FILTER (WHERE d.is_verified = true) as verified_designers,
-        COUNT(DISTINCT t.id) as total_templates,
-        COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'approved') as approved_templates,
-        COUNT(DISTINCT p.id) as total_purchases,
-        COALESCE(SUM(p.amount), 0) as total_revenue,
-        COUNT(DISTINCT r.id) as total_reviews,
-        COALESCE(AVG(r.rating), 0) as average_rating
-      FROM designers d
-      LEFT JOIN ticket_templates t ON d.id = t.designer_id
-      LEFT JOIN purchases p ON t.id = p.template_id
-      LEFT JOIN reviews r ON t.id = r.template_id
-    `;
-    
     const result = await database.query(query);
-    
-    return result.rows;
+
+    return result.rows[0] || {};
   }
 
   /**

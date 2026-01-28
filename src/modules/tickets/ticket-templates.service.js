@@ -107,11 +107,11 @@ class TicketTemplatesService {
     }
   }
 
-  async deleteTemplate(templateId) {
+  async deleteTemplate(templateId, userId = null) {
     try {
       // Check if template is being used
       const usageStats = await ticketTemplatesRepository.getUsageStats(templateId);
-      
+
       if (usageStats && parseInt(usageStats.usage_count) > 0) {
         return {
           success: false,
@@ -119,8 +119,8 @@ class TicketTemplatesService {
         };
       }
 
-      const deletedTemplate = await ticketTemplatesRepository.delete(templateId);
-      
+      const deletedTemplate = await ticketTemplatesRepository.delete(templateId, userId);
+
       if (!deletedTemplate) {
         return {
           success: false,

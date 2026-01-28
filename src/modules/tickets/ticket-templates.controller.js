@@ -112,8 +112,8 @@ class TicketTemplatesController {
   async deleteTemplate(req, res) {
     try {
       const { id } = req.params;
-      const result = await ticketTemplatesService.deleteTemplate(parseInt(id));
-      
+      const result = await ticketTemplatesService.deleteTemplate(parseInt(id), req.user?.id);
+
       if (!result.success) {
         return res.status(400).json({
           success: false,

@@ -4,8 +4,9 @@ const { ResponseFormatter } = require('../../../../shared');
 class AdminController {
   async getDashboard(req, res, next) {
     try {
-      const result = await adminService.getDashboardData(req.user.id);
-      
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.token;
+      const result = await adminService.getDashboardData(req.user.id, token);
+
       if (!result.success) {
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
       }
@@ -108,8 +109,9 @@ class AdminController {
   async getUserById(req, res, next) {
     try {
       const { id } = req.params;
-      const result = await adminService.getUserById({ id, userId: req.user.id });
-      
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.token;
+      const result = await adminService.getUserById({ id, userId: req.user.id, token });
+
       if (!result.success) {
         if (result.error && result.error.includes('not found')) {
           return res.status(404).json(ResponseFormatter.notFound('User'));
@@ -126,10 +128,11 @@ class AdminController {
   async getEvents(req, res, next) {
     try {
       const { page, limit, status, search } = req.query;
-      const result = await adminService.getEvents({ 
-        page, limit, status, search, userId: req.user.id 
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.token;
+      const result = await adminService.getEvents({
+        page, limit, status, search, userId: req.user.id, token
       });
-      
+
       if (!result.success) {
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
       }
@@ -143,10 +146,11 @@ class AdminController {
   async getTemplatesPendingApproval(req, res, next) {
     try {
       const { page, limit } = req.query;
-      const result = await adminService.getTemplatesPendingApproval({ 
-        page, limit, userId: req.user.id 
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.token;
+      const result = await adminService.getTemplatesPendingApproval({
+        page, limit, userId: req.user.id, token
       });
-      
+
       if (!result.success) {
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
       }
@@ -228,10 +232,11 @@ class AdminController {
   async exportData(req, res, next) {
     try {
       const { type, format, filters } = req.query;
-      const result = await adminService.exportData({ 
-        type, format, filters, userId: req.user.id 
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.token;
+      const result = await adminService.exportData({
+        type, format, filters, userId: req.user.id, token
       });
-      
+
       if (!result.success) {
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
       }
@@ -244,8 +249,9 @@ class AdminController {
 
   async getSystemHealth(req, res, next) {
     try {
-      const result = await adminService.getSystemHealth({ userId: req.user.id });
-      
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.token;
+      const result = await adminService.getSystemHealth({ userId: req.user.id, token });
+
       if (!result.success) {
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
       }

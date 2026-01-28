@@ -30,17 +30,17 @@ class TicketTemplatesRepository {
   }
 
   async findById(id) {
-    const query = 'SELECT * FROM ticket_templates WHERE id = $1';
+    const query = 'SELECT * FROM ticket_templates WHERE id = $1 AND deleted_at IS NULL';
     const result = await database.query(query, [id]);
-    
+
     return result.rows[0] || null;
   }
 
   async findAll(options = {}) {
     const { page = 1, limit = 20, is_customizable, search } = options;
     const offset = (page - 1) * limit;
-    
-    let query = 'SELECT * FROM ticket_templates WHERE 1=1';
+
+    let query = 'SELECT * FROM ticket_templates WHERE deleted_at IS NULL';
     const values = [];
     let paramCount = 0;
     
@@ -62,16 +62,16 @@ class TicketTemplatesRepository {
     const result = await database.query(query, values);
     
     // Get total count
-    let countQuery = 'SELECT COUNT(*) as total FROM ticket_templates WHERE 1=1';
+    let countQuery = 'SELECT COUNT(*) as total FROM ticket_templates WHERE deleted_at IS NULL';
     const countValues = [];
     let countParamCount = 0;
-    
+
     if (is_customizable !== undefined) {
       countParamCount++;
       countQuery += ` AND is_customizable = $${countParamCount}`;
       countValues.push(is_customizable);
     }
-    
+
     if (search) {
       countParamCount++;
       countQuery += ` AND (name ILIKE $${countParamCount} OR description ILIKE $${countParamCount})`;
@@ -144,10 +144,15 @@ class TicketTemplatesRepository {
     }
   }
 
-  async delete(id) {
-    const query = 'DELETE FROM ticket_templates WHERE id = $1 RETURNING *';
-    const result = await database.query(query, [id]);
-    
+  async delete(id, deletedBy = null) {
+    const query = `
+      UPDATE ticket_templates
+      SET deleted_at = NOW(), deleted_by = $2, updated_at = NOW()
+      WHERE id = $1 AND deleted_at IS NULL
+      RETURNING *
+    `;
+    const result = await database.query(query, [id, deletedBy]);
+
     return result.rows[0] || null;
   }
 
@@ -169,19 +174,20 @@ class TicketTemplatesRepository {
 
   async getPopularTemplates(limit = 10) {
     const query = `
-      SELECT 
+      SELECT
         tt.*,
         COUNT(t.id) as usage_count
       FROM ticket_templates tt
       LEFT JOIN tickets t ON tt.id = t.ticket_template_id
+      WHERE tt.deleted_at IS NULL
       GROUP BY tt.id
       HAVING COUNT(t.id) > 0
       ORDER BY usage_count DESC
       LIMIT $1
     `;
-    
+
     const result = await database.query(query, [limit]);
-    
+
     return result.rows;
   }
 }

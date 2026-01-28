@@ -269,69 +269,90 @@ class AdminRepository {
     }
   }
 
-  async getEventsList(options = {}) {
+  async getEventsList(options = {}, token) {
     const { page = 1, limit = 50, status, search } = options;
     const offset = (page - 1) * limit;
-    
+
+    // ARCHITECTURE: No direct users table access - use Auth Service API
     let query = `
-      SELECT e.*, 
-             u.first_name || ' ' || u.last_name as organizer_name,
-             u.email as organizer_email,
+      SELECT e.*,
              COUNT(eg.id) as guest_count,
              COUNT(CASE WHEN eg.is_present = true THEN 1 END) as checked_in_count
       FROM events e
-      INNER JOIN users u ON e.organizer_id = u.id
       LEFT JOIN event_guests eg ON e.id = eg.event_id
-      WHERE 1=1
+      WHERE e.deleted_at IS NULL
     `;
-    
+
     const values = [];
     let paramCount = 0;
-    
+
     if (status) {
       paramCount++;
       query += ` AND e.status = $${paramCount}`;
       values.push(status);
     }
-    
+
     if (search) {
       paramCount++;
       query += ` AND (e.title ILIKE $${paramCount} OR e.description ILIKE $${paramCount})`;
       values.push(`%${search}%`);
     }
-    
+
     query += `
-      GROUP BY e.id, u.first_name, u.last_name, u.email
+      GROUP BY e.id
       ORDER BY e.created_at DESC
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `;
-    
+
     values.push(limit, offset);
-    
+
     const result = await database.query(query, values);
-    
+
     // Get total count
-    let countQuery = 'SELECT COUNT(*) as total FROM events WHERE 1=1';
+    let countQuery = 'SELECT COUNT(*) as total FROM events WHERE deleted_at IS NULL';
     const countValues = [];
     let countParamCount = 0;
-    
+
     if (status) {
       countParamCount++;
       countQuery += ` AND status = $${countParamCount}`;
       countValues.push(status);
     }
-    
+
     if (search) {
       countParamCount++;
       countQuery += ` AND (title ILIKE $${countParamCount} OR description ILIKE $${countParamCount})`;
       countValues.push(`%${search}%`);
     }
-    
+
     const countResult = await database.query(countQuery, countValues);
     const total = parseInt(countResult.rows[0].total);
-    
+
+    // Enrich with organizer info from Auth Service
+    const organizerIds = [...new Set(result.rows.map(e => e.organizer_id).filter(id => id))];
+    let organizersMap = {};
+
+    if (organizerIds.length > 0 && token) {
+      try {
+        const usersResponse = await authApiService.getUsersBatch(organizerIds, token);
+        const users = usersResponse.data?.users || usersResponse.data || [];
+        organizersMap = users.reduce((map, user) => {
+          map[user.id] = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User';
+          return map;
+        }, {});
+      } catch (apiError) {
+        console.warn('Failed to fetch organizer names from Auth Service:', apiError.message);
+      }
+    }
+
+    const enrichedEvents = result.rows.map(event => ({
+      ...event,
+      organizer_name: organizersMap[event.organizer_id] || 'Unknown User',
+      organizer_email: null // Would need separate API call to get email
+    }));
+
     return {
-      events: result.rows,
+      events: enrichedEvents,
       pagination: {
         page,
         limit,
@@ -341,30 +362,57 @@ class AdminRepository {
     };
   }
 
-  async getTemplatesPendingApproval(options = {}) {
+  async getTemplatesPendingApproval(options = {}, token) {
     const { page = 1, limit = 20 } = options;
     const offset = (page - 1) * limit;
-    
+
+    // ARCHITECTURE: No direct users table access - use Auth Service API
     const query = `
-      SELECT t.*, d.brand_name, d.user_id as designer_user_id,
-             u.first_name, u.last_name, u.email as designer_email
+      SELECT t.*, d.brand_name, d.user_id as designer_user_id
       FROM templates t
       INNER JOIN designers d ON t.designer_id = d.id
-      INNER JOIN users u ON d.user_id = u.id
-      WHERE t.status = 'pending_review'
+      WHERE t.status = 'pending_review' AND t.deleted_at IS NULL
       ORDER BY t.created_at ASC
       LIMIT $1 OFFSET $2
     `;
-    
+
     const result = await database.query(query, [limit, offset]);
-    
+
     // Get total count
-    const countQuery = 'SELECT COUNT(*) as total FROM templates WHERE status = $1';
+    const countQuery = 'SELECT COUNT(*) as total FROM templates WHERE status = $1 AND deleted_at IS NULL';
     const countResult = await database.query(countQuery, ['pending_review']);
     const total = parseInt(countResult.rows[0].total);
-    
+
+    // Enrich with designer user info from Auth Service
+    const userIds = [...new Set(result.rows.map(t => t.designer_user_id).filter(id => id))];
+    let usersMap = {};
+
+    if (userIds.length > 0 && token) {
+      try {
+        const usersResponse = await authApiService.getUsersBatch(userIds, token);
+        const users = usersResponse.data?.users || usersResponse.data || [];
+        usersMap = users.reduce((map, user) => {
+          map[user.id] = {
+            first_name: user.first_name,
+            last_name: user.last_name,
+            email: user.email
+          };
+          return map;
+        }, {});
+      } catch (apiError) {
+        console.warn('Failed to fetch designer info from Auth Service:', apiError.message);
+      }
+    }
+
+    const enrichedTemplates = result.rows.map(template => ({
+      ...template,
+      first_name: usersMap[template.designer_user_id]?.first_name || 'Unknown',
+      last_name: usersMap[template.designer_user_id]?.last_name || 'User',
+      designer_email: usersMap[template.designer_user_id]?.email || null
+    }));
+
     return {
-      templates: result.rows,
+      templates: enrichedTemplates,
       pagination: {
         page,
         limit,
@@ -496,20 +544,35 @@ class AdminRepository {
 
   /**
    * Get dashboard data for admin
+   * Note: User count is retrieved from Auth Service API, not local database
    */
-  async getDashboardData(userId) {
+  async getDashboardData(userId, token) {
     try {
-      const query = `
-        SELECT 
-          (SELECT COUNT(*) FROM users WHERE deleted_at IS NULL) as total_users,
+      // Get local metrics (events, guests, ticket_types) - no users table access
+      const localQuery = `
+        SELECT
           (SELECT COUNT(*) FROM events WHERE deleted_at IS NULL) as total_events,
           (SELECT COUNT(*) FROM events WHERE status = 'published' AND deleted_at IS NULL) as published_events,
           (SELECT COUNT(*) FROM guests WHERE deleted_at IS NULL) as total_guests,
           (SELECT COALESCE(SUM(price), 0) FROM ticket_types WHERE deleted_at IS NULL) as potential_revenue
       `;
-      
-      const result = await database.query(query);
-      return result.rows[0] || {};
+
+      const localResult = await database.query(localQuery);
+      const localMetrics = localResult.rows[0] || {};
+
+      // Get user count from Auth Service API
+      let totalUsers = 0;
+      try {
+        const usersResponse = await authApiService.getAllUsers({ page: 1, limit: 1 }, token);
+        totalUsers = usersResponse.data?.pagination?.total || usersResponse.data?.meta?.total || 0;
+      } catch (apiError) {
+        console.warn('Failed to fetch user count from Auth Service:', apiError.message);
+      }
+
+      return {
+        total_users: totalUsers,
+        ...localMetrics
+      };
     } catch (error) {
       throw error;
     }
@@ -517,140 +580,136 @@ class AdminRepository {
 
   /**
    * Get users with pagination and filters
+   * ARCHITECTURE: Uses Auth Service API - no direct users table access
    */
-  async getUsers(options = {}) {
-    const { page = 1, limit = 50, status, search, role, userId } = options;
-    const offset = (page - 1) * limit;
-    
-    let whereConditions = ['u.deleted_at IS NULL'];
-    let queryParams = [];
-    let paramIndex = 1;
-    
-    if (status) {
-      whereConditions.push(`u.status = $${paramIndex++}`);
-      queryParams.push(status);
-    }
-    
-    if (search) {
-      whereConditions.push(`(u.first_name ILIKE $${paramIndex++} OR u.last_name ILIKE $${paramIndex++} OR u.email ILIKE $${paramIndex++})`);
-      queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
-    }
-    
-    if (role) {
-      whereConditions.push(`u.role = $${paramIndex++}`);
-      queryParams.push(role);
-    }
-    
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-    
-    const query = `
-      SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.status, u.created_at, u.updated_at,
-             COUNT(DISTINCT e.id) as events_count
-      FROM users u
-      LEFT JOIN events e ON e.organizer_id = u.id AND e.deleted_at IS NULL
-      ${whereClause}
-      GROUP BY u.id, u.first_name, u.last_name, u.email, u.role, u.status, u.created_at, u.updated_at
-      ORDER BY u.created_at DESC
-      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
-    `;
-    
-    queryParams.push(limit, offset);
-    
-    const countQuery = `
-      SELECT COUNT(DISTINCT u.id) as total
-      FROM users u
-      ${whereClause}
-    `;
-    
-    const [result, countResult] = await Promise.all([
-      database.query(query, queryParams),
-      database.query(countQuery, queryParams.slice(0, -2))
-    ]);
-    
-    return {
-      users: result.rows,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: parseInt(countResult.rows[0].total),
-        totalPages: Math.ceil(countResult.rows[0].total / limit)
-      }
-    };
+  async getUsers(options = {}, token) {
+    // Delegate to getUsersList which already uses Auth Service API
+    return this.getUsersList(options, token);
   }
 
   /**
    * Get user by ID
+   * ARCHITECTURE: Uses Auth Service API - no direct users table access
    */
-  async getUserById(options = {}) {
-    const { id, userId } = options;
-    
-    const query = `
-      SELECT u.*, 
-             COUNT(DISTINCT e.id) as events_count,
-             COUNT(DISTINCT g.id) as guests_count
-      FROM users u
-      LEFT JOIN events e ON e.organizer_id = u.id AND e.deleted_at IS NULL
-      LEFT JOIN guests g ON g.created_by = u.id AND g.deleted_at IS NULL
-      WHERE u.id = $1 AND u.deleted_at IS NULL
-      GROUP BY u.id
-    `;
-    
-    const result = await database.query(query, [id]);
-    return result.rows[0] || null;
+  async getUserById(options = {}, token) {
+    const { id } = options;
+
+    try {
+      // Get user from Auth Service API
+      const userResponse = await authApiService.getUserById(id, token);
+      const userData = userResponse.data?.data || userResponse.data || null;
+
+      if (!userData) {
+        return null;
+      }
+
+      // Enrich with local data (events_count, guests_count)
+      const eventsQuery = `
+        SELECT COUNT(*) as events_count
+        FROM events
+        WHERE organizer_id = $1 AND deleted_at IS NULL
+      `;
+      const eventsResult = await database.query(eventsQuery, [id]);
+
+      const guestsQuery = `
+        SELECT COUNT(*) as guests_count
+        FROM guests
+        WHERE created_by = $1 AND deleted_at IS NULL
+      `;
+      const guestsResult = await database.query(guestsQuery, [id]);
+
+      return {
+        ...userData,
+        events_count: parseInt(eventsResult.rows[0]?.events_count || 0),
+        guests_count: parseInt(guestsResult.rows[0]?.guests_count || 0)
+      };
+    } catch (error) {
+      console.error('Error fetching user from Auth Service:', error.message);
+      throw new Error(`Failed to get user: ${error.message}`);
+    }
   }
 
   /**
    * Get events with pagination and filters
+   * ARCHITECTURE: Uses Auth Service API for organizer info - no direct users table access
    */
-  async getEvents(options = {}) {
-    const { page = 1, limit = 50, status, search, userId } = options;
+  async getEvents(options = {}, token) {
+    const { page = 1, limit = 50, status, search } = options;
     const offset = (page - 1) * limit;
-    
+
     let whereConditions = ['e.deleted_at IS NULL'];
     let queryParams = [];
     let paramIndex = 1;
-    
+
     if (status) {
       whereConditions.push(`e.status = $${paramIndex++}`);
       queryParams.push(status);
     }
-    
+
     if (search) {
       whereConditions.push(`(e.title ILIKE $${paramIndex++} OR e.description ILIKE $${paramIndex++})`);
       queryParams.push(`%${search}%`, `%${search}%`);
     }
-    
+
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-    
+
+    // Query events without users table JOIN
     const query = `
-      SELECT e.*, u.first_name as organizer_first_name, u.last_name as organizer_last_name, u.email as organizer_email,
+      SELECT e.*,
              COUNT(DISTINCT g.id) as guests_count,
              COUNT(DISTINCT tt.id) as ticket_types_count
       FROM events e
-      LEFT JOIN users u ON u.id = e.organizer_id
       LEFT JOIN guests g ON g.event_id = e.id AND g.deleted_at IS NULL
       LEFT JOIN ticket_types tt ON tt.event_id = e.id AND tt.deleted_at IS NULL
       ${whereClause}
-      GROUP BY e.id, u.first_name, u.last_name, u.email
+      GROUP BY e.id
       ORDER BY e.created_at DESC
       LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
-    
+
     queryParams.push(limit, offset);
-    
+
     const countQuery = `
       SELECT COUNT(DISTINCT e.id) as total
       FROM events e
       ${whereClause}
     `;
-    
+
     const [result, countResult] = await Promise.all([
       database.query(query, queryParams),
       database.query(countQuery, queryParams.slice(0, -2))
     ]);
-    
+
+    // Enrich with organizer info from Auth Service
+    const organizerIds = [...new Set(result.rows.map(e => e.organizer_id).filter(id => id))];
+    let organizersMap = {};
+
+    if (organizerIds.length > 0 && token) {
+      try {
+        const usersResponse = await authApiService.getUsersBatch(organizerIds, token);
+        const users = usersResponse.data?.users || usersResponse.data || [];
+        organizersMap = users.reduce((map, user) => {
+          map[user.id] = {
+            first_name: user.first_name,
+            last_name: user.last_name,
+            email: user.email
+          };
+          return map;
+        }, {});
+      } catch (apiError) {
+        console.warn('Failed to fetch organizer info from Auth Service:', apiError.message);
+      }
+    }
+
+    const enrichedEvents = result.rows.map(event => ({
+      ...event,
+      organizer_first_name: organizersMap[event.organizer_id]?.first_name || 'Unknown',
+      organizer_last_name: organizersMap[event.organizer_id]?.last_name || 'User',
+      organizer_email: organizersMap[event.organizer_id]?.email || null
+    }));
+
     return {
-      events: result.rows,
+      events: enrichedEvents,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -803,88 +862,111 @@ class AdminRepository {
 
   /**
    * Export data
+   * ARCHITECTURE: For users export, uses Auth Service API - no direct users table access
    */
-  async exportData(options = {}) {
-    const { type, format, filters, userId } = options;
-    
-    let query, fileName;
-    
+  async exportData(options = {}, token) {
+    const { type, format } = options;
+
+    let data, fileName;
+
     switch (type) {
       case 'users':
-        query = `
-          SELECT id, first_name, last_name, email, role, status, created_at, updated_at
-          FROM users
-          WHERE deleted_at IS NULL
-          ORDER BY created_at DESC
-          LIMIT 10000
-        `;
+        // Export users from Auth Service API
+        try {
+          const usersResponse = await authApiService.getAllUsers({ page: 1, limit: 10000 }, token);
+          const users = usersResponse.data?.data || usersResponse.data || [];
+          data = Array.isArray(users) ? users.map(u => ({
+            id: u.id,
+            first_name: u.first_name,
+            last_name: u.last_name,
+            email: u.email,
+            role: u.role,
+            status: u.status,
+            created_at: u.created_at,
+            updated_at: u.updated_at
+          })) : [];
+        } catch (apiError) {
+          console.error('Failed to export users from Auth Service:', apiError.message);
+          data = [];
+        }
         fileName = `users_export_${Date.now()}.${format}`;
         break;
-        
+
       case 'events':
-        query = `
+        const eventsQuery = `
           SELECT id, title, description, event_date, location, status, organizer_id, created_at, updated_at
           FROM events
           WHERE deleted_at IS NULL
           ORDER BY created_at DESC
           LIMIT 10000
         `;
+        const eventsResult = await database.query(eventsQuery);
+        data = eventsResult.rows;
         fileName = `events_export_${Date.now()}.${format}`;
         break;
-        
+
       case 'logs':
-        query = `
+        const logsQuery = `
           SELECT id, level, message, context, created_by, created_at
           FROM system_logs
           ORDER BY created_at DESC
           LIMIT 10000
         `;
+        const logsResult = await database.query(logsQuery);
+        data = logsResult.rows;
         fileName = `logs_export_${Date.now()}.${format}`;
         break;
-        
+
       default:
         throw new Error('Invalid export type');
     }
-    
-    const result = await database.query(query);
-    
+
     return {
-      data: result.rows,
+      data,
       fileName,
       exportedAt: new Date().toISOString(),
-      recordCount: result.rows.length
+      recordCount: data.length
     };
   }
 
   /**
    * Get system health
+   * ARCHITECTURE: Uses Auth Service API for user count - no direct users table access
    */
-  async getSystemHealth(options = {}) {
-    const { userId } = options;
-    
-    const queries = [
-      'SELECT COUNT(*) as count FROM users WHERE deleted_at IS NULL',
+  async getSystemHealth(options = {}, token) {
+    // Local database queries (no users table)
+    const localQueries = [
       'SELECT COUNT(*) as count FROM events WHERE deleted_at IS NULL',
       'SELECT COUNT(*) as count FROM guests WHERE deleted_at IS NULL',
       'SELECT COUNT(*) as count FROM ticket_types WHERE deleted_at IS NULL',
       'SELECT COUNT(*) as count FROM system_logs WHERE created_at > NOW() - INTERVAL \'1 hour\'',
       'SELECT pg_size_pretty(pg_database_size(current_database())) as db_size'
     ];
-    
+
     const [
-      usersResult,
       eventsResult,
       guestsResult,
       ticketTypesResult,
       logsResult,
       dbSizeResult
-    ] = await Promise.all(queries.map(q => database.query(q)));
-    
+    ] = await Promise.all(localQueries.map(q => database.query(q)));
+
+    // Get user count from Auth Service
+    let totalUsers = 0;
+    let authServiceStatus = 'healthy';
+    try {
+      const usersResponse = await authApiService.getAllUsers({ page: 1, limit: 1 }, token);
+      totalUsers = usersResponse.data?.pagination?.total || usersResponse.data?.meta?.total || 0;
+    } catch (apiError) {
+      console.warn('Failed to fetch user count from Auth Service:', apiError.message);
+      authServiceStatus = 'degraded';
+    }
+
     return {
-      status: 'healthy',
+      status: authServiceStatus === 'healthy' ? 'healthy' : 'degraded',
       timestamp: new Date().toISOString(),
       metrics: {
-        totalUsers: parseInt(usersResult.rows[0].count),
+        totalUsers: totalUsers,
         totalEvents: parseInt(eventsResult.rows[0].count),
         totalGuests: parseInt(guestsResult.rows[0].count),
         totalTicketTypes: parseInt(ticketTypesResult.rows[0].count),
@@ -894,7 +976,7 @@ class AdminRepository {
       services: {
         database: 'healthy',
         api: 'healthy',
-        authentication: 'healthy'
+        authentication: authServiceStatus
       }
     };
   }
