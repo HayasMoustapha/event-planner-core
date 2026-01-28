@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     currency VARCHAR(3) DEFAULT 'EUR',
     -- Relations selon le diagramme (ticket_types existe maintenant)
     ticket_type_id BIGINT NOT NULL REFERENCES ticket_types(id) ON DELETE CASCADE,
+    ticket_template_id BIGINT REFERENCES ticket_templates(id) ON DELETE SET NULL,
     event_guest_id BIGINT NOT NULL REFERENCES event_guests(id) ON DELETE CASCADE,
     -- Champs d'audit complets
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

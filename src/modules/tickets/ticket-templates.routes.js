@@ -20,19 +20,24 @@ router.get('/popular', SecurityMiddleware.withPermissions('tickets.templates.rea
 
 router.get('/:id', SecurityMiddleware.withPermissions('tickets.templates.read'), ticketTemplatesController.getTemplateById);
 
-router.put('/:id', SecurityMiddleware.withPermissions('tickets.templates.update'), ValidationMiddleware.validate({
-  name: Joi.string().min(1).max(100).optional(),
-  description: Joi.string().max(500).optional()
-}), ticketTemplatesController.updateTemplate);
+router.put('/:id', 
+  SecurityMiddleware.withPermissions('tickets.templates.update'),
+  ValidationMiddleware.createTicketTemplatesValidator('updateTemplate'),
+  ticketTemplatesController.updateTemplate
+);
 
-router.delete('/:id', SecurityMiddleware.withPermissions('tickets.templates.delete'), ValidationMiddleware.validateParams({
-  id: Joi.number().integer().positive().required()
-}), ticketTemplatesController.deleteTemplate);
+router.delete('/:id', 
+  SecurityMiddleware.withPermissions('tickets.templates.delete'),
+  ValidationMiddleware.createTicketTemplatesValidator('deleteTemplate'),
+  ticketTemplatesController.deleteTemplate
+);
 
 // Template Operations
-router.post('/:id/validate', SecurityMiddleware.withPermissions('tickets.templates.validate'), ValidationMiddleware.validate({
-  event_id: Joi.number().integer().positive().required()
-}), ticketTemplatesController.validateTemplateForEvent);
+router.post('/:id/validate', 
+  SecurityMiddleware.withPermissions('tickets.templates.validate'),
+  ValidationMiddleware.createTicketTemplatesValidator('validateTemplateForEvent'),
+  ticketTemplatesController.validateTemplateForEvent
+);
 
 router.post('/:id/clone', SecurityMiddleware.withPermissions('tickets.templates.create'), ValidationMiddleware.validate({
   name: Joi.string().min(1).max(100).required()
