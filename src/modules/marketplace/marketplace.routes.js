@@ -1,6 +1,7 @@
 const express = require('express');
 const Joi = require('joi');
 const marketplaceController = require('./marketplace.controller');
+const paymentRoutes = require('./payment.routes');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
 const marketplaceErrorHandler = require('./marketplace.errorHandler');
 
@@ -14,6 +15,9 @@ router.use(ContextInjector.injectMarketplaceContext());
 
 // Apply error handler for all routes
 router.use(marketplaceErrorHandler);
+
+// Intégrer les routes de paiement
+router.use(paymentRoutes);
 
 // Designer Management - GET routes avec permission spécifique
 router.get('/designers', SecurityMiddleware.withPermissions('marketplace.designers.read'), marketplaceController.getDesigners);

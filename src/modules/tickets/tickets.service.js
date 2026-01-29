@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const ticketsRepository = require('./tickets.repository');
 const guestsRepository = require('../guests/guests.repository');
+const scanValidationClient = require('../../../../shared/clients/scan-validation-client'); // Client pour communiquer avec le service de validation
 
 class TicketsService {
   async createTicketType(ticketTypeData, userId) {
@@ -313,8 +314,9 @@ class TicketsService {
     }
   }
 
-  async validateTicket(ticketId, userId) {
+  async validateTicket(ticketId, userId, scanContext = {}) {
     try {
+      // ÉTAPE 1 : Récupérer le ticket depuis la base de données
       const ticket = await ticketsRepository.findById(ticketId);
       
       if (!ticket) {
@@ -324,7 +326,7 @@ class TicketsService {
         };
       }
 
-      // Check if user owns the ticket or has admin permissions
+      // ÉTAPE 2 : Vérifier que l'utilisateur a le droit de valider ce ticket
       if (ticket.user_id !== userId && !ticket.is_admin) {
         return {
           success: false,
@@ -332,29 +334,133 @@ class TicketsService {
         };
       }
 
-      const validationResult = {
-        ticket_id: ticket.id,
-        qr_code: ticket.qr_code,
-        status: 'validated',
-        validated_at: new Date().toISOString(),
-        scanner: userId
+      // ÉTAPE 3 : Préparer le contexte de scan avec valeurs par défaut
+      const defaultScanContext = {
+        location: scanContext.location || 'default',
+        deviceId: scanContext.deviceId || `device_${userId}`,
+        timestamp: scanContext.timestamp || new Date().toISOString(),
+        operatorId: scanContext.operatorId || userId,
+        checkpointId: scanContext.checkpointId || 'main'
       };
 
+      // ÉTAPE 4 : Appeler le service de validation externe
+      console.log(`Validation du ticket ${ticketId} via Scan Validation Service`);
+      const validationResult = await scanValidationClient.validateTicket(ticket, defaultScanContext);
+
+      // ÉTAPE 5 : Traiter le résultat de la validation
+      if (!validationResult.success) {
+        // La validation a échoué côté service de validation
+        return {
+          success: false,
+          error: validationResult.error || 'Validation service error',
+          code: validationResult.code,
+          details: validationResult.details
+        };
+      }
+
+      // ÉTAPE 6 : Si la validation est réussie, mettre à jour le ticket
+      if (validationResult.valid) {
+        const updateData = {
+          status: 'validated',
+          validated_at: new Date().toISOString(),
+          validated_by: userId,
+          validation_metadata: {
+            service: 'scan-validation-service',
+            timestamp: validationResult.validation.timestamp,
+            fraudFlags: validationResult.validation.fraudFlags || [],
+            restrictions: validationResult.validation.restrictions || []
+          }
+        };
+
+        const updatedTicket = await ticketsRepository.update(ticketId, updateData);
+
+        return {
+          success: true,
+          data: {
+            ...updatedTicket,
+            validation: validationResult.validation
+          },
+          message: 'Ticket validé avec succès'
+        };
+      } else {
+        // Le ticket n'est pas valide selon le service de validation
+        return {
+          success: false,
+          valid: false,
+          error: 'Ticket invalide',
+          details: validationResult.validation,
+          fraudFlags: validationResult.validation.fraudFlags || []
+        };
+      }
+
+    } catch (error) {
+      console.error('Error validating ticket:', error);
+      
+      // En cas d'erreur de communication avec le service de validation,
+      // on peut essayer une validation locale en fallback
+      if (error.code === 'VALIDATION_COMMUNICATION_ERROR' || error.code === 'VALIDATION_TIMEOUT') {
+        console.log('Fallback vers validation locale pour le ticket', ticketId);
+        return this.validateTicketLocally(ticketId, userId, scanContext);
+      }
+
+      return {
+        success: false,
+        error: error.message || 'Failed to validate ticket'
+      };
+    }
+  }
+
+  /**
+   * Validation locale en fallback si le service externe est indisponible
+   * @param {string} ticketId - ID du ticket
+   * @param {string} userId - ID de l'utilisateur qui valide
+   * @param {Object} scanContext - Contexte du scan
+   * @returns {Object} - Résultat de la validation locale
+   */
+  async validateTicketLocally(ticketId, userId, scanContext = {}) {
+    try {
+      console.log(`Validation locale du ticket ${ticketId} (fallback)`);
+
+      const ticket = await ticketsRepository.findById(ticketId);
+      
+      if (!ticket) {
+        return {
+          success: false,
+          error: 'Ticket not found'
+        };
+      }
+
+      // Validation locale simplifiée
+      if (ticket.status === 'used' || ticket.status === 'cancelled') {
+        return {
+          success: false,
+          error: `Ticket already ${ticket.status}`
+        };
+      }
+
+      // Mettre à jour le ticket localement
       const updatedTicket = await ticketsRepository.update(ticketId, {
         status: 'validated',
         validated_at: new Date().toISOString(),
-        validated_by: userId
+        validated_by: userId,
+        validation_metadata: {
+          service: 'local-fallback',
+          reason: 'scan-validation-service-unavailable',
+          timestamp: new Date().toISOString()
+        }
       });
 
       return {
         success: true,
-        data: updatedTicket
+        data: updatedTicket,
+        warning: 'Validated locally - scan validation service unavailable'
       };
+
     } catch (error) {
-      console.error('Error validating ticket:', error);
+      console.error('Error in local ticket validation:', error);
       return {
         success: false,
-        error: error.message || 'Failed to validate ticket'
+        error: error.message || 'Failed to validate ticket locally'
       };
     }
   }
