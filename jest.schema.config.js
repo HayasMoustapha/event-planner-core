@@ -69,11 +69,6 @@ module.exports = {
   // Reporters détaillés
   reporters: [
     'default',
-    ['jest-html-reporters', {
-      publicPath: './coverage',
-      filename: 'schema-tests-report.html',
-      expand: true
-    }],
     ['jest-junit', {
       outputDirectory: './reports',
       outputName: 'schema-tests.xml',
@@ -81,10 +76,6 @@ module.exports = {
       titleTemplate: '{title}',
       ancestorSeparator: ' › ',
       usePathForSuiteName: true
-    }],
-    ['@jest/globals', {
-      coverageDirectory: './coverage',
-      coverageReporters: ['text', 'lcov']
     }]
   ],
 
@@ -133,7 +124,7 @@ module.exports = {
   },
 
   // Collecteurs de couverture personnalisés
-  collectCoverageOnlyFrom: [
+  collectCoverageFrom: [
     'src/modules/events/events.repository.js',
     'src/modules/events/events.service.js',
     'src/modules/guests/guests.repository.js',
