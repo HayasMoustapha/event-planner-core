@@ -1,18 +1,31 @@
-const express = require('express');
-const Joi = require('joi');
-const eventsController = require('./events.controller');
-const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
-const eventsErrorHandler = require('./events.errorHandler');
+// ========================================
+// IMPORT DES DÉPENDANCES
+// ========================================
+const express = require('express'); // Framework Express.js
+const Joi = require('joi'); // Bibliothèque de validation (gardée pour compatibilité)
+const eventsController = require('./events.controller'); // Contrôleur des événements
+const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared'); // Middlewares partagés
+const eventsErrorHandler = require('./events.errorHandler'); // Gestionnaire d'erreurs spécifique
 
+// ========================================
+// INITIALISATION DU ROUTEUR
+// ========================================
 const router = express.Router();
 
-// Apply authentication to all routes
+// ========================================
+// MIDDLEWARES GLOBAUX
+// ========================================
+
+// Application de l'authentification à toutes les routes
+// Seuls les utilisateurs authentifiés peuvent accéder aux routes d'événements
 router.use(SecurityMiddleware.authenticated());
 
-// Apply context injection for all routes
+// Injection du contexte événementiel pour toutes les routes
+// Ajoute des informations contextuelles utiles (utilisateur, permissions, etc.)
 router.use(ContextInjector.injectEventContext());
 
-// Apply error handler for all routes
+// Application du gestionnaire d'erreurs spécifique aux événements
+// Gère les erreurs de manière centralisée pour ce module
 router.use(eventsErrorHandler);
 
 /**
@@ -69,76 +82,155 @@ router.use(eventsErrorHandler);
  *       403:
  *         description: Permissions insuffisantes
  */
-router.post('/', SecurityMiddleware.withPermissions('events.create'), ValidationMiddleware.createEventsValidator('createEvent'), eventsController.createEvent);
+// ========================================
+// ROUTES DE GESTION DES ÉVÉNEMENTS
+// ========================================
 
 /**
- * @swagger
- * /events:
- *   get:
- *     summary: Lister les événements de l'utilisateur
- *     tags: [Events]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           minimum: 1
- *           default: 1
- *         description: Numéro de page
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           minimum: 1
- *           maximum: 100
- *           default: 20
- *         description: Nombre d'éléments par page
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [draft, published, archived]
- *         description: Filtrer par statut
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Terme de recherche
- *     responses:
- *       200:
- *         description: Liste des événements
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 events:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Event'
- *                 pagination:
- *                   $ref: '#/components/schemas/Pagination'
- *       401:
- *         description: Non authentifié
- *       403:
- *         description: Permissions insuffisantes
+ * ========================================
+ * CRÉATION D'UN NOUVEL ÉVÉNEMENT
+ * ========================================
+ * POST /api/events
+ * 
+ * Permissions requises: events.create
+ * Validation: Schéma createEvent du middleware partagé
+ * 
+ * Crée un nouvel événement avec les données fournies:
+ * - title (requis): Titre de l'événement
+ * - description (optionnel): Description détaillée
+ * - event_date (requis): Date et heure de l'événement
+ * - location (requis): Lieu de l'événement
  */
-// GET routes - avec permission spécifique
-router.get('/', SecurityMiddleware.withPermissions('events.read'), eventsController.getEvents);
+router.post('/', 
+  SecurityMiddleware.withPermissions('events.create'), 
+  ValidationMiddleware.createEventsValidator('createEvent'), 
+  eventsController.createEvent
+);
 
-router.get('/:id/stats', SecurityMiddleware.withPermissions('events.stats.read'), eventsController.getEventStats);
+/**
+ * ========================================
+ * LISTE DES ÉVÉNEMENTS
+ * ========================================
+ * GET /api/events
+ * 
+ * Permissions requises: events.read
+ * 
+ * Paramètres de query optionnels:
+ * - page: Numéro de page (défaut: 1)
+ * - limit: Nombre par page (défaut: 20, max: 100)
+ * - status: Filtrer par statut (draft, published, archived)
+ * - search: Terme de recherche
+ */
+router.get('/', 
+  SecurityMiddleware.withPermissions('events.read'), 
+  eventsController.getEvents
+);
 
-router.get('/:id', SecurityMiddleware.withPermissions('events.read'), eventsController.getEventById);
+/**
+ * ========================================
+ * STATISTIQUES D'UN ÉVÉNEMENT
+ * ========================================
+ * GET /api/events/:id/stats
+ * 
+ * Permissions requises: events.stats.read
+ * 
+ * Retourne les statistiques d'un événement:
+ * - Nombre total d'invités
+ * - Nombre de participants confirmés
+ * - Taux de participation
+ * - etc.
+ */
+router.get('/:id/stats', 
+  SecurityMiddleware.withPermissions('events.stats.read'), 
+  eventsController.getEventStats
+);
 
-router.put('/:id', SecurityMiddleware.withPermissions('events.update'), ValidationMiddleware.createEventsValidator('updateEvent'), eventsController.updateEvent);
+/**
+ * ========================================
+ * DÉTAILS D'UN ÉVÉNEMENT
+ * ========================================
+ * GET /api/events/:id
+ * 
+ * Permissions requises: events.read
+ * 
+ * Retourne les détails complets d'un événement spécifique
+ */
+router.get('/:id', 
+  SecurityMiddleware.withPermissions('events.read'), 
+  eventsController.getEventById
+);
 
-router.delete('/:id', SecurityMiddleware.withPermissions('events.delete'), ValidationMiddleware.createEventsValidator('deleteEvent'), eventsController.deleteEvent);
+/**
+ * ========================================
+ * MISE À JOUR D'UN ÉVÉNEMENT
+ * ========================================
+ * PUT /api/events/:id
+ * 
+ * Permissions requises: events.update
+ * Validation: Schéma updateEvent du middleware partagé
+ * 
+ * Met à jour les informations d'un événement existant
+ */
+router.put('/:id', 
+  SecurityMiddleware.withPermissions('events.update'), 
+  ValidationMiddleware.createEventsValidator('updateEvent'), 
+  eventsController.updateEvent
+);
 
-// Event Lifecycle Management
-router.post('/:id/publish', SecurityMiddleware.withPermissions('events.publish'), eventsController.publishEvent);
+/**
+ * ========================================
+ * SUPPRESSION D'UN ÉVÉNEMENT
+ * ========================================
+ * DELETE /api/events/:id
+ * 
+ * Permissions requises: events.delete
+ * Validation: Schéma deleteEvent du middleware partagé
+ * 
+ * Supprime un événement (soft delete)
+ */
+router.delete('/:id', 
+  SecurityMiddleware.withPermissions('events.delete'), 
+  ValidationMiddleware.createEventsValidator('deleteEvent'), 
+  eventsController.deleteEvent
+);
 
-router.post('/:id/archive', SecurityMiddleware.withPermissions('events.archive'), eventsController.archiveEvent);
+// ========================================
+// ROUTES DE CYCLE DE VIE DES ÉVÉNEMENTS
+// ========================================
 
+/**
+ * ========================================
+ * PUBLICATION D'UN ÉVÉNEMENT
+ * ========================================
+ * POST /api/events/:id/publish
+ * 
+ * Permissions requises: events.publish
+ * 
+ * Change le statut d'un événement de 'draft' à 'published'
+ * Rend l'événement visible et accessible au public
+ */
+router.post('/:id/publish', 
+  SecurityMiddleware.withPermissions('events.publish'), 
+  eventsController.publishEvent
+);
+
+/**
+ * ========================================
+ * ARCHIVAGE D'UN ÉVÉNEMENT
+ * ========================================
+ * POST /api/events/:id/archive
+ * 
+ * Permissions requises: events.archive
+ * 
+ * Change le statut d'un événement vers 'archived'
+ * L'événement n'est plus actif mais reste consultable
+ */
+router.post('/:id/archive', 
+  SecurityMiddleware.withPermissions('events.archive'), 
+  eventsController.archiveEvent
+);
+
+// ========================================
+// EXPORTATION DU ROUTEUR
+// ========================================
 module.exports = router;

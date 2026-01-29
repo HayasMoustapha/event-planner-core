@@ -1,7 +1,15 @@
 const { database } = require('../../config');
 
 class EventsRepository {
+  /**
+   * ========================================
+   * CRÉATION D'UN NOUVEL ÉVÉNEMENT
+   * ========================================
+   * @param {Object} eventData - Données de l'événement à créer
+   * @returns {Promise<Object>} Événement créé
+   */
   async create(eventData) {
+    // Extraction des données nécessaires avec décomposition
     const {
       title,
       description,
@@ -10,6 +18,7 @@ class EventsRepository {
       organizer_id
     } = eventData;
 
+    // Requête SQL d'insertion avec retour des données créées
     const query = `
       INSERT INTO events (
         title, description, event_date, location,
@@ -19,6 +28,7 @@ class EventsRepository {
       RETURNING *
     `;
 
+    // Valeurs à insérer dans l'ordre des paramètres
     const values = [
       title,
       description || null,
@@ -28,42 +38,26 @@ class EventsRepository {
     ];
     
     try {
+      // Exécution de la requête et récupération du résultat
       const result = await database.query(query, values);
       const createdEvent = result.rows[0];
       
-      return {
-        success: true,
-        message: 'Événement créé avec succès',
-        data: createdEvent
-      };
+      // Retour direct de l'événement créé (pattern simplifié)
+      return createdEvent;
+      
     } catch (error) {
-      // Gérer les erreurs de contrainte (doublons, etc.)
+      // Gestion des erreurs de contrainte (doublons, etc.)
       if (error.code === '23505') { // unique_violation
-        return {
-          success: false,
-          error: 'Un événement avec ces informations existe déjà',
-          details: {
-            field: 'title',
-            message: 'Ce titre est déjà utilisé pour un événement à cette date'
-          }
-        };
+        throw new Error('Un événement avec ces informations existe déjà');
       }
       
-      // Gérer les erreurs de validation
+      // Gestion des erreurs de validation
       if (error.code === '23514') { // check_violation
-        return {
-          success: false,
-          error: 'Erreur de validation des données',
-          details: error.message
-        };
+        throw new Error('Erreur de validation des données: ' + error.message);
       }
       
       // Erreur inattendue
-      return {
-        success: false,
-        error: 'Erreur lors de la création de l\'événement',
-        details: error.message
-      };
+      throw new Error('Erreur lors de la création de l\'événement: ' + error.message);
     }
   }
 
@@ -129,32 +123,39 @@ class EventsRepository {
     };
   }
 
+  /**
+   * ========================================
+   * MISE À JOUR D'UN ÉVÉNEMENT
+   * ========================================
+   * @param {number} id - ID de l'événement à mettre à jour
+   * @param {Object} updateData - Données à mettre à jour
+   * @param {number} updatedBy - ID de l'utilisateur qui fait la mise à jour
+   * @returns {Promise<Object>} Événement mis à jour
+   */
   async update(id, updateData, updatedBy) {
+    // Liste des champs autorisés pour la mise à jour (sécurité)
     const allowedFields = ['title', 'description', 'event_date', 'location', 'status', 'organizer_id'];
     const updates = [];
     const values = [];
     
+    // Construction dynamique des mises à jour avec validation
     Object.keys(updateData).forEach(key => {
       if (allowedFields.includes(key) && updateData[key] !== undefined) {
-        updates.push(`${key} = $${values.length + 1}`);
+        // Échappement des noms de colonnes pour prévenir l'injection SQL
+        updates.push(`"${key}" = $${values.length + 1}`);
         values.push(updateData[key]);
       }
     });
     
+    // Vérification qu'il y a au moins un champ à mettre à jour
     if (updates.length === 0) {
-      return {
-        success: false,
-        error: 'No valid fields to update',
-        details: {
-          message: 'At least one valid field must be provided for update',
-          allowedFields,
-          providedFields: Object.keys(updateData)
-        }
-      };
+      throw new Error('Aucun champ valide à mettre à jour');
     }
     
+    // Ajout des métadonnées de mise à jour
     values.push(updatedBy, id);
     
+    // Construction de la requête SQL
     const query = `
       UPDATE events 
       SET ${updates.join(', ')}, updated_by = $${values.length - 1}, updated_at = NOW()
@@ -163,24 +164,21 @@ class EventsRepository {
     `;
     
     try {
-      console.log('Query:', query);
-      console.log('Values:', values);
+      console.log('🔧 Requête UPDATE:', query);
+      console.log('📋 Valeurs:', values);
+      
       const result = await database.query(query, values);
-      return {
-        success: true,
-        data: result.rows[0],
-        message: 'Event updated successfully'
-      };
+      
+      // Vérification qu'un événement a bien été mis à jour
+      if (result.rows.length === 0) {
+        throw new Error('Événement non trouvé ou non mis à jour');
+      }
+      
+      return result.rows[0];
+      
     } catch (error) {
-      console.error('Database error:', error);
-      return {
-        success: false,
-        error: 'Failed to update event',
-        details: {
-          message: error.message,
-          id
-        }
-      };
+      console.error('❌ Erreur base de données:', error);
+      throw new Error('Échec de la mise à jour de l\'événement: ' + error.message);
     }
   }
 

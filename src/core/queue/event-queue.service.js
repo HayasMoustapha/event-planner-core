@@ -271,34 +271,78 @@ class EventQueueService {
   }
 
   /**
-   * Met à jour le statut des tickets
+   * ========================================
+   * MISE À JOUR DU STATUT DES TICKETS
+   * ========================================
+   * Met à jour le statut de plusieurs tickets en base de données
    * @param {string} eventId - ID de l'événement
-   * @param {Array} ticketIds - Liste des IDs de tickets
-   * @param {string} status - Nouveau statut
+   * @param {Array} ticketIds - Liste des IDs de tickets à mettre à jour
+   * @param {string} status - Nouveau statut ('PENDING', 'GENERATED', 'ERROR', etc.)
+   * @returns {Promise<Object>} Résultat de l'opération
    */
   async updateTicketsStatus(eventId, ticketIds, status) {
     try {
-      // TODO: Implémenter la mise à jour en base de données
-      // Pour l'instant, on simule avec un log
-      logger.info('📝 Mise à jour statut tickets', {
-        eventId,
-        ticketIds,
-        status,
-        count: ticketIds.length
-      });
+      // Import de la connexion à la base de données
+      const database = require('../../config/database');
+      const client = await database.pool.connect();
+      
+      try {
+        // Démarrage d'une transaction pour garantir la cohérence
+        await client.query('BEGIN');
+        
+        let updatedCount = 0;
+        
+        // Mise à jour de chaque ticket individuellement
+        for (const ticketId of ticketIds) {
+          const updateQuery = `
+            UPDATE tickets 
+            SET 
+              status = $1, 
+              updated_at = NOW()
+            WHERE id = $2 AND event_id = $3
+          `;
+          
+          const result = await client.query(updateQuery, [status, ticketId, eventId]);
+          updatedCount += result.rowCount; // Nombre de lignes affectées
+        }
+        
+        // Validation de la transaction
+        await client.query('COMMIT');
+        
+        logger.info('✅ Mise à jour statut tickets réussie', {
+          eventId,
+          ticketIds,
+          status,
+          requestedCount: ticketIds.length,
+          updatedCount
+        });
 
-      // Simulation d'attente pour l'opération DB
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      return { success: true, updated: ticketIds.length };
+        return { 
+          success: true, 
+          requestedCount: ticketIds.length,
+          updatedCount: updatedCount 
+        };
+        
+      } catch (dbError) {
+        // Annulation de la transaction en cas d'erreur
+        await client.query('ROLLBACK');
+        throw dbError;
+      } finally {
+        // Libération du client de connexion
+        client.release();
+      }
+      
     } catch (error) {
       logger.error('❌ Erreur mise à jour statut tickets', {
         eventId,
         ticketIds,
         status,
-        error: error.message
+        error: error.message,
+        stack: error.stack
       });
-      throw error;
+      
+      // Relancer l'erreur pour que le consumer Bull la traite
+      throw new Error(`Échec mise à jour statut tickets: ${error.message}`);
     }
   }
 
@@ -350,31 +394,116 @@ class EventQueueService {
   }
 
   /**
-   * Met à jour un ticket spécifique après génération
-   * @param {string} ticketId - ID du ticket
-   * @param {Object} updateData - Données de mise à jour
+   * ========================================
+   * MISE À JOUR D'UN TICKET APRÈS GÉNÉRATION
+   * ========================================
+   * Met à jour un ticket spécifique avec les résultats de génération
+   * @param {string} ticketId - ID du ticket à mettre à jour
+   * @param {Object} updateData - Données de mise à jour (QR code, PDF URL, etc.)
+   * @returns {Promise<Object>} Résultat de l'opération
    */
   async updateTicketAfterGeneration(ticketId, updateData) {
     try {
-      // TODO: Implémenter la mise à jour en base de données
-      // Pour l'instant, on simule avec un log
-      logger.info('📝 Mise à jour ticket après génération', {
+      // Import de la connexion à la base de données
+      const database = require('../../config/database');
+      const client = await database.pool.connect();
+      
+      try {
+        // Liste des champs autorisés pour la mise à jour (sécurité)
+        const allowedFields = [
+          'qr_code_data', 
+          'ticket_file_url', 
+          'ticket_file_path', 
+          'status',
+          'error_message',
+          'generated_at'
+        ];
+        
+        const updates = [];
+        const values = [];
+        
+        // Construction dynamique des mises à jour avec validation
+        Object.keys(updateData).forEach(key => {
+          if (allowedFields.includes(key) && updateData[key] !== undefined) {
+            // Échappement des noms de colonnes pour prévenir l'injection SQL
+            updates.push(`"${key}" = $${values.length + 1}`);
+            values.push(updateData[key]);
+          }
+        });
+        
+        // Vérification qu'il y a au moins un champ à mettre à jour
+        if (updates.length === 0) {
+          throw new Error('Aucun champ valide à mettre à jour pour le ticket');
+        }
+        
+        // Ajout de l'ID du ticket et de la date de mise à jour
+        values.push(ticketId);
+        
+        // Construction de la requête SQL
+        const updateQuery = `
+          UPDATE tickets 
+          SET ${updates.join(', ')}, updated_at = NOW()
+          WHERE id = $${values.length}
+          RETURNING *
+        `;
+        
+        logger.info('� Mise à jour ticket après génération', {
+          ticketId,
+          status: updateData.status,
+          hasQrCode: !!updateData.qr_code_data,
+          hasPdfUrl: !!updateData.ticket_file_url,
+          fields: Object.keys(updateData)
+        });
+
+        // Exécution de la requête
+        const result = await client.query(updateQuery, values);
+        
+        // Vérification qu'un ticket a bien été mis à jour
+        if (result.rows.length === 0) {
+          throw new Error(`Ticket ${ticketId} non trouvé ou non mis à jour`);
+        }
+        
+        const updatedTicket = result.rows[0];
+        
+        logger.info('✅ Ticket mis à jour avec succès', {
+          ticketId,
+          updatedStatus: updatedTicket.status,
+          hasQrCode: !!updatedTicket.qr_code_data,
+          hasPdfUrl: !!updatedTicket.ticket_file_url
+        });
+
+        return { 
+          success: true, 
+          ticketId, 
+          updated: true,
+          ticket: updatedTicket
+        };
+        
+      } catch (dbError) {
+        // Annulation de la transaction si nécessaire
+        if (client.query) {
+          try {
+            await client.query('ROLLBACK');
+          } catch (rollbackError) {
+            logger.error('❌ Erreur lors du ROLLBACK:', rollbackError);
+          }
+        }
+        throw dbError;
+      } finally {
+        // Libération du client de connexion
+        client.release();
+      }
+      
+    } catch (error) {
+      logger.error('❌ Erreur mise à jour ticket après génération', {
         ticketId,
         status: updateData.status,
-        hasQrCode: !!updateData.qrCode,
-        hasPdfUrl: !!updateData.pdfUrl
+        error: error.message,
+        stack: error.stack
       });
-
-      // Simulation d'attente pour l'opération DB
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      return { success: true, ticketId, updated: true };
-    } catch (error) {
-      logger.error('❌ Erreur mise à jour ticket', {
-        ticketId,
-        error: error.message
-      });
-      throw error;
+      
+      // Relancer l'erreur pour que le consumer Bull la traite
+      throw new Error(`Échec mise à jour ticket ${ticketId}: ${error.message}`);
     }
   }
 

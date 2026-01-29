@@ -1,29 +1,42 @@
+// ========================================
+// IMPORT DES DÉPENDANCES
+// ========================================
 const eventsRepository = require('./events.repository');
-const { v4: uuidv4 } = require('uuid');
+// Plus besoin d'UUID - la base de données utilise des SERIAL IDs automatiques
 
 class EventsService {
+  /**
+   * ========================================
+   * CRÉATION D'UN NOUVEL ÉVÉNEMENT
+   * ========================================
+   * @param {Object} eventData - Données de l'événement
+   * @param {number} organizerId - ID de l'organisateur
+   * @returns {Promise<Object>} Résultat de la création
+   */
   async createEvent(eventData, organizerId) {
     try {
-      const eventDataWithId = {
+      // Préparation des données avec valeurs par défaut
+      const eventDataWithCreator = {
         ...eventData,
-        id: uuidv4(),
         organizer_id: organizerId,
         status: 'draft',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
 
-      const event = await eventsRepository.create(eventDataWithId);
+      // Création de l'événement via le repository
+      const event = await eventsRepository.create(eventDataWithCreator);
       
       return {
         success: true,
         data: event
       };
+      
     } catch (error) {
-      console.error('Error creating event:', error);
+      console.error('❌ Erreur création événement:', error);
       return {
         success: false,
-        error: error.message || 'Failed to create event'
+        error: error.message || 'Échec de la création de l\'événement'
       };
     }
   }
@@ -84,46 +97,56 @@ class EventsService {
     }
   }
 
+  /**
+   * ========================================
+   * MISE À JOUR D'UN ÉVÉNEMENT
+   * ========================================
+   * @param {number} eventId - ID de l'événement à mettre à jour
+   * @param {Object} updateData - Données de mise à jour
+   * @param {number} userId - ID de l'utilisateur qui fait la mise à jour
+   * @returns {Promise<Object>} Résultat de la mise à jour
+   */
   async updateEvent(eventId, updateData, userId) {
     try {
+      // Récupération de l'événement existant pour vérification
       const existingEvent = await eventsRepository.findById(eventId);
       
       if (!existingEvent) {
         return {
           success: false,
-          error: 'Event not found'
+          error: 'Événement non trouvé'
         };
       }
 
+      // Vérification des permissions (seul l'organisateur peut modifier)
       if (existingEvent.organizer_id !== userId && String(existingEvent.organizer_id) !== String(userId)) {
         return {
           success: false,
-          error: 'Access denied'
+          error: 'Accès refusé'
         };
       }
 
-      // Validate event date if it's being updated
+      // Validation de la date de l'événement si elle est mise à jour
       if (updateData.event_date && new Date(updateData.event_date) <= new Date()) {
         return {
           success: false,
-          error: 'Event date must be in the future'
+          error: 'La date de l\'événement doit être dans le futur'
         };
       }
 
-      const updatedEvent = await eventsRepository.update(eventId, {
-        ...updateData,
-        updated_at: new Date().toISOString()
-      }, userId);
+      // Mise à jour via le repository
+      const updatedEvent = await eventsRepository.update(eventId, updateData, userId);
 
       return {
         success: true,
         data: updatedEvent
       };
+      
     } catch (error) {
-      console.error('Error updating event:', error);
+      console.error('❌ Erreur mise à jour événement:', error);
       return {
         success: false,
-        error: error.message || 'Failed to update event'
+        error: error.message || 'Échec de la mise à jour de l\'événement'
       };
     }
   }
@@ -250,51 +273,62 @@ class EventsService {
     }
   }
 
+  /**
+   * ========================================
+   * DUPLICATION D'UN ÉVÉNEMENT
+   * ========================================
+   * @param {number} eventId - ID de l'événement à dupliquer
+   * @param {Object} options - Options de duplication
+   * @param {number} userId - ID de l'utilisateur qui duplique
+   * @returns {Promise<Object>} Événement dupliqué
+   */
   async duplicateEvent(eventId, options, userId) {
     try {
+      // Récupération de l'événement original
       const originalEvent = await eventsRepository.findById(eventId);
       
       if (!originalEvent) {
         return {
           success: false,
-          error: 'Event not found'
+          error: 'Événement source non trouvé'
         };
       }
 
+      // Vérification des permissions
       if (originalEvent.organizer_id !== userId && String(originalEvent.organizer_id) !== String(userId)) {
         return {
           success: false,
-          error: 'Access denied'
+          error: 'Accès refusé'
         };
       }
 
+      // Extraction des options de duplication
       const { title, event_date } = options;
       
+      // Préparation des données de l'événement dupliqué
       const duplicatedEventData = {
-        title: title || `${originalEvent.title} (Copy)`,
+        title: title || `${originalEvent.title} (Copie)`,
         description: originalEvent.description,
         event_date: event_date || originalEvent.event_date,
         location: originalEvent.location,
         organizer_id: userId,
-        status: 'draft',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        status: 'draft'
+        // L'ID sera généré automatiquement par la base de données (SERIAL)
       };
 
-      const duplicatedEvent = await eventsRepository.create({
-        ...duplicatedEventData,
-        id: uuidv4()
-      });
+      // Création de l'événement dupliqué
+      const duplicatedEvent = await eventsRepository.create(duplicatedEventData);
 
       return {
         success: true,
         data: duplicatedEvent
       };
+      
     } catch (error) {
-      console.error('Error duplicating event:', error);
+      console.error('❌ Erreur duplication événement:', error);
       return {
         success: false,
-        error: error.message || 'Failed to duplicate event'
+        error: error.message || 'Échec de la duplication de l\'événement'
       };
     }
   }

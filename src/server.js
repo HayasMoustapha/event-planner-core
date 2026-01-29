@@ -103,9 +103,12 @@ if (config.nodeEnv !== 'test') {
   app.use(morgan('combined'));
 }
 
-// Database middleware - Ajoute la base de données à chaque requête
+// ========================================
+// 📊 MIDDLEWARE DE BASE DE DONNÉES
+// Ajoute la connexion à la base de données à chaque requête
+// ========================================
 app.use((req, res, next) => {
-  req.db = require('./database/connection');
+  req.db = require('./config/database');
   next();
 });
 
