@@ -15,6 +15,7 @@ const {
   getTicketGenerationJobStatus, 
   getEventGenerationJobs 
 } = require('../controllers/ticket-generation-controller');
+const { requireAuth, requireEventOrganizer } = require('../middleware/auth-middleware');
 
 /**
  * @route POST /api/v1/events/:event_id/tickets/generate
@@ -32,7 +33,7 @@ const {
  *   ]
  * }
  */
-router.post('/events/:event_id/tickets/generate', async (req, res) => {
+router.post('/events/:event_id/tickets/generate', requireAuth, requireEventOrganizer, async (req, res) => {
   // Ajout de event_id depuis les params dans le body
   req.body.event_id = parseInt(req.params.event_id);
   
@@ -47,7 +48,7 @@ router.post('/events/:event_id/tickets/generate', async (req, res) => {
  * @access Private (organisateur de l'événement)
  * @param job_id - UUID du job
  */
-router.get('/tickets/generation/:job_id', async (req, res) => {
+router.get('/tickets/generation/:job_id', requireAuth, async (req, res) => {
   await getTicketGenerationJobStatus(req, res, req.db);
 });
 
@@ -62,7 +63,7 @@ router.get('/tickets/generation/:job_id', async (req, res) => {
  *   status: string ('pending', 'processing', 'completed', 'failed')
  * }
  */
-router.get('/events/:event_id/tickets/generation', async (req, res) => {
+router.get('/events/:event_id/tickets/generation', requireAuth, requireEventOrganizer, async (req, res) => {
   await getEventGenerationJobs(req, res, req.db);
 });
 

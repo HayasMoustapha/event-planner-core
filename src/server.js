@@ -22,9 +22,13 @@ const ticketsRoutes = require('./modules/tickets/tickets.routes');
 const invitationsRoutes = require('./modules/invitations/invitations.routes');
 const marketplaceRoutes = require('./modules/marketplace/marketplace.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
+const ticketGenerationRoutes = require('./routes/ticket-generation-routes');
 
 // Service de communication Redis Queue pour la communication asynchrone
 const eventQueueService = require('./core/queue/event-queue.service');
+
+// Service de génération de tickets (consommateur de résultats)
+const { startTicketGenerationResultConsumer } = require('./queues/ticket-generation-service');
 
 // Import database migrator
 const migrator = require('./database/migrator');
@@ -99,6 +103,32 @@ if (config.nodeEnv !== 'test') {
   app.use(morgan('combined'));
 }
 
+// Database middleware - Ajoute la base de données à chaque requête
+app.use((req, res, next) => {
+  req.db = require('./database/connection');
+  next();
+});
+
+// JWT Authentication middleware - Pour les routes protégées
+const jwt = require('jsonwebtoken');
+app.use((req, res, next) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = decoded;
+    } catch (error) {
+      // Token invalide, mais on continue sans utilisateur
+      req.user = null;
+    }
+  } else {
+    req.user = null;
+  }
+  
+  next();
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
@@ -153,6 +183,7 @@ app.use('/api/tickets', ticketsRoutes);
 app.use('/api/invitations', invitationsRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/v1', ticketGenerationRoutes);
 
 // 404 handler
 app.use(ErrorHandler.notFoundHandler);
@@ -216,6 +247,10 @@ async function startServer() {
     
     // Initialisation du service Redis Queue pour la communication asynchrone
     await eventQueueService.initialize();
+    
+    // Démarrage du consommateur de résultats de génération de tickets
+    startTicketGenerationResultConsumer();
+    console.log('🎫 Ticket generation result consumer started');
     
     console.log('🚀 Starting Event Planner Core server...');
     
