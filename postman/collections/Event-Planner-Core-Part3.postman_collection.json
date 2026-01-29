@@ -1,0 +1,1167 @@
+{
+	"info": {
+		"_postman_id": "event-planner-core-part3",
+		"name": "Event Planner Core - Part 3 (Marketplace & Admin)",
+		"description": "Marketplace et Admin modules pour Event Planner Core.\n\n🔥 RÈGLE STRICTE: Les bodies ne contiennent QUE les champs réels des schémas SQL.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3001/api",
+			"type": "string"
+		},
+		{
+			"key": "authToken",
+			"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsImlhdCI6MTYzNzU0MjQwMCwiZXhwIjoxNjM3NjI4ODAwfQ.test",
+			"type": "string"
+		},
+		{
+			"key": "testEventId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "testTemplateId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "testDesignerId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{authToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "🏪 Marketplace",
+			"item": [
+				{
+					"name": "👨‍🎨 Designers",
+					"item": [
+						{
+							"name": "Get Designers",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Designers retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.be.an('array');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/designers?page=1&limit=10",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"designers"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Designer By ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Designer retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('id');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/designers/{{testDesignerId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"designers",
+										"{{testDesignerId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Designer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Designer updated successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"brand_name\": \"Creative Studio Pro\",\n  \"portfolio_url\": \"https://creativestudio.example.com\",\n  \"is_verified\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/designers/{{testDesignerId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"designers",
+										"{{testDesignerId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Verify Designer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Designer verified successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"verification_notes\": \"Portfolio vérifié et approuvé\",\n  \"verified_by\": 1\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/designers/{{testDesignerId}}/verify",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"designers",
+										"{{testDesignerId}}",
+										"verify"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Gestion des designers du marketplace"
+				},
+				{
+					"name": "📋 Templates",
+					"item": [
+						{
+							"name": "Create Template",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Template created successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('id');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"designer_id\": 1,\n  \"name\": \"Premium Event Template\",\n  \"description\": \"Template premium pour événements exclusifs\",\n  \"preview_url\": \"https://example.com/preview.jpg\",\n  \"source_files_path\": \"/templates/premium-event\",\n  \"price\": 49.99,\n  \"currency\": \"EUR\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/templates",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"templates"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Templates",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Templates retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.be.an('array');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/templates?page=1&limit=10",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"templates"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Template By ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Template retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('id');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/templates/{{testTemplateId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"templates",
+										"{{testTemplateId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Template",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Template updated successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Premium Event Template - Updated\",\n  \"description\": \"Description mise à jour du template premium\",\n  \"price\": 59.99,\n  \"currency\": \"EUR\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/templates/{{testTemplateId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"templates",
+										"{{testTemplateId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Template",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Template deleted successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/templates/{{testTemplateId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"templates",
+										"{{testTemplateId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Approve Template",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Template approved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"approval_notes\": \"Template approuvé pour publication\",\n  \"approved_by\": 1\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/templates/{{testTemplateId}}/approve",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"templates",
+										"{{testTemplateId}}",
+										"approve"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Reject Template",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Template rejected successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"rejection_reason\": \"Qualité graphique insuffisante\",\n  \"rejected_by\": 1\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/templates/{{testTemplateId}}/reject",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"templates",
+										"{{testTemplateId}}",
+										"reject"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Gestion des templates du marketplace"
+				},
+				{
+					"name": "💰 Purchases",
+					"item": [
+						{
+							"name": "Purchase Template",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Template purchased successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"payment_method\": \"stripe\",\n  \"amount\": 49.99,\n  \"currency\": \"EUR\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/templates/{{testTemplateId}}/purchase",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"templates",
+										"{{testTemplateId}}",
+										"purchase"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get User Purchases",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"User purchases retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.be.an('array');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/purchases?page=1&limit=10",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"purchases"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Gestion des achats de templates"
+				},
+				{
+					"name": "⭐ Reviews",
+					"item": [
+						{
+							"name": "Get Template Reviews",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Template reviews retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.be.an('array');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/templates/{{testTemplateId}}/reviews?page=1&limit=10",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"templates",
+										"{{testTemplateId}}",
+										"reviews"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Review",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Review created successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"rating\": 5,\n  \"comment\": \"Template exceptionnel, très professionnel et facile à utiliser!\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/templates/{{testTemplateId}}/reviews",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"templates",
+										"{{testTemplateId}}",
+										"reviews"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Gestion des avis sur les templates"
+				},
+				{
+					"name": "📊 Stats",
+					"item": [
+						{
+							"name": "Get Marketplace Stats",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Marketplace stats retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('stats');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/stats",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"stats"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Statistiques du marketplace"
+				}
+			],
+			"description": "Marketplace complet avec designers, templates, achats et avis"
+		},
+		{
+			"name": "🛡️ Admin",
+			"item": [
+				{
+					"name": "📊 Dashboard",
+					"item": [
+						{
+							"name": "Get Dashboard",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Dashboard retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('dashboard');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/admin/dashboard",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin",
+										"dashboard"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Global Stats",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Global stats retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('stats');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/admin/stats",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin",
+										"stats"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Recent Activity",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Recent activity retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.be.an('array');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/admin/activity?limit=50",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin",
+										"activity"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "50"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Tableau de bord administrateur"
+				},
+				{
+					"name": "📝 Logs",
+					"item": [
+						{
+							"name": "Get System Logs",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"System logs retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.be.an('array');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/admin/logs?level=error&limit=100",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin",
+										"logs"
+									],
+									"query": [
+										{
+											"key": "level",
+											"value": "error"
+										},
+										{
+											"key": "limit",
+											"value": "100"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create System Log",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"System log created successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"level\": \"info\",\n  \"message\": \"Action administrative effectuée\",\n  \"context\": {\n    \"action\": \"test_log\",\n    \"user_id\": 1\n  }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/admin/logs",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin",
+										"logs"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Gestion des logs système"
+				},
+				{
+					"name": "👥 Users Management",
+					"item": [
+						{
+							"name": "Get Users",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Users retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.be.an('array');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/admin/users?page=1&limit=20",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin",
+										"users"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get User By ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"User retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('id');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/admin/users/1",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin",
+										"users",
+										"1"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Gestion des utilisateurs (via Auth Service)"
+				},
+				{
+					"name": "📅 Events Management",
+					"item": [
+						{
+							"name": "Get Events",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Events retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.be.an('array');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/admin/events?page=1&limit=20",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin",
+										"events"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Gestion administrative des événements"
+				}
+			],
+			"description": "Panneau d'administration complet"
+		}
+	]
+}
