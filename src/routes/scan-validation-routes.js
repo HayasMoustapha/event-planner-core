@@ -1,10 +1,11 @@
 /**
- * Routes pour la validation de scan de billets
- * Définit les endpoints HTTP pour la validation en temps réel des billets
+ * Routes pour la consultation des données de scan de billets
+ * Définit les endpoints HTTP pour la LECTURE SEULE des données de validation
  * 
  * Routes :
- * POST /api/v1/scan/validate - Valider un billet scanné
- * GET /api/v1/events/:event_id/scan/history - Historique des scans
+ * GET /api/v1/events/:event_id/scan/history - Historique des scans (LECTURE SEULE)
+ * 
+ * NOTE : La validation réelle des billets est gérée par scan-validation-service
  */
 
 const express = require('express');
@@ -16,7 +17,6 @@ const {
   ErrorHandlerFactory
 } = require('../../../shared');
 const { 
-  validateScannedTicket, 
   getScanHistory 
 } = require('../controllers/scan-validation-controller');
 
@@ -31,21 +31,8 @@ const scanValidationErrorHandler = ErrorHandlerFactory.createScanValidationError
 router.use(scanValidationErrorHandler);
 
 /**
- * @route POST /api/v1/scan/validate
- * @desc Valider un billet scanné en temps réel
- * @access Private (nécessite permission scan_ticket)
- * @body {
- *   ticket_code: string,
- *   event_id: number
- * }
- */
-router.post('/scan/validate', SecurityMiddleware.withPermissions(['scan_ticket']), async (req, res) => {
-  await validateScannedTicket(req, res, req.db);
-});
-
-/**
  * @route GET /api/v1/events/:event_id/scan/history
- * @desc Récupérer l'historique des scans pour un événement
+ * @desc Récupérer l'historique des scans pour un événement (LECTURE SEULE)
  * @access Private (organisateur de l'événement)
  * @param event_id - ID de l'événement
  * @query {
@@ -54,6 +41,7 @@ router.post('/scan/validate', SecurityMiddleware.withPermissions(['scan_ticket']
  *   date_from: string (ISO date),
  *   date_to: string (ISO date)
  * }
+ * @note Les données proviennent de scan-validation-service
  */
 router.get('/events/:event_id/scan/history', SecurityMiddleware.withPermissions(['manage_events']), async (req, res) => {
   await getScanHistory(req, res, req.db);
