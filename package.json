@@ -17,8 +17,11 @@
     "test:schema:watch": "NODE_ENV=test jest --config jest.schema.config.js --watch",
     "test:schema:coverage": "NODE_ENV=test jest --config jest.schema.config.js --coverage",
     "test:unit": "NODE_ENV=test jest tests/unit/",
-    "test:integration": "NODE_ENV=test jest tests/integration/",
-    "test:all": "npm run test:schema && npm run test:unit && npm run test:integration"
+    "test:integration": "NODE_ENV=test jest tests/integration/",    "test:all": "npm run test:schema && npm run test:unit && npm run test:integration",
+    "test:orchestration": "NODE_ENV=test jest --config tests/orchestration/jest.orchestration.config.js",
+    "test:orchestration:mock": "NODE_ENV=test ORCHESTRATION_TEST_MODE=mock jest --config tests/orchestration/jest.orchestration.config.js",
+    "test:orchestration:integration": "NODE_ENV=test ORCHESTRATION_TEST_MODE=integration jest --config tests/orchestration/jest.orchestration.config.js",
+    "test:orchestration:e2e": "NODE_ENV=test ORCHESTRATION_TEST_MODE=e2e jest --config tests/orchestration/jest.orchestration.config.js"
   },
   "keywords": [
     "event-planner",
