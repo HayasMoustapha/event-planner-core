@@ -511,6 +511,247 @@ class TicketsService {
     }
   }
 
+  /**
+   * Validation de ticket par QR code avec appel au scan-validation-service
+   * @param {string} qrCode - QR code du ticket à valider
+   * @param {string} userId - ID de l'utilisateur qui fait la validation
+   * @param {Object} scanContext - Contexte du scan
+   * @param {Object} options - Options de validation
+   * @returns {Object} - Résultat de la validation
+   */
+  async validateTicketByQRCode(qrCode, userId, scanContext = {}, options = {}) {
+    try {
+      console.log(`Validation QR code: ${qrCode.substring(0, 20)}... par utilisateur ${userId}`);
+
+      // ÉTAPE 1 : Décoder et valider le QR code
+      let decodedQRData;
+      try {
+        decodedQRData = this.decodeQRCode(qrCode);
+      } catch (decodeError) {
+        return {
+          success: false,
+          error: 'Invalid QR code format',
+          details: decodeError.message
+        };
+      }
+
+      // ÉTAPE 2 : Vérifier que le QR code contient les informations requises
+      if (!decodedQRData.ticketId && !decodedQRData.ticket_id) {
+        return {
+          success: false,
+          error: 'QR code missing ticket identifier',
+          details: 'QR code must contain ticketId or ticket_id field'
+        };
+      }
+
+      const ticketId = decodedQRData.ticketId || decodedQRData.ticket_id;
+
+      // ÉTAPE 3 : Récupérer le ticket depuis la base de données
+      const ticket = await ticketsRepository.findById(ticketId);
+      
+      if (!ticket) {
+        return {
+          success: false,
+          error: 'Ticket not found',
+          details: `Ticket with ID ${ticketId} not found in database`
+        };
+      }
+
+      // ÉTAPE 4 : Vérifier que le QR code correspond au ticket
+      if (ticket.qr_code && ticket.qr_code !== qrCode) {
+        return {
+          success: false,
+          error: 'QR code mismatch',
+          details: 'Provided QR code does not match stored QR code'
+        };
+      }
+
+      // ÉTAPE 5 : Vérifier les permissions de l'utilisateur
+      if (ticket.user_id !== userId && !ticket.is_admin) {
+        return {
+          success: false,
+          error: 'Access denied',
+          details: 'User does not have permission to validate this ticket'
+        };
+      }
+
+      // ÉTAPE 6 : Vérifier le statut actuel du ticket
+      if (ticket.status === 'cancelled') {
+        return {
+          success: false,
+          error: 'Ticket cancelled',
+          details: 'Cannot validate a cancelled ticket'
+        };
+      }
+
+      if (ticket.status === 'expired') {
+        return {
+          success: false,
+          error: 'Ticket expired',
+          details: 'Ticket has expired and cannot be validated'
+        };
+      }
+
+      if (ticket.status === 'used' && !options.allow_used) {
+        return {
+          success: false,
+          error: 'Ticket already used',
+          details: 'Ticket has already been used and cannot be validated again'
+        };
+      }
+
+      // ÉTAPE 7 : Vérifier la date de l'événement
+      if (decodedQRData.eventId || decodedQRData.event_id) {
+        const eventId = decodedQRData.eventId || decodedQRData.event_id;
+        
+        // Si un eventId est fourni dans le contexte, vérifier la cohérence
+        if (scanContext.eventId && scanContext.eventId !== eventId) {
+          return {
+            success: false,
+            error: 'Event mismatch',
+            details: `QR code event (${eventId}) does not match scan context event (${scanContext.eventId})`
+          };
+        }
+      }
+
+      // ÉTAPE 8 : Appeler le scan-validation-service si option activée
+      let validationResult = { valid: true, fraudFlags: [], restrictions: [] };
+      
+      if (options.check_fraud) {
+        try {
+          console.log(`Appel au scan-validation-service pour détection de fraude...`);
+          const scanValidationResult = await scanValidationClient.validateTicket(ticket, scanContext);
+          
+          if (scanValidationResult.success) {
+            validationResult = {
+              valid: scanValidationResult.valid,
+              fraudFlags: scanValidationResult.validation?.fraudFlags || [],
+              restrictions: scanValidationResult.validation?.restrictions || []
+            };
+          } else {
+            // En cas d'échec du service externe, on continue en mode dégradé
+            console.warn('Scan-validation-service indisponible, validation locale uniquement');
+          }
+        } catch (serviceError) {
+          console.warn('Erreur appel scan-validation-service:', serviceError.message);
+          // Continuer en mode dégradé
+        }
+      }
+
+      // ÉTAPE 9 : Vérifier les flags de fraude
+      if (validationResult.fraudFlags && validationResult.fraudFlags.length > 0 && options.strict_mode) {
+        return {
+          success: false,
+          error: 'Fraud detected',
+          details: 'Ticket flagged for potential fraud',
+          fraudFlags: validationResult.fraudFlags
+        };
+      }
+
+      // ÉTAPE 10 : Mettre à jour le ticket si validation réussie
+      if (validationResult.valid) {
+        const updateData = {
+          status: 'used',
+          validated_at: new Date().toISOString(),
+          validated_by: userId,
+          last_scan_context: scanContext,
+          validation_metadata: {
+            qr_code_validated: qrCode,
+            scan_options: options,
+            fraud_flags: validationResult.fraudFlags,
+            restrictions: validationResult.restrictions,
+            validated_at: new Date().toISOString()
+          }
+        };
+
+        const updatedTicket = await ticketsRepository.update(ticketId, updateData);
+
+        console.log(`Ticket ${ticketId} validé avec succès par QR code`);
+
+        return {
+          success: true,
+          data: {
+            ...updatedTicket,
+            validation_result: validationResult
+          },
+          message: 'Ticket validated successfully by QR code'
+        };
+      } else {
+        return {
+          success: false,
+          error: 'Validation failed',
+          details: validationResult.restrictions?.join(', ') || 'Unknown validation error',
+          fraudFlags: validationResult.fraudFlags,
+          restrictions: validationResult.restrictions
+        };
+      }
+
+    } catch (error) {
+      console.error('Error validating ticket by QR code:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to validate ticket by QR code',
+        details: 'Internal server error during QR code validation'
+      };
+    }
+  }
+
+  /**
+   * Décodage d'un QR code de ticket
+   * @param {string} qrCode - QR code à décoder
+   * @returns {Object} - Données décodées du QR code
+   */
+  decodeQRCode(qrCode) {
+    try {
+      // Essayer de décoder en JSON (format le plus courant)
+      if (qrCode.startsWith('{') || qrCode.startsWith('[')) {
+        return JSON.parse(qrCode);
+      }
+
+      // Essayer de décoder en Base64
+      try {
+        const decoded = Buffer.from(qrCode, 'base64').toString('utf8');
+        if (decoded.startsWith('{') || decoded.startsWith('[')) {
+          return JSON.parse(decoded);
+        }
+        // Si c'est du texte simple, essayer de parser comme JSON
+        return JSON.parse(decoded);
+      } catch (base64Error) {
+        // Le Base64 n'a pas fonctionné, continuer avec d'autres méthodes
+      }
+
+      // Format simple: ticketId:eventId:userId
+      if (qrCode.includes(':')) {
+        const parts = qrCode.split(':');
+        if (parts.length >= 2) {
+          return {
+            ticketId: parts[0],
+            eventId: parts[1],
+            userId: parts[2] || null,
+            format: 'simple'
+          };
+        }
+      }
+
+      // Format UUID simple
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(qrCode)) {
+        return {
+          ticketId: qrCode,
+          format: 'uuid'
+        };
+      }
+
+      // Si aucun format ne correspond, retourner le QR code brut
+      return {
+        raw: qrCode,
+        format: 'unknown'
+      };
+
+    } catch (error) {
+      throw new Error(`Failed to decode QR code: ${error.message}`);
+    }
+  }
+
   async bulkGenerateTickets(bulkData, userId) {
     try {
       const { event_id, ticket_type_id, quantity } = bulkData;
