@@ -4,6 +4,8 @@
 
 This document provides a comprehensive overview of all available API routes in the Event Planner Core service. The service runs on port **3001** and provides complete functionality for event management, guest management, marketplace operations, and ticket handling.
 
+**⚠️ IMPORTANT**: Core service is the orchestrator and business logic hub. All specialized operations (payment processing, ticket generation, scan validation) are delegated to dedicated services.
+
 ## Base URL
 
 ```
@@ -17,6 +19,22 @@ All routes (except health endpoints) require JWT authentication. Include the tok
 ```
 Authorization: Bearer <your_jwt_token>
 ```
+
+## Service Architecture
+
+### Core Service Responsibilities ✅
+- **Event Management**: CRUD, lifecycle, statistics
+- **Guest Management**: CRUD, check-in, event assignments  
+- **Invitation Management**: Creation, sending, tracking
+- **Marketplace**: Templates, designers, reviews, moderation
+- **Admin Operations**: Dashboard, analytics, system management
+- **Ticket Management**: CRUD, validation, statistics (generation delegated)
+
+### Delegated to Specialized Services 🔄
+- **Payment Processing**: `payment-service` (port 3003)
+- **Ticket Generation**: `ticket-generator-service` (port 3004)  
+- **Scan Validation**: `scan-validation-service` (port 3005)
+- **Notifications**: `notification-service` (port 3002)
 
 ## Modules
 
@@ -145,17 +163,38 @@ Authorization: Bearer <your_jwt_token>
 - `POST /api/tickets/:id/validate` - Validate a ticket by ID
 - `POST /api/tickets/validate` - Validate a ticket by code
 
-#### Bulk Operations
-- `POST /api/tickets/bulk/generate` - Bulk generate tickets
-- `POST /api/tickets/jobs` - Create a ticket processing job
-- `POST /api/tickets/jobs/:jobId/process` - Process a specific job
-
 #### Statistics
 - `GET /api/tickets/events/:eventId/stats` - Get ticket statistics for an event
 
+**🔄 DELEGATED OPERATIONS**
+- **Ticket Generation**: See `ticket-generator-service` (port 3004)
+  - `POST /api/events/:event_id/tickets/generate` - Generate tickets
+  - `GET /api/tickets/generation/:job_id` - Job status
+  - `GET /api/events/:event_id/tickets/generation` - List jobs
+
 ---
 
-### 6. Health & Monitoring
+### 7. Specialized Service Integration (Read-Only)
+
+#### Scan Validation Operations 🔄
+- `GET /api/v1/events/:event_id/scan/history` - Get scan history for an event (READ-ONLY)
+  - **Data Source**: `scan-validation-service` (port 3005)
+  - **Note**: Actual scan validation is delegated to scan-validation-service
+
+#### Ticket Generation Operations 🔄  
+- `GET /api/v1/tickets/generation/:job_id` - Get generation job status (READ-ONLY)
+- `GET /api/v1/events/:event_id/tickets/generation` - List generation jobs (READ-ONLY)
+  - **Data Source**: `ticket-generator-service` (port 3004)  
+  - **Note**: Actual ticket generation is delegated to ticket-generator-service
+
+#### Payment Operations 🔄
+- **All payment operations are delegated to `payment-service` (port 3003)**
+  - Payment initiation, status, cancellation, webhooks
+  - Core service only initiates and consults payment status
+
+---
+
+### 8. Health & Monitoring
 
 #### Health Checks
 - `GET /health` - Basic health check (no authentication required)
@@ -217,7 +256,7 @@ All endpoints require specific permissions. Permission format: `module.action` (
 
 ## Postman Collection
 
-A complete Postman collection with all 73 routes is available in:
+A complete Postman collection with all 47 routes is available in:
 - `postman/collections/event-planner-core.postman_collection.json`
 
 ## Environment Variables
@@ -227,6 +266,27 @@ Required environment variables are defined in:
 
 ---
 
-**Last Updated:** January 27, 2026  
-**Version:** 3.0.0  
-**Total Routes:** 73
+**Last Updated:** January 29, 2026  
+**Version:** 3.1.0  
+**Total Routes:** 47 (reduced from 73 after refactoring)
+
+## 🎯 Refactoring Summary
+
+### Removed Routes (26 routes deleted)
+- **Payment Processing** (5 routes): Delegated to `payment-service`
+- **Ticket Generation** (3 routes): Delegated to `ticket-generator-service`  
+- **Scan Validation** (1 route): Delegated to `scan-validation-service`
+- **Bulk Operations** (3 routes): Moved to specialized services
+
+### Architecture Benefits
+- ✅ **Single Responsibility**: Each service has one clear purpose
+- ✅ **Clean Boundaries**: No overlap between services
+- ✅ **Better Scalability**: Specialized services can scale independently
+- ✅ **Easier Testing**: Smaller, focused service units
+- ✅ **Clear Documentation**: Explicit service ownership
+
+### Service Communication
+- **Core Service**: Orchestrates business logic and delegates specialized tasks
+- **Specialized Services**: Handle specific domains with expertise
+- **Read-Only Access**: Core service can consult specialized service data
+- **Write Operations**: Core service initiates, specialized services execute
