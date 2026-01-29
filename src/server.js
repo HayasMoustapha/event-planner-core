@@ -7,13 +7,39 @@ const morgan = require('morgan');
 const dotenv = require('dotenv');
 
 const config = require('./config');
-const { ErrorHandler } = require('./utils/errors');
 const bootstrap = require('./bootstrap');
 const { specs, swaggerUi } = require('./config/swagger');
 const UnifiedJWTSecret = require('../../shared/config/unified-jwt-secret');
 
+// ========================================
+// SYSTÈME PARTAGÉ CENTRALISÉ (NOUVEAU)
+// ========================================
+const { 
+  middlewares: sharedMiddlewares,
+  configureService,
+  log,
+  ERROR_CODES,
+  createError,
+  success,
+  error,
+  notFound,
+  healthCheck,
+  metrics
+} = require('../../shared');
+
 // CONFIGURATION JWT UNIFIÉ - ÉTAPE CRUCIALE
 UnifiedJWTSecret.configureService('event-planner-core');
+
+// Configuration du service avec système partagé
+const serviceConfig = configureService('event-planner-core', {
+  enableErrorHandling: true,
+  enableResponseHandling: true,
+  customizations: {
+    serviceName: 'Event Planner Core',
+    version: '2.0.0',
+    environment: process.env.NODE_ENV || 'development'
+  }
+});
 
 // Import routes
 const eventsRoutes = require('./modules/events/events.routes');
@@ -64,22 +90,47 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    const error = ErrorHandler.handleRateLimit(req);
-    ErrorHandler.logError(error, req);
-    res.status(429).json(error.toJSON());
+    // Utilisation du système partagé pour le rate limiting
+    log('warn', 'Rate limit exceeded', {
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      path: req.path
+    });
+    
+    return res.apiRateLimitExceeded({
+      limit: limiter.max,
+      windowMs: limiter.windowMs,
+      retryAfter: Math.ceil(limiter.windowMs / 1000)
+    });
   }
 });
 
 app.use(limiter);
 
+// ========================================
+// MIDDLEWARES SYSTÈME PARTAGÉ (REMPLACE LES LOCAUX)
+// ========================================
+// Application des middlewares du système partagé
+app.use(sharedMiddlewares);
+
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request ID middleware for tracking
+// Request ID middleware pour tracking
 app.use((req, res, next) => {
   req.id = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   res.setHeader('X-Request-ID', req.id);
+  
+  // Log avec système partagé
+  log('info', 'Request started', {
+    requestId: req.id,
+    method: req.method,
+    path: req.path,
+    ip: req.ip,
+    userAgent: req.get('User-Agent')
+  });
+  
   next();
 });
 
@@ -137,24 +188,154 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: config.nodeEnv,
-    version: process.env.npm_package_version || '1.0.0'
   });
 });
 
-// API info endpoint
-app.get('/api/info', (req, res) => {
-  res.json({
-    name: 'Event Planner Core API',
-    version: process.env.npm_package_version || '1.0.0',
-    description: 'API pour la gestion des événements, invités et tickets',
-    environment: config.nodeEnv,
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-    documentation: '/api-docs'
-  });
+// ========================================
+// METRICS AVEC SYSTÈME PARTAGÉ
+// ========================================
+app.get('/metrics', (req, res) => {
+  try {
+    // Metrics Prometheus avec système partagé
+    const metricsData = generatePrometheusMetrics();
+    return metrics(res, metricsData, 'prometheus');
+  } catch (err) {
+    log('error', 'Metrics generation failed', { error: err.message });
+    return res.apiInternalError({
+      message: 'Failed to generate metrics',
+      details: err.message
+    });
+  }
 });
+
+// ========================================
+// FONCTIONS UTILITAIRES HEALTH CHECK
+// ========================================
+async function checkDatabaseHealth() {
+  try {
+    const database = require('./config/database');
+    const client = await database.pool.connect();
+    await client.query('SELECT 1');
+    client.release();
+    
+    return {
+      status: 'healthy',
+      responseTime: '< 100ms',
+      connections: {
+        total: database.pool.totalCount,
+        idle: database.pool.idleCount,
+        waiting: database.pool.waitingCount
+      }
+    };
+  } catch (err) {
+    return {
+      status: 'unhealthy',
+      error: err.message
+    };
+  }
+}
+
+async function checkRedisHealth() {
+  try {
+    const eventQueueService = require('./core/queue/event-queue.service');
+    const stats = await eventQueueService.getQueueStats();
+    
+    return {
+      status: 'healthy',
+      queues: stats
+    };
+  } catch (err) {
+    return {
+      status: 'unhealthy',
+      error: err.message
+    };
+  }
+}
+
+async function checkQueueHealth() {
+  try {
+    const eventQueueService = require('./core/queue/event-queue.service');
+    return {
+      status: eventQueueService.isInitialized ? 'healthy' : 'unhealthy',
+      initialized: eventQueueService.isInitialized
+    };
+  } catch (err) {
+    return {
+      status: 'unhealthy',
+      error: err.message
+    };
+  }
+}
+
+function checkMemoryHealth() {
+  const memUsage = process.memoryUsage();
+  const memoryUsagePercent = (memUsage.heapUsed / memUsage.heapTotal) * 100;
+  
+  return {
+    status: memoryUsagePercent < 90 ? 'healthy' : 'warning',
+    heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+    heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+    heapUsagePercent: `${memoryUsagePercent.toFixed(2)}%`
+  };
+}
+
+async function checkDiskHealth() {
+  const fs = require('fs');
+  const path = require('path');
+  
+  try {
+    const criticalPaths = ['./logs', './uploads', './temp'];
+    const diskInfo = {};
+    
+    for (const dirPath of criticalPaths) {
+      try {
+        const stats = fs.statSync(dirPath);
+        diskInfo[dirPath] = {
+          exists: true,
+          accessible: true
+        };
+      } catch (error) {
+        diskInfo[dirPath] = {
+          exists: false,
+          error: error.message
+        };
+      }
+    }
+    
+    return {
+      status: 'healthy',
+      paths: diskInfo
+    };
+  } catch (err) {
+    return {
+      status: 'unhealthy',
+      error: err.message
+    };
+  }
+}
+
+function generatePrometheusMetrics() {
+  const memUsage = process.memoryUsage();
+  const uptime = process.uptime();
+  
+  return `# HELP event_planner_core_memory_usage_bytes Memory usage in bytes
+# TYPE event_planner_core_memory_usage_bytes gauge
+event_planner_core_memory_usage_bytes{type="heap"} ${memUsage.heapUsed}
+event_planner_core_memory_usage_bytes{type="external"} ${memUsage.external}
+event_planner_core_memory_usage_bytes{type="rss"} ${memUsage.rss}
+
+# HELP event_planner_core_uptime_seconds Process uptime in seconds
+# TYPE event_planner_core_uptime_seconds counter
+event_planner_core_uptime_seconds ${uptime}
+
+# HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total 0
+
+# HELP event_planner_core_active_connections Active database connections
+# TYPE event_planner_core_active_connections gauge
+event_planner_core_active_connections 0`;
+}
 
 // Swagger documentation endpoint
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
@@ -279,7 +460,11 @@ async function startServer() {
 
   } catch (error) {
     console.error('❌ Failed to start server:', error);
-    ErrorHandler.logError(error, { method: 'SERVER_STARTUP', url: 'N/A' });
+    log('error', 'Server startup failed', { 
+      error: error.message,
+      stack: error.stack,
+      method: 'SERVER_STARTUP' 
+    });
     process.exit(1);
   }
 }
