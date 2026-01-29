@@ -13,13 +13,33 @@
 const express = require('express');
 const router = express.Router();
 const { 
+  SecurityMiddleware, 
+  ContextInjector, 
+  ValidationMiddleware,
+  ErrorHandlerFactory
+} = require('../../../shared');
+const { 
   createPayment, 
   getPayment, 
   cancelPaymentIntent, 
   handleWebhook,
   getEventPayments
 } = require('../controllers/payment-controller');
-const { requireAuth, requireEventOrganizer } = require('../middleware/auth-middleware');
+
+// Apply authentication to all routes except webhooks
+router.use((req, res, next) => {
+  if (req.path.includes('/webhooks')) {
+    return next(); // Skip authentication for webhook endpoints
+  }
+  return SecurityMiddleware.authenticated()(req, res, next);
+});
+
+// Apply context injection for all routes
+router.use(ContextInjector.injectEventContext());
+
+// Apply error handler for all routes
+const paymentErrorHandler = ErrorHandlerFactory.createPaymentsErrorHandler();
+router.use(paymentErrorHandler);
 
 /**
  * @route POST /api/v1/payments/initiate
@@ -36,7 +56,7 @@ const { requireAuth, requireEventOrganizer } = require('../middleware/auth-middl
  *   description: string
  * }
  */
-router.post('/payments/initiate', requireAuth, async (req, res) => {
+router.post('/payments/initiate', SecurityMiddleware.withPermissions(['manage_events']), async (req, res) => {
   await createPayment(req, res, req.db);
 });
 
@@ -46,7 +66,7 @@ router.post('/payments/initiate', requireAuth, async (req, res) => {
  * @access Private (propriétaire du paiement)
  * @param payment_intent_id - UUID du paiement
  */
-router.get('/payments/:payment_intent_id', requireAuth, async (req, res) => {
+router.get('/payments/:payment_intent_id', SecurityMiddleware.authenticated(), async (req, res) => {
   await getPayment(req, res, req.db);
 });
 
@@ -56,7 +76,7 @@ router.get('/payments/:payment_intent_id', requireAuth, async (req, res) => {
  * @access Private (propriétaire du paiement)
  * @param payment_intent_id - UUID du paiement
  */
-router.post('/payments/:payment_intent_id/cancel', requireAuth, async (req, res) => {
+router.post('/payments/:payment_intent_id/cancel', SecurityMiddleware.authenticated(), async (req, res) => {
   await cancelPaymentIntent(req, res, req.db);
 });
 
@@ -87,7 +107,7 @@ router.post('/payments/webhooks', async (req, res) => {
  *   status: string ('pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded')
  * }
  */
-router.get('/events/:event_id/payments', requireAuth, requireEventOrganizer, async (req, res) => {
+router.get('/events/:event_id/payments', SecurityMiddleware.withPermissions(['manage_events']), async (req, res) => {
   await getEventPayments(req, res, req.db);
 });
 

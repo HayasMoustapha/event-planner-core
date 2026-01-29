@@ -2,7 +2,7 @@
  * Consommateur Redis pour les résultats de notifications
  */
 
-const { Worker, createQueue } = require('../../shared/config/redis-config');
+const { Worker, createQueue } = require('../../../shared/config/redis-config');
 
 const NOTIFICATION_RESULT_QUEUE = 'notification_result_queue';
 

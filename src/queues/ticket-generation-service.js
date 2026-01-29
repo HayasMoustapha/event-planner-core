@@ -11,7 +11,7 @@
  */
 
 const { createTicketGenerationJob, getTicketGenerationJobStatus } = require('./ticket-generation-producer');
-const { createQueue } = require('../../../../../../shared/config/redis-config');
+const { createQueue } = require('../../../shared/config/redis-config');
 
 // Nom de la queue pour les résultats de génération
 const TICKET_GENERATION_RESULT_QUEUE = 'ticket_generation_result_queue';

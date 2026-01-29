@@ -11,11 +11,26 @@
 const express = require('express');
 const router = express.Router();
 const { 
+  SecurityMiddleware, 
+  ContextInjector, 
+  ValidationMiddleware,
+  ErrorHandlerFactory
+} = require('../../../shared');
+const { 
   createTicketGenerationJob, 
   getTicketGenerationJobStatus, 
   getEventGenerationJobs 
 } = require('../controllers/ticket-generation-controller');
-const { requireAuth, requireEventOrganizer } = require('../middleware/auth-middleware');
+
+// Apply authentication to all routes
+router.use(SecurityMiddleware.authenticated());
+
+// Apply context injection for all routes
+router.use(ContextInjector.injectEventContext());
+
+// Apply error handler for all routes
+const ticketGenerationErrorHandler = ErrorHandlerFactory.createTicketGeneratorErrorHandler();
+router.use(ticketGenerationErrorHandler);
 
 /**
  * @route POST /api/v1/events/:event_id/tickets/generate
@@ -33,7 +48,7 @@ const { requireAuth, requireEventOrganizer } = require('../middleware/auth-middl
  *   ]
  * }
  */
-router.post('/events/:event_id/tickets/generate', requireAuth, requireEventOrganizer, async (req, res) => {
+router.post('/events/:event_id/tickets/generate', SecurityMiddleware.withPermissions(['manage_events']), async (req, res) => {
   // Ajout de event_id depuis les params dans le body
   req.body.event_id = parseInt(req.params.event_id);
   
@@ -48,7 +63,7 @@ router.post('/events/:event_id/tickets/generate', requireAuth, requireEventOrgan
  * @access Private (organisateur de l'événement)
  * @param job_id - UUID du job
  */
-router.get('/tickets/generation/:job_id', requireAuth, async (req, res) => {
+router.get('/tickets/generation/:job_id', SecurityMiddleware.authenticated(), async (req, res) => {
   await getTicketGenerationJobStatus(req, res, req.db);
 });
 
@@ -63,7 +78,7 @@ router.get('/tickets/generation/:job_id', requireAuth, async (req, res) => {
  *   status: string ('pending', 'processing', 'completed', 'failed')
  * }
  */
-router.get('/events/:event_id/tickets/generation', requireAuth, requireEventOrganizer, async (req, res) => {
+router.get('/events/:event_id/tickets/generation', SecurityMiddleware.withPermissions(['manage_events']), async (req, res) => {
   await getEventGenerationJobs(req, res, req.db);
 });
 

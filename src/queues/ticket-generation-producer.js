@@ -11,7 +11,7 @@
  */
 
 const { v4: uuidv4 } = require('uuid');
-const { createQueue } = require('../../../../../../shared/config/redis-config');
+const { createQueue } = require('../../../shared/config/redis-config');
 
 // Nom de la queue pour la génération de billets
 const TICKET_GENERATION_QUEUE = 'ticket_generation_queue';

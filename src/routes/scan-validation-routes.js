@@ -10,10 +10,25 @@
 const express = require('express');
 const router = express.Router();
 const { 
+  SecurityMiddleware, 
+  ContextInjector, 
+  ValidationMiddleware,
+  ErrorHandlerFactory
+} = require('../../../shared');
+const { 
   validateScannedTicket, 
   getScanHistory 
 } = require('../controllers/scan-validation-controller');
-const { requireAuth, requireEventOrganizer } = require('../middleware/auth-middleware');
+
+// Apply authentication to all routes
+router.use(SecurityMiddleware.authenticated());
+
+// Apply context injection for all routes
+router.use(ContextInjector.injectEventContext());
+
+// Apply error handler for all routes
+const scanValidationErrorHandler = ErrorHandlerFactory.createScanValidationErrorHandler();
+router.use(scanValidationErrorHandler);
 
 /**
  * @route POST /api/v1/scan/validate
@@ -24,7 +39,7 @@ const { requireAuth, requireEventOrganizer } = require('../middleware/auth-middl
  *   event_id: number
  * }
  */
-router.post('/scan/validate', requireAuth, async (req, res) => {
+router.post('/scan/validate', SecurityMiddleware.withPermissions(['scan_ticket']), async (req, res) => {
   await validateScannedTicket(req, res, req.db);
 });
 
@@ -40,7 +55,7 @@ router.post('/scan/validate', requireAuth, async (req, res) => {
  *   date_to: string (ISO date)
  * }
  */
-router.get('/events/:event_id/scan/history', requireAuth, requireEventOrganizer, async (req, res) => {
+router.get('/events/:event_id/scan/history', SecurityMiddleware.withPermissions(['manage_events']), async (req, res) => {
   await getScanHistory(req, res, req.db);
 });
 
