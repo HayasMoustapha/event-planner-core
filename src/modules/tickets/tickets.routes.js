@@ -44,17 +44,17 @@ router.post('/:id/validate', SecurityMiddleware.withPermissions('tickets.validat
 router.post('/validate', SecurityMiddleware.withPermissions('tickets.validate'), ticketsController.validateTicketByCode);
 
 // QR Code Validation - Pour le service scan-validation
+// NOTE : La génération de QR codes est gérée par ticket-generator-service
+// La validation de QR codes est gérée par scan-validation-service
 // router.post('/validate-qr', 
 //   ValidationMiddleware.validate(ValidationMiddleware.schemas.tickets.validateTicketByQRCode),
 //   ticketsController.validateTicketByQRCode
 // );
 
-// Bulk Operations
-router.post('/bulk/generate', SecurityMiddleware.withPermissions('tickets.create'), ticketsController.bulkGenerateTickets);
-
-router.post('/jobs', SecurityMiddleware.withPermissions('tickets.jobs.create'), ticketsController.createJob);
-
-router.post('/jobs/:jobId/process', SecurityMiddleware.withPermissions('tickets.jobs.process'), ticketsController.processJob);
+// NOTE : Les opérations de génération bulk et jobs sont gérées par ticket-generator-service
+// router.post('/bulk/generate', SecurityMiddleware.withPermissions('tickets.create'), ticketsController.bulkGenerateTickets);
+// router.post('/jobs', SecurityMiddleware.withPermissions('tickets.jobs.create'), ticketsController.createJob);
+// router.post('/jobs/:jobId/process', SecurityMiddleware.withPermissions('tickets.jobs.process'), ticketsController.processJob);
 
 // Statistics - GET routes avec permission spécifique
 router.get('/events/:eventId/stats', SecurityMiddleware.withPermissions('tickets.stats.read'), ticketsController.getEventTicketStats);
