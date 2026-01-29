@@ -819,25 +819,13 @@ class TicketsService {
 
   async createJob(jobData, userId) {
     try {
-      // Appeler le service ticket-generator pour créer le job
-      const response = await fetch('http://localhost:3003/api/jobs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.TICKET_GENERATOR_TOKEN || 'default-token'}`
-        },
-        body: JSON.stringify({
-          ...jobData,
-          user_id: userId,
-          service: 'event-planner-core'
-        })
+      // Créer le job directement dans la base de données locale
+      const job = await ticketsRepository.createJob({
+        event_id: jobData.event_id,
+        status: 'pending',
+        details: jobData.details || {},
+        created_by: userId
       });
-
-      if (!response.ok) {
-        throw new Error(`Ticket generator service error: ${response.status}`);
-      }
-
-      const job = await response.json();
       
       return {
         success: true,

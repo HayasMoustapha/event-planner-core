@@ -119,6 +119,24 @@ CREATE TABLE IF NOT EXISTS ticket_templates (
     updated_by BIGINT
 );
 
+-- Ticket Generation Jobs table (conforme au diagramme)
+CREATE TABLE IF NOT EXISTS ticket_generation_jobs (
+    id BIGSERIAL PRIMARY KEY,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+    details JSONB DEFAULT '{}',
+    event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    uid UUID DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_by BIGINT,
+    updated_by BIGINT,
+    started_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    error_message TEXT,
+    retry_count INTEGER DEFAULT 0,
+    max_retries INTEGER DEFAULT 3
+);
+
 
 
 -- Designers table (extends Auth Service users)
@@ -223,6 +241,10 @@ CREATE INDEX IF NOT EXISTS idx_tickets_is_validated ON tickets(is_validated);
 
 CREATE INDEX IF NOT EXISTS idx_ticket_templates_name ON ticket_templates(name);
 CREATE INDEX IF NOT EXISTS idx_ticket_templates_is_customizable ON ticket_templates(is_customizable);
+
+CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_event_id ON ticket_generation_jobs(event_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_status ON ticket_generation_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_created_at ON ticket_generation_jobs(created_at);
 
 CREATE INDEX IF NOT EXISTS idx_designers_user_id ON designers(user_id);
 CREATE INDEX IF NOT EXISTS idx_designers_is_verified ON designers(is_verified);

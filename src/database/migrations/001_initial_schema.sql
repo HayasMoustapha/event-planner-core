@@ -105,30 +105,7 @@ CREATE TABLE IF NOT EXISTS ticket_types (
     deleted_by BIGINT
 );
 
--- Table Ticket (conforme exactement au diagramme + champs audit complets)
-CREATE TABLE IF NOT EXISTS tickets (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    ticket_code VARCHAR UNIQUE NOT NULL,
-    qr_code_data TEXT,
-    is_validated BOOLEAN DEFAULT FALSE,
-    validated_at TIMESTAMP WITH TIME ZONE,
-    price DECIMAL(10,2),
-    currency VARCHAR(3) DEFAULT 'EUR',
-    -- Relations selon le diagramme (ticket_types existe maintenant)
-    ticket_type_id BIGINT NOT NULL REFERENCES ticket_types(id) ON DELETE CASCADE,
-    event_guest_id BIGINT NOT NULL REFERENCES event_guests(id) ON DELETE CASCADE,
-    -- Champs d'audit complets
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE,
-    created_by BIGINT,
-    updated_by BIGINT,
-    deleted_by BIGINT,
-    -- Champs spécifiques à l'action
-    validated_by BIGINT
-);
-
--- Table TicketTemplate (conforme exactement au diagramme + champs audit complets)
+-- Table TicketTemplate (créée AVANT tickets pour éviter les erreurs de foreign key)
 CREATE TABLE IF NOT EXISTS ticket_templates (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name VARCHAR NOT NULL,
@@ -143,6 +120,52 @@ CREATE TABLE IF NOT EXISTS ticket_templates (
     created_by BIGINT,
     updated_by BIGINT,
     deleted_by BIGINT
+);
+
+-- Table Ticket (conforme exactement au diagramme + champs audit complets)
+CREATE TABLE IF NOT EXISTS tickets (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    ticket_code VARCHAR UNIQUE NOT NULL,
+    qr_code_data TEXT,
+    is_validated BOOLEAN DEFAULT FALSE,
+    validated_at TIMESTAMP WITH TIME ZONE,
+    price DECIMAL(10,2),
+    currency VARCHAR(3) DEFAULT 'EUR',
+    -- Relations selon le diagramme (ticket_types et ticket_templates existent maintenant)
+    ticket_type_id BIGINT NOT NULL REFERENCES ticket_types(id) ON DELETE CASCADE,
+    ticket_template_id BIGINT REFERENCES ticket_templates(id) ON DELETE SET NULL,
+    event_guest_id BIGINT NOT NULL REFERENCES event_guests(id) ON DELETE CASCADE,
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    created_by BIGINT,
+    updated_by BIGINT,
+    deleted_by BIGINT,
+    -- Champs spécifiques à l'action
+    validated_by BIGINT
+);
+
+-- Table TicketGenerationJob (conforme exactement au diagramme + champs audit complets)
+CREATE TABLE IF NOT EXISTS ticket_generation_jobs (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+    details JSON,
+    -- Relation avec Event selon le diagramme: Event "1" -- "*" TicketGenerationJob
+    event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    created_by BIGINT,
+    updated_by BIGINT,
+    deleted_by BIGINT,
+    -- Champs spécifiques aux actions
+    started_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    error_message TEXT,
+    retry_count INTEGER DEFAULT 0,
+    max_retries INTEGER DEFAULT 3
 );
 
 -- ========================================
@@ -290,8 +313,13 @@ CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by) WHERE d
 
 CREATE INDEX IF NOT EXISTS idx_ticket_types_event_id ON ticket_types(event_id) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_ticket_types_type ON ticket_types(type) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_ticket_types_created_at ON ticket_types(created_at) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_ticket_types_created_by ON ticket_types(created_by) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ticket_templates_created_at ON ticket_templates(created_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ticket_templates_created_by ON ticket_templates(created_by) WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_event_id ON ticket_generation_jobs(event_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_status ON ticket_generation_jobs(status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_created_at ON ticket_generation_jobs(created_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_created_by ON ticket_generation_jobs(created_by) WHERE deleted_at IS NULL;
 
 -- Index pour Marketplace
 CREATE INDEX IF NOT EXISTS idx_templates_designer_id ON templates(designer_id) WHERE deleted_at IS NULL;
@@ -330,6 +358,7 @@ COMMENT ON TABLE invitations IS 'Table Invitation - Section 5.2 du diagramme';
 COMMENT ON TABLE tickets IS 'Table Ticket - Section 5.3 du diagramme';
 COMMENT ON TABLE ticket_types IS 'Table TicketType - Section 5.3 du diagramme';
 COMMENT ON TABLE ticket_templates IS 'Table TicketTemplate - Section 5.3 du diagramme';
+COMMENT ON TABLE ticket_generation_jobs IS 'Table TicketGenerationJob - Section 5.3 du diagramme';
 
 COMMENT ON TABLE templates IS 'Table Template - Section 5.4 du diagramme';
 COMMENT ON TABLE designers IS 'Table Designer - Section 5.4 du diagramme';

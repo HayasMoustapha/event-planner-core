@@ -44,10 +44,10 @@ router.post('/:id/validate', SecurityMiddleware.withPermissions('tickets.validat
 router.post('/validate', SecurityMiddleware.withPermissions('tickets.validate'), ticketsController.validateTicketByCode);
 
 // QR Code Validation - Pour le service scan-validation
-router.post('/validate-qr', 
-  ValidationMiddleware.validate(ValidationMiddleware.schemas.tickets.validateTicketByQRCode),
-  ticketsController.validateTicketByQRCode
-);
+// router.post('/validate-qr', 
+//   ValidationMiddleware.validate(ValidationMiddleware.schemas.tickets.validateTicketByQRCode),
+//   ticketsController.validateTicketByQRCode
+// );
 
 // Bulk Operations
 router.post('/bulk/generate', SecurityMiddleware.withPermissions('tickets.create'), ticketsController.bulkGenerateTickets);

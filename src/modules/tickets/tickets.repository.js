@@ -605,6 +605,64 @@ class TicketsRepository {
       }
     };
   }
+
+  async createJob(jobData) {
+    const { 
+      event_id, 
+      status = 'pending', 
+      details = {}, 
+      created_by 
+    } = jobData;
+    
+    const query = `
+      INSERT INTO ticket_generation_jobs (
+        event_id, status, details, created_by, updated_by
+      )
+      VALUES ($1, $2, $3, $4, $4)
+      RETURNING *
+    `;
+    
+    const values = [event_id, status, details, created_by];
+    const result = await database.query(query, values);
+    
+    return result.rows[0];
+  }
+
+  async getJobById(jobId) {
+    const query = `
+      SELECT * FROM ticket_generation_jobs 
+      WHERE id = $1 AND deleted_at IS NULL
+    `;
+    
+    const result = await database.query(query, [jobId]);
+    return result.rows[0];
+  }
+
+  async updateJobStatus(jobId, status, additionalData = {}) {
+    const updateFields = ['status = $2', 'updated_at = NOW()'];
+    const values = [jobId, status];
+    let paramIndex = 3;
+
+    if (status === 'processing') {
+      updateFields.push(`started_at = NOW()`);
+    } else if (status === 'completed') {
+      updateFields.push(`completed_at = NOW()`);
+    } else if (status === 'failed') {
+      updateFields.push(`error_message = $${paramIndex}`);
+      values.push(additionalData.error_message || 'Unknown error');
+      paramIndex++;
+    }
+
+    const query = `
+      UPDATE ticket_generation_jobs 
+      SET ${updateFields.join(', ')}
+      WHERE id = $1 AND deleted_at IS NULL
+      RETURNING *
+    `;
+
+    const result = await database.query(query, values);
+    return result.rows[0];
+  }
 }
 
 module.exports = new TicketsRepository();

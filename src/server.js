@@ -23,12 +23,6 @@ const invitationsRoutes = require('./modules/invitations/invitations.routes');
 const marketplaceRoutes = require('./modules/marketplace/marketplace.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 
-// Import internal routes for inter-service communication
-const internalValidationRoutes = require('./modules/internal/internal-validation.routes');
-const internalEventsRoutes = require('./modules/internal/internal-events.routes');
-const internalTicketsRoutes = require('./modules/internal/internal-tickets.routes');
-const internalScansRoutes = require('./modules/internal/internal-scans.routes');
-
 // Service de communication Redis Queue pour la communication asynchrone
 const eventQueueService = require('./core/queue/event-queue.service');
 
@@ -159,12 +153,6 @@ app.use('/api/tickets', ticketsRoutes);
 app.use('/api/invitations', invitationsRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/admin', adminRoutes);
-
-// Internal API routes for inter-service communication
-app.use('/api/internal/validation', internalValidationRoutes);
-app.use('/api/internal/events', internalEventsRoutes);
-app.use('/api/internal/tickets', internalTicketsRoutes);
-app.use('/api/internal/scans', internalScansRoutes);
 
 // 404 handler
 app.use(ErrorHandler.notFoundHandler);

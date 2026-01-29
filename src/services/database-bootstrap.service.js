@@ -214,7 +214,10 @@ class DatabaseBootstrap {
     try {
       await client.query('BEGIN');
       
+      // Lire le fichier SQL et l'exécuter directement (sans parsing)
       const migrationSQL = await fs.readFile(filePath, 'utf8');
+      
+      // Exécuter l'ensemble du fichier SQL d'un coup
       await client.query(migrationSQL);
       
       const fileStats = await fs.stat(filePath);
