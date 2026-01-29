@@ -1,0 +1,474 @@
+/**
+ * ========================================
+ * TESTS UNITAIRES - EVENTS SERVICE
+ * ========================================
+ * Tests complets pour le service de gestion des événements
+ * Couverture: création, lecture, mise à jour, suppression, cycle de vie
+ */
+
+const EventsService = require('../../../src/modules/events/events.service');
+const EventsRepository = require('../../../src/modules/events/events.repository');
+
+// Mock du repository
+jest.mock('../../../src/modules/events/events.repository');
+
+describe('EventsService', () => {
+  let eventsService;
+  
+  beforeEach(() => {
+    // Réinitialisation des mocks avant chaque test
+    jest.clearAllMocks();
+    eventsService = new EventsService();
+  });
+
+  // ========================================
+  // TESTS DE CRÉATION D'ÉVÉNEMENT
+  // ========================================
+  describe('createEvent', () => {
+    it('✅ devrait créer un événement avec succès', async () => {
+      // Arrange
+      const eventData = {
+        title: 'Conférence Tech 2025',
+        description: 'Conférence sur les dernières technologies',
+        event_date: '2025-06-15T10:00:00Z',
+        location: 'Paris Expo'
+      };
+      const organizerId = 1;
+      
+      const expectedEvent = {
+        id: 1,
+        title: eventData.title,
+        description: eventData.description,
+        event_date: eventData.event_date,
+        location: eventData.location,
+        organizer_id: organizerId,
+        status: 'draft',
+        created_at: expect.any(String),
+        updated_at: expect.any(String)
+      };
+      
+      EventsRepository.create.mockResolvedValue(expectedEvent);
+      
+      // Act
+      const result = await eventsService.createEvent(eventData, organizerId);
+      
+      // Assert
+      expect(EventsRepository.create).toHaveBeenCalledWith({
+        ...eventData,
+        organizer_id: organizerId,
+        status: 'draft',
+        created_at: expect.any(String),
+        updated_at: expect.any(String)
+      });
+      
+      expect(result).toEqual({
+        success: true,
+        data: expectedEvent
+      });
+    });
+
+    it('❌ devrait gérer les erreurs de création', async () => {
+      // Arrange
+      const eventData = {
+        title: 'Test Event',
+        event_date: '2025-06-15T10:00:00Z',
+        location: 'Test Location'
+      };
+      const organizerId = 1;
+      
+      const errorMessage = 'Erreur base de données';
+      EventsRepository.create.mockRejectedValue(new Error(errorMessage));
+      
+      // Act
+      const result = await eventsService.createEvent(eventData, organizerId);
+      
+      // Assert
+      expect(result).toEqual({
+        success: false,
+        error: errorMessage
+      });
+    });
+  });
+
+  // ========================================
+  // TESTS DE LECTURE D'ÉVÉNEMENT
+  // ========================================
+  describe('getEventById', () => {
+    it('✅ devrait récupérer un événement existant', async () => {
+      // Arrange
+      const eventId = 1;
+      const userId = 1;
+      
+      const mockEvent = {
+        id: eventId,
+        title: 'Test Event',
+        organizer_id: userId,
+        status: 'published'
+      };
+      
+      EventsRepository.findById.mockResolvedValue(mockEvent);
+      
+      // Act
+      const result = await eventsService.getEventById(eventId, userId);
+      
+      // Assert
+      expect(EventsRepository.findById).toHaveBeenCalledWith(eventId);
+      expect(result).toEqual({
+        success: true,
+        data: mockEvent
+      });
+    });
+
+    it('❌ devrait retourner une erreur si événement non trouvé', async () => {
+      // Arrange
+      const eventId = 999;
+      const userId = 1;
+      
+      EventsRepository.findById.mockResolvedValue(null);
+      
+      // Act
+      const result = await eventsService.getEventById(eventId, userId);
+      
+      // Assert
+      expect(result).toEqual({
+        success: false,
+        error: 'Événement non trouvé'
+      });
+    });
+
+    it('❌ devrait refuser l\'accès si utilisateur non autorisé', async () => {
+      // Arrange
+      const eventId = 1;
+      const userId = 2; // Différent de l'organisateur
+      
+      const mockEvent = {
+        id: eventId,
+        title: 'Test Event',
+        organizer_id: 1, // Organisateur différent
+        status: 'published'
+      };
+      
+      EventsRepository.findById.mockResolvedValue(mockEvent);
+      
+      // Act
+      const result = await eventsService.getEventById(eventId, userId);
+      
+      // Assert
+      expect(result).toEqual({
+        success: false,
+        error: 'Accès refusé'
+      });
+    });
+  });
+
+  // ========================================
+  // TESTS DE MISE À JOUR D'ÉVÉNEMENT
+  // ========================================
+  describe('updateEvent', () => {
+    it('✅ devrait mettre à jour un événement avec succès', async () => {
+      // Arrange
+      const eventId = 1;
+      const userId = 1;
+      const updateData = {
+        title: 'Nouveau titre',
+        description: 'Nouvelle description'
+      };
+      
+      const existingEvent = {
+        id: eventId,
+        title: 'Ancien titre',
+        organizer_id: userId
+      };
+      
+      const updatedEvent = {
+        ...existingEvent,
+        ...updateData,
+        updated_at: new Date().toISOString()
+      };
+      
+      EventsRepository.findById.mockResolvedValue(existingEvent);
+      EventsRepository.update.mockResolvedValue(updatedEvent);
+      
+      // Act
+      const result = await eventsService.updateEvent(eventId, updateData, userId);
+      
+      // Assert
+      expect(EventsRepository.findById).toHaveBeenCalledWith(eventId);
+      expect(EventsRepository.update).toHaveBeenCalledWith(eventId, updateData, userId);
+      expect(result).toEqual({
+        success: true,
+        data: updatedEvent
+      });
+    });
+
+    it('❌ devrait refuser la mise à jour si date dans le passé', async () => {
+      // Arrange
+      const eventId = 1;
+      const userId = 1;
+      const updateData = {
+        event_date: '2020-01-01T10:00:00Z' // Date passée
+      };
+      
+      const existingEvent = {
+        id: eventId,
+        organizer_id: userId
+      };
+      
+      EventsRepository.findById.mockResolvedValue(existingEvent);
+      
+      // Act
+      const result = await eventsService.updateEvent(eventId, updateData, userId);
+      
+      // Assert
+      expect(result).toEqual({
+        success: false,
+        error: 'La date de l\'événement doit être dans le futur'
+      });
+    });
+  });
+
+  // ========================================
+  // TESTS DE SUPPRESSION D'ÉVÉNEMENT
+  // ========================================
+  describe('deleteEvent', () => {
+    it('✅ devrait supprimer un événement brouillon', async () => {
+      // Arrange
+      const eventId = 1;
+      const userId = 1;
+      
+      const existingEvent = {
+        id: eventId,
+        title: 'Test Event',
+        organizer_id: userId,
+        status: 'draft' // Statut autorisant la suppression
+      };
+      
+      const deletedEvent = {
+        ...existingEvent,
+        deleted_at: new Date().toISOString()
+      };
+      
+      EventsRepository.findById.mockResolvedValue(existingEvent);
+      EventsRepository.delete.mockResolvedValue(deletedEvent);
+      
+      // Act
+      const result = await eventsService.deleteEvent(eventId, userId);
+      
+      // Assert
+      expect(EventsRepository.delete).toHaveBeenCalledWith(eventId, userId);
+      expect(result).toEqual({
+        success: true,
+        data: deletedEvent
+      });
+    });
+
+    it('❌ devrait refuser la suppression d\'un événement publié', async () => {
+      // Arrange
+      const eventId = 1;
+      const userId = 1;
+      
+      const existingEvent = {
+        id: eventId,
+        title: 'Published Event',
+        organizer_id: userId,
+        status: 'published' // Statut interdisant la suppression
+      };
+      
+      EventsRepository.findById.mockResolvedValue(existingEvent);
+      
+      // Act
+      const result = await eventsService.deleteEvent(eventId, userId);
+      
+      // Assert
+      expect(result).toEqual({
+        success: false,
+        error: 'Impossible de supprimer un événement publié. Archivez-le plutôt.'
+      });
+    });
+  });
+
+  // ========================================
+  // TESTS DU CYCLE DE VIE
+  // ========================================
+  describe('publishEvent', () => {
+    it('✅ devrait publier un événement avec succès', async () => {
+      // Arrange
+      const eventId = 1;
+      const userId = 1;
+      
+      const publishedEvent = {
+        id: eventId,
+        title: 'Test Event',
+        organizer_id: userId,
+        status: 'published'
+      };
+      
+      EventsRepository.publish.mockResolvedValue(publishedEvent);
+      
+      // Act
+      const result = await eventsService.publishEvent(eventId, userId);
+      
+      // Assert
+      expect(EventsRepository.publish).toHaveBeenCalledWith(eventId, userId);
+      expect(result).toEqual({
+        success: true,
+        data: publishedEvent
+      });
+    });
+  });
+
+  describe('archiveEvent', () => {
+    it('✅ devrait archiver un événement avec succès', async () => {
+      // Arrange
+      const eventId = 1;
+      const userId = 1;
+      
+      const archivedEvent = {
+        id: eventId,
+        title: 'Test Event',
+        organizer_id: userId,
+        status: 'archived'
+      };
+      
+      EventsRepository.archive.mockResolvedValue(archivedEvent);
+      
+      // Act
+      const result = await eventsService.archiveEvent(eventId, userId);
+      
+      // Assert
+      expect(EventsRepository.archive).toHaveBeenCalledWith(eventId, userId);
+      expect(result).toEqual({
+        success: true,
+        data: archivedEvent
+      });
+    });
+  });
+
+  // ========================================
+  // TESTS DE DUPLICATION
+  // ========================================
+  describe('duplicateEvent', () => {
+    it('✅ devrait dupliquer un événement avec succès', async () => {
+      // Arrange
+      const eventId = 1;
+      const userId = 1;
+      const options = {
+        title: 'Copie de Test Event',
+        event_date: '2025-12-20T10:00:00Z'
+      };
+      
+      const originalEvent = {
+        id: eventId,
+        title: 'Test Event',
+        description: 'Description originale',
+        event_date: '2025-06-15T10:00:00Z',
+        location: 'Paris',
+        organizer_id: userId
+      };
+      
+      const duplicatedEvent = {
+        id: 2, // Nouvel ID généré par la BDD
+        title: options.title,
+        description: originalEvent.description,
+        event_date: options.event_date,
+        location: originalEvent.location,
+        organizer_id: userId,
+        status: 'draft'
+      };
+      
+      EventsRepository.findById.mockResolvedValue(originalEvent);
+      EventsRepository.create.mockResolvedValue(duplicatedEvent);
+      
+      // Act
+      const result = await eventsService.duplicateEvent(eventId, options, userId);
+      
+      // Assert
+      expect(EventsRepository.findById).toHaveBeenCalledWith(eventId);
+      expect(EventsRepository.create).toHaveBeenCalledWith({
+        title: options.title,
+        description: originalEvent.description,
+        event_date: options.event_date,
+        location: originalEvent.location,
+        organizer_id: userId,
+        status: 'draft'
+      });
+      
+      expect(result).toEqual({
+        success: true,
+        data: duplicatedEvent
+      });
+    });
+
+    it('✅ devrait dupliquer avec titre par défaut si non spécifié', async () => {
+      // Arrange
+      const eventId = 1;
+      const userId = 1;
+      const options = {}; // Pas de titre spécifié
+      
+      const originalEvent = {
+        id: eventId,
+        title: 'Test Event',
+        organizer_id: userId
+      };
+      
+      const duplicatedEvent = {
+        id: 2,
+        title: 'Test Event (Copie)', // Titre par défaut
+        organizer_id: userId,
+        status: 'draft'
+      };
+      
+      EventsRepository.findById.mockResolvedValue(originalEvent);
+      EventsRepository.create.mockResolvedValue(duplicatedEvent);
+      
+      // Act
+      const result = await eventsService.duplicateEvent(eventId, options, userId);
+      
+      // Assert
+      expect(EventsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Test Event (Copie)'
+        })
+      );
+      
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // ========================================
+  // TESTS DES STATISTIQUES
+  // ========================================
+  describe('getEventStats', () => {
+    it('✅ devrait récupérer les statistiques d\'un événement', async () => {
+      // Arrange
+      const eventId = 1;
+      const userId = 1;
+      
+      const mockEvent = {
+        id: eventId,
+        organizer_id: userId
+      };
+      
+      const mockStats = {
+        total_guests: 100,
+        confirmed_guests: 75,
+        pending_guests: 20,
+        cancelled_guests: 5,
+        checkin_rate: 0.75
+      };
+      
+      EventsRepository.findById.mockResolvedValue(mockEvent);
+      EventsRepository.getEventStats.mockResolvedValue(mockStats);
+      
+      // Act
+      const result = await eventsService.getEventStats(eventId, userId);
+      
+      // Assert
+      expect(EventsRepository.getEventStats).toHaveBeenCalledWith(eventId);
+      expect(result).toEqual({
+        success: true,
+        data: mockStats
+      });
+    });
+  });
+});
