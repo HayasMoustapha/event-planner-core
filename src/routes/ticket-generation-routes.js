@@ -1,11 +1,12 @@
 /**
- * Routes pour la génération de billets
- * Définit les endpoints HTTP pour la gestion des jobs de génération de billets
+ * Routes pour la consultation des jobs de génération de billets
+ * Définit les endpoints HTTP pour la LECTURE SEULE des jobs de génération
  * 
  * Routes :
- * POST /api/v1/events/:event_id/tickets/generate - Créer un job de génération
- * GET /api/v1/tickets/generation/:job_id - Récupérer le statut d'un job
- * GET /api/v1/events/:event_id/tickets/generation - Lister les jobs d'un événement
+ * GET /api/v1/tickets/generation/:job_id - Statut d'un job (LECTURE SEULE)
+ * GET /api/v1/events/:event_id/tickets/generation - Jobs d'un événement (LECTURE SEULE)
+ * 
+ * NOTE : La génération réelle des billets est gérée par ticket-generator-service
  */
 
 const express = require('express');
@@ -17,7 +18,6 @@ const {
   ErrorHandlerFactory
 } = require('../../../shared');
 const { 
-  createTicketGenerationJob, 
   getTicketGenerationJobStatus, 
   getEventGenerationJobs 
 } = require('../controllers/ticket-generation-controller');
@@ -33,35 +33,11 @@ const ticketGenerationErrorHandler = ErrorHandlerFactory.createTicketGeneratorEr
 router.use(ticketGenerationErrorHandler);
 
 /**
- * @route POST /api/v1/events/:event_id/tickets/generate
- * @desc Créer un nouveau job de génération de billets pour un événement
- * @access Private (organisateur de l'événement)
- * @body {
- *   event_id: number,
- *   tickets: [
- *     {
- *       ticket_id: number,
- *       ticket_code: string,
- *       template_path: string,
- *       render_payload: object
- *     }
- *   ]
- * }
- */
-router.post('/events/:event_id/tickets/generate', SecurityMiddleware.withPermissions(['manage_events']), async (req, res) => {
-  // Ajout de event_id depuis les params dans le body
-  req.body.event_id = parseInt(req.params.event_id);
-  
-  // Le controller utilisera req.user (défini par le middleware d'auth)
-  // et req.db (défini par le middleware de base de données)
-  await createTicketGenerationJob(req, res, req.db);
-});
-
-/**
  * @route GET /api/v1/tickets/generation/:job_id
- * @desc Récupérer le statut d'un job de génération de billets
+ * @desc Récupérer le statut d'un job de génération de billets (LECTURE SEULE)
  * @access Private (organisateur de l'événement)
  * @param job_id - UUID du job
+ * @note Les données proviennent de ticket-generator-service
  */
 router.get('/tickets/generation/:job_id', SecurityMiddleware.authenticated(), async (req, res) => {
   await getTicketGenerationJobStatus(req, res, req.db);
@@ -69,7 +45,7 @@ router.get('/tickets/generation/:job_id', SecurityMiddleware.authenticated(), as
 
 /**
  * @route GET /api/v1/events/:event_id/tickets/generation
- * @desc Lister tous les jobs de génération pour un événement
+ * @desc Lister tous les jobs de génération pour un événement (LECTURE SEULE)
  * @access Private (organisateur de l'événement)
  * @param event_id - ID de l'événement
  * @query {
@@ -77,6 +53,7 @@ router.get('/tickets/generation/:job_id', SecurityMiddleware.authenticated(), as
  *   limit: number (défaut: 10),
  *   status: string ('pending', 'processing', 'completed', 'failed')
  * }
+ * @note Les données proviennent de ticket-generator-service
  */
 router.get('/events/:event_id/tickets/generation', SecurityMiddleware.withPermissions(['manage_events']), async (req, res) => {
   await getEventGenerationJobs(req, res, req.db);
