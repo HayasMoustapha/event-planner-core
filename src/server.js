@@ -24,22 +24,15 @@ const {
   error,
   notFound,
   healthCheck,
-  metrics
+  metrics,
+  errorHandlerMiddleware
 } = require('../../shared');
 
 // CONFIGURATION JWT UNIFIÉ - ÉTAPE CRUCIALE
 UnifiedJWTSecret.configureService('event-planner-core');
 
-// Configuration du service avec système partagé
-const serviceConfig = configureService('event-planner-core', {
-  enableErrorHandling: true,
-  enableResponseHandling: true,
-  customizations: {
-    serviceName: 'Event Planner Core',
-    version: '2.0.0',
-    environment: process.env.NODE_ENV || 'development'
-  }
-});
+// Configuration simple du service
+console.log('🔧 Service event-planner-core configuré avec le système partagé');
 
 // Import routes
 const eventsRoutes = require('./modules/events/events.routes');
@@ -370,10 +363,12 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/v1', ticketGenerationRoutes);
 
 // 404 handler
-app.use(ErrorHandler.notFoundHandler);
+app.use((req, res) => {
+  return res.apiNotFound('Route', { path: req.path });
+});
 
 // Global error handler
-app.use(ErrorHandler.globalHandler);
+app.use(errorHandlerMiddleware);
 
 // Graceful shutdown handling
 const gracefulShutdown = async (signal) => {
@@ -412,14 +407,22 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('💥 Uncaught Exception:', error);
-  ErrorHandler.logError(error, { method: 'UNCAUGHT_EXCEPTION', url: 'N/A' });
+  console.error('Error details:', {
+    message: error.message,
+    stack: error.stack,
+    method: 'UNCAUGHT_EXCEPTION'
+  });
   process.exit(1);
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
   console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
-  ErrorHandler.logError(reason, { method: 'UNHANDLED_REJECTION', url: 'N/A' });
+  console.error('Rejection details:', {
+    error: reason && reason.message ? reason.message : reason,
+    promise: promise.toString(),
+    method: 'UNHANDLED_REJECTION'
+  });
   process.exit(1);
 });
 
