@@ -542,7 +542,7 @@ describe('Complete Workflow E2E Tests', () => {
       // 2. Essayer d'acheter un ticket avec quantité insuffisante
       const ticketTypeResponse = await request(app)
         .post('/api/ticket-types')
-        .set('set('Authorization', `Bearer ${organizerToken}`)
+        .set('Authorization', `Bearer ${organizerToken}`)
         .send({
           event_id: testEvent.id,
           name: 'Limited Ticket',

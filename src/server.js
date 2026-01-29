@@ -383,15 +383,20 @@ const gracefulShutdown = async (signal) => {
   }
   
   // Close server
-  server.close(() => {
-    console.log('✅ HTTP server closed');
-    
-    // Close database connections
-    // This would be implemented based on your database connection setup
-    
-    console.log('✅ Graceful shutdown completed');
+  if (server) {
+    server.close(() => {
+      console.log('✅ HTTP server closed');
+      
+      // Close database connections
+      // This would be implemented based on your database connection setup
+      
+      console.log('✅ Graceful shutdown completed');
+      process.exit(0);
+    });
+  } else {
+    console.log('✅ No server to close, exiting gracefully');
     process.exit(0);
-  });
+  }
 
   // Force shutdown after 30 seconds
   setTimeout(() => {

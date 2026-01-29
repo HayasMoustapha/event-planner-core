@@ -1,36 +1,15 @@
--- Migration initiale pour Event Planner Core - VERSION CORRIGÉE
+-- Migration initiale pour Event Planner Core
 -- RESPECT STRICTEMENT le diagramme event-planner-core-diagram.md
--- Ordre de création des tables optimisé pour éviter les dépendances circulaires
+-- Ajout des champs d'audit complets : created_at, updated_at, deleted_at, created_by, updated_by, deleted_by
 
 -- Extension UUID pour gen_random_uuid()
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ========================================
--- Tables sans dépendances externes (créées en premier)
--- ========================================
-
--- Table Guest (pas de dépendances externes)
-CREATE TABLE IF NOT EXISTS guests (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    first_name VARCHAR NOT NULL,
-    last_name VARCHAR,
-    email VARCHAR,
-    phone VARCHAR,
-    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled')),
-    -- Champs d'audit complets
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE,
-    created_by BIGINT,
-    updated_by BIGINT,
-    deleted_by BIGINT
-);
-
--- ========================================
 -- Module Events & Guests (Section 5.2)
 -- ========================================
 
--- Table Event (dépend seulement de organizer_id qui sera géré plus tard)
+-- Table Event (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS events (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     title VARCHAR NOT NULL,
@@ -49,7 +28,24 @@ CREATE TABLE IF NOT EXISTS events (
     deleted_by BIGINT
 );
 
--- Table EventGuest (dépend de events et guests)
+-- Table Guest (conforme exactement au diagramme + champs audit complets)
+CREATE TABLE IF NOT EXISTS guests (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    first_name VARCHAR NOT NULL,
+    last_name VARCHAR,
+    email VARCHAR,
+    phone VARCHAR,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled')),
+    -- Champs d'audit complets
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    created_by BIGINT,
+    updated_by BIGINT,
+    deleted_by BIGINT
+);
+
+-- Table EventGuest (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS event_guests (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     is_present BOOLEAN DEFAULT FALSE,
@@ -68,7 +64,7 @@ CREATE TABLE IF NOT EXISTS event_guests (
     UNIQUE(event_id, guest_id)
 );
 
--- Table Invitation (dépend de event_guests)
+-- Table Invitation (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS invitations (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     invitation_code VARCHAR UNIQUE NOT NULL,
@@ -89,7 +85,7 @@ CREATE TABLE IF NOT EXISTS invitations (
 -- Module Tickets Management (Section 5.3)
 -- ========================================
 
--- Table TicketType (dépend de events)
+-- Table TicketType (créée AVANT tickets pour éviter les erreurs de foreign key)
 CREATE TABLE IF NOT EXISTS ticket_types (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name VARCHAR NOT NULL,
@@ -109,7 +105,7 @@ CREATE TABLE IF NOT EXISTS ticket_types (
     deleted_by BIGINT
 );
 
--- Table TicketTemplate (pas de dépendances externes)
+-- Table TicketTemplate (créée AVANT tickets pour éviter les erreurs de foreign key)
 CREATE TABLE IF NOT EXISTS ticket_templates (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name VARCHAR NOT NULL,
@@ -126,7 +122,7 @@ CREATE TABLE IF NOT EXISTS ticket_templates (
     deleted_by BIGINT
 );
 
--- Table Ticket (dépend de ticket_types, ticket_templates, et event_guests)
+-- Table Ticket (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS tickets (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     ticket_code VARCHAR UNIQUE NOT NULL,
@@ -135,7 +131,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     validated_at TIMESTAMP WITH TIME ZONE,
     price DECIMAL(10,2),
     currency VARCHAR(3) DEFAULT 'EUR',
-    -- Relations selon le diagramme
+    -- Relations selon le diagramme (ticket_types et ticket_templates existent maintenant)
     ticket_type_id BIGINT NOT NULL REFERENCES ticket_types(id) ON DELETE CASCADE,
     ticket_template_id BIGINT REFERENCES ticket_templates(id) ON DELETE SET NULL,
     event_guest_id BIGINT NOT NULL REFERENCES event_guests(id) ON DELETE CASCADE,
@@ -150,7 +146,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     validated_by BIGINT
 );
 
--- Table TicketGenerationJob (dépend de events)
+-- Table TicketGenerationJob (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS ticket_generation_jobs (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
@@ -176,7 +172,8 @@ CREATE TABLE IF NOT EXISTS ticket_generation_jobs (
 -- Module Marketplace (Section 5.4)
 -- ========================================
 
--- Table Designer (pas de dépendances externes sauf user_id)
+-- Table Designer (CRÉÉE EN PREMIER pour éviter les FK violations)
+-- Conforme exactement au diagramme + champs audit complets
 CREATE TABLE IF NOT EXISTS designers (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     brand_name VARCHAR NOT NULL,
@@ -195,7 +192,7 @@ CREATE TABLE IF NOT EXISTS designers (
     verified_by BIGINT
 );
 
--- Table Template (dépend de designers)
+-- Table Template (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS templates (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name VARCHAR NOT NULL,
@@ -206,6 +203,7 @@ CREATE TABLE IF NOT EXISTS templates (
     currency VARCHAR(3) DEFAULT 'EUR',
     status VARCHAR(20) DEFAULT 'pending_review' CHECK (status IN ('pending_review', 'approved', 'rejected')),
     -- Designer selon diagramme: Designer "1" -- "*" Template
+    -- designers existe maintenant (créé ci-dessus)
     designer_id BIGINT NOT NULL REFERENCES designers(id) ON DELETE CASCADE,
     -- Champs d'audit complets
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -221,7 +219,7 @@ CREATE TABLE IF NOT EXISTS templates (
     rejected_by BIGINT
 );
 
--- Table Purchase (dépend de templates)
+-- Table Purchase (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS purchases (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     purchase_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -245,7 +243,7 @@ CREATE TABLE IF NOT EXISTS purchases (
     refunded_by BIGINT
 );
 
--- Table Review (dépend de templates)
+-- Table Review (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS reviews (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
@@ -268,7 +266,7 @@ CREATE TABLE IF NOT EXISTS reviews (
 -- Module Admin Dashboard (Section 5.8)
 -- ========================================
 
--- Table SystemLog (pas de dépendances externes)
+-- Table SystemLog (conforme exactement au diagramme + champs audit complets)
 CREATE TABLE IF NOT EXISTS system_logs (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     level VARCHAR(20) NOT NULL CHECK (level IN ('info', 'warning', 'error')),
