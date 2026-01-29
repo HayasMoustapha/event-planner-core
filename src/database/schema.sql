@@ -101,7 +101,11 @@ CREATE TABLE IF NOT EXISTS tickets (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_by BIGINT,
-    updated_by BIGINT
+    updated_by BIGINT,
+    -- Champs ajoutés pour l'intégration avec ticket-generator-service
+    ticket_file_url VARCHAR(500), -- URL du fichier PDF/image généré
+    ticket_file_path VARCHAR(500), -- Chemin local du fichier généré
+    generation_job_id BIGINT REFERENCES ticket_generation_jobs(id) ON DELETE SET NULL -- Job qui a généré ce ticket
 );
 
 -- Ticket Templates table (for ticket design templates)
@@ -119,7 +123,7 @@ CREATE TABLE IF NOT EXISTS ticket_templates (
     updated_by BIGINT
 );
 
--- Ticket Generation Jobs table (conforme au diagramme)
+-- Ticket Generation Jobs table (conforme au diagramme et aux besoins du service)
 CREATE TABLE IF NOT EXISTS ticket_generation_jobs (
     id BIGSERIAL PRIMARY KEY,
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
@@ -134,7 +138,11 @@ CREATE TABLE IF NOT EXISTS ticket_generation_jobs (
     completed_at TIMESTAMP WITH TIME ZONE,
     error_message TEXT,
     retry_count INTEGER DEFAULT 0,
-    max_retries INTEGER DEFAULT 3
+    max_retries INTEGER DEFAULT 3,
+    -- Champs ajoutées pour l'intégration Redis/BullMQ
+    redis_job_id VARCHAR(255), -- ID du job dans BullMQ
+    tickets_count INTEGER DEFAULT 0, -- Nombre de tickets à générer
+    tickets_processed INTEGER DEFAULT 0 -- Nombre de tickets traités avec succès
 );
 
 
