@@ -29,8 +29,8 @@ const marketplaceRoutes = require('./modules/marketplace/marketplace.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 const healthRoutes = require('./health/health.routes');
 
-// Import routes internes (pour communication inter-services)
-const internalRoutes = require('./routes/internal/scan-validation-internal.routes');
+// Import du controller de validation (utilisé pour les endpoints utilisateur ET internes)
+const scanValidationController = require('./controllers/scan-validation-controller');
 
 // Create Express app
 const app = express();
@@ -112,10 +112,11 @@ const RobustAuthMiddleware = require('../../shared/middlewares/robust-auth-middl
 app.use('/health', healthRoutes);
 app.get('/metrics', metricsEndpoint);
 
-// Routes internes (pour communication inter-services, authentification par service token)
+// Routes internes (pour communication inter-services, SANS authentification utilisateur)
 // IMPORTANT : Ces routes sont utilisées par Scan-Validation Service
 // Pas d'authentification utilisateur standard, mais validation par token de service
-app.use('/api/internal', internalRoutes);
+app.post('/api/internal/validation/validate-ticket', scanValidationController.validateTicketInternal);
+app.get('/api/internal/tickets/:ticketId/status', scanValidationController.checkTicketStatus);
 
 // Routes protégées (avec authentification)
 app.use('/api', RobustAuthMiddleware.authenticate());
@@ -124,6 +125,10 @@ app.use('/api/guests', guestsRoutes);
 app.use('/api/tickets', ticketsRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/admin', adminRoutes);
+
+// Routes de validation utilisateur (protégées)
+app.post('/api/scan-validation/validate', scanValidationController.validateScannedTicket);
+app.get('/api/scan-validation/history/:eventId', scanValidationController.getScanHistory);
 
 // 404 handler
 app.use((req, res, next) => {

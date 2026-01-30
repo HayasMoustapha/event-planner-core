@@ -27,7 +27,7 @@
 const VALIDATION_TIMEOUT = parseInt(process.env.VALIDATION_TIMEOUT_MS) || 2000; // 2 secondes max
 
 /**
- * Valide un billet scanné
+ * Valide un billet scanné (endpoint utilisateur)
  * @param {Object} req - Requête Express
  * @param {Object} res - Réponse Express
  * @param {Object} db - Instance de base de données
@@ -98,7 +98,7 @@ async function validateScannedTicket(req, res, db) {
       });
     }
     
-    // Préparation du payload pour le service de validation
+    // Préparation du payload pour la validation locale
     const validationPayload = {
       ticket_code: ticket.ticket_code,
       event_id: event_id,
@@ -115,7 +115,6 @@ async function validateScannedTicket(req, res, db) {
     console.log(`[SCAN_VALIDATION] Validation locale pour ticket ${ticket_code}`);
     
     // CORRIGÉ : Validation locale au lieu d'appel circulaire au scan-validation-service
-    // L'architecture correcte évite les appels circulaires entre services
     const validationResponse = await validateTicketLocally(validationPayload, db);
     
     // Si la validation est réussie, mettre à jour le ticket en base
@@ -182,6 +181,225 @@ async function validateScannedTicket(req, res, db) {
       code: 'INTERNAL_VALIDATION_ERROR',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined,
       processing_time_ms: processingTime
+    });
+  }
+}
+
+/**
+ * Valide un ticket via appel interne de Scan-Validation Service (NOUVEL ENDPOINT)
+ * 
+ * IMPORTANT : Cet endpoint est utilisé par Scan-Validation Service
+ * Il effectue la validation métier LOCALE sans appeler en retour Scan-Validation Service
+ * 
+ * @param {Object} req - Requête Express
+ * @param {Object} res - Réponse Express
+ * @param {Object} db - Instance de base de données
+ */
+async function validateTicketInternal(req, res, db) {
+  const startTime = Date.now();
+  
+  try {
+    const { ticketId, eventId, ticketType, userId, scanContext, validationMetadata } = req.body;
+    
+    console.log(`[INTERNAL_SCAN_VALIDATION] Validation ticket ${ticketId} pour événement ${eventId}`);
+    
+    // 1. Validation des données d'entrée
+    if (!ticketId || !eventId) {
+      return res.status(400).json({
+        success: false,
+        error: 'ticketId et eventId sont obligatoires',
+        code: 'MISSING_REQUIRED_FIELDS'
+      });
+    }
+    
+    // 2. Récupérer le ticket avec toutes les informations nécessaires
+    const ticketQuery = `
+      SELECT 
+        t.id,
+        t.ticket_code,
+        t.qr_code_data,
+        t.is_validated,
+        t.validated_at,
+        t.event_guest_id,
+        eg.event_id,
+        eg.guest_name,
+        e.title as event_title,
+        e.status as event_status,
+        e.event_date,
+        e.max_attendees
+      FROM tickets t
+      JOIN event_guests eg ON t.event_guest_id = eg.id
+      JOIN events e ON eg.event_id = e.id
+      WHERE t.id = $1 AND eg.event_id = $2
+    `;
+    
+    const ticketResult = await db.query(ticketQuery, [ticketId, eventId]);
+    
+    if (ticketResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket non trouvé pour cet événement',
+        code: 'TICKET_NOT_FOUND'
+      });
+    }
+    
+    const ticket = ticketResult.rows[0];
+    
+    // 3. Vérifier si le ticket est déjà validé
+    if (ticket.is_validated) {
+      return res.status(409).json({
+        success: false,
+        error: 'Ticket déjà validé',
+        code: 'TICKET_ALREADY_VALIDATED',
+        validated_at: ticket.validated_at
+      });
+    }
+    
+    // 4. Validation métier complète
+    const businessValidation = await validateTicketBusinessRules(ticket, scanContext, db);
+    
+    if (!businessValidation.success) {
+      return res.status(400).json({
+        success: false,
+        error: businessValidation.error,
+        code: businessValidation.code,
+        details: businessValidation.details
+      });
+    }
+    
+    // 5. Mettre à jour le statut du ticket
+    await updateTicketStatus(ticketId, scanContext, db);
+    
+    const processingTime = Date.now() - startTime;
+    
+    console.log(`[INTERNAL_SCAN_VALIDATION] Ticket ${ticketId} validé en ${processingTime}ms`);
+    
+    // 6. Retourner le succès avec le format compatible Scan-Validation Service
+    res.status(200).json({
+      success: true,
+      data: {
+        valid: true,
+        already_used: false,
+        validated_at: new Date().toISOString(),
+        ticket_id: ticketId,
+        operator_id: scanContext?.operatorId,
+        ticket: {
+          id: ticket.id,
+          ticket_code: ticket.ticket_code,
+          guest_name: ticket.guest_name,
+          status: 'VALIDATED'
+        },
+        event: {
+          id: eventId,
+          title: ticket.event_title,
+          status: ticket.event_status
+        },
+        validation: {
+          validated_at: new Date().toISOString(),
+          operator_id: scanContext?.operatorId,
+          location: scanContext?.location,
+          device_id: scanContext?.deviceId
+        },
+        metadata: {
+          processing_time_ms: processingTime,
+          validation_metadata: validationMetadata,
+          validation_type: 'INTERNAL_BUSINESS_VALIDATION'
+        }
+      },
+      message: 'Ticket validé avec succès via validation interne'
+    });
+    
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    console.error('[INTERNAL_SCAN_VALIDATION] Erreur validation:', error.message);
+    
+    // Gestion des erreurs de base de données
+    if (error.code === '23505') {
+      return res.status(409).json({
+        success: false,
+        error: 'Ticket déjà utilisé (race condition)',
+        code: 'TICKET_ALREADY_USED',
+        processing_time_ms: processingTime
+      });
+    }
+    
+    if (error.code === '23503') {
+      return res.status(400).json({
+        success: false,
+        error: 'Référence invalide',
+        code: 'INVALID_REFERENCE',
+        processing_time_ms: processingTime
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Erreur interne lors de la validation',
+      code: 'INTERNAL_ERROR',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      processing_time_ms: processingTime
+    });
+  }
+}
+
+/**
+ * Vérifie le statut d'un ticket (endpoint interne)
+ * @param {Object} req - Requête Express
+ * @param {Object} res - Réponse Express
+ * @param {Object} db - Instance de base de données
+ */
+async function checkTicketStatus(req, res, db) {
+  try {
+    const { ticketId } = req.params;
+    
+    const query = `
+      SELECT 
+        t.id,
+        t.ticket_code,
+        t.is_validated,
+        t.validated_at,
+        eg.event_id,
+        e.title as event_title
+      FROM tickets t
+      JOIN event_guests eg ON t.event_guest_id = eg.id
+      JOIN events e ON eg.event_id = e.id
+      WHERE t.id = $1
+    `;
+    
+    const result = await db.query(query, [ticketId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket non trouvé',
+        code: 'TICKET_NOT_FOUND'
+      });
+    }
+    
+    const ticket = result.rows[0];
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        ticket: {
+          id: ticket.id,
+          ticket_code: ticket.ticket_code,
+          is_validated: ticket.is_validated,
+          validated_at: ticket.validated_at
+        },
+        event: {
+          id: ticket.event_id,
+          title: ticket.event_title
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('[INTERNAL_SCAN_VALIDATION] Erreur vérification statut:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la vérification du statut',
+      code: 'INTERNAL_ERROR'
     });
   }
 }
@@ -557,5 +775,7 @@ async function getScanHistory(req, res, db) {
 
 module.exports = {
   validateScannedTicket,
+  validateTicketInternal, // NOUVEL ENDPOINT pour Scan-Validation Service
+  checkTicketStatus, // ENDPOINT interne pour vérification statut
   getScanHistory
 };
