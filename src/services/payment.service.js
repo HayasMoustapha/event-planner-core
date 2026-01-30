@@ -95,6 +95,9 @@ class PaymentService {
           status: result.status
         });
 
+        // Enregistrer la transaction locale pour suivi
+        await recordLocalPurchase(templatePurchaseData, result);
+
         return {
           success: true,
           transactionId: result.transactionId,
@@ -171,6 +174,9 @@ class PaymentService {
           status: result.status,
           gateway: result.gateway
         });
+
+        // Enregistrer la transaction locale pour suivi
+        await recordLocalPayment(paymentData, result);
 
         return {
           success: true,
