@@ -16,8 +16,10 @@ CREATE TABLE IF NOT EXISTS events (
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE, -- Soft delete timestamp
     created_by BIGINT,
-    updated_by BIGINT
+    updated_by BIGINT,
+    deleted_by BIGINT -- User who performed soft delete
 );
 
 -- Guests table
@@ -31,8 +33,10 @@ CREATE TABLE IF NOT EXISTS guests (
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE, -- Soft delete timestamp
     created_by BIGINT,
-    updated_by BIGINT
+    updated_by BIGINT,
+    deleted_by BIGINT -- User who performed soft delete
 );
 
 -- EventGuest junction table
@@ -47,8 +51,10 @@ CREATE TABLE IF NOT EXISTS event_guests (
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE, -- Soft delete timestamp
     created_by BIGINT,
-    updated_by BIGINT
+    updated_by BIGINT,
+    deleted_by BIGINT -- User who performed soft delete
 );
 
 -- Invitations table
@@ -62,8 +68,10 @@ CREATE TABLE IF NOT EXISTS invitations (
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE, -- Soft delete timestamp
     created_by BIGINT,
-    updated_by BIGINT
+    updated_by BIGINT,
+    deleted_by BIGINT -- User who performed soft delete
 );
 
 -- Ticket Types table
@@ -81,8 +89,10 @@ CREATE TABLE IF NOT EXISTS ticket_types (
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE, -- Soft delete timestamp
     created_by BIGINT,
-    updated_by BIGINT
+    updated_by BIGINT,
+    deleted_by BIGINT -- User who performed soft delete
 );
 
 -- Tickets table
@@ -100,8 +110,10 @@ CREATE TABLE IF NOT EXISTS tickets (
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE, -- Soft delete timestamp
     created_by BIGINT,
     updated_by BIGINT,
+    deleted_by BIGINT, -- User who performed soft delete
     -- Champs ajoutés pour l'intégration avec ticket-generator-service
     ticket_file_url VARCHAR(500), -- URL du fichier PDF/image généré
     ticket_file_path VARCHAR(500), -- Chemin local du fichier généré
@@ -119,8 +131,10 @@ CREATE TABLE IF NOT EXISTS ticket_templates (
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE, -- Soft delete timestamp
     created_by BIGINT,
-    updated_by BIGINT
+    updated_by BIGINT,
+    deleted_by BIGINT -- User who performed soft delete
 );
 
 -- Ticket Generation Jobs table (conforme au diagramme et aux besoins du service)
@@ -132,8 +146,10 @@ CREATE TABLE IF NOT EXISTS ticket_generation_jobs (
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE, -- Soft delete timestamp
     created_by BIGINT,
     updated_by BIGINT,
+    deleted_by BIGINT, -- User who performed soft delete
     started_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE,
     error_message TEXT,
@@ -157,8 +173,10 @@ CREATE TABLE IF NOT EXISTS designers (
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE, -- Soft delete timestamp
     created_by BIGINT,
-    updated_by BIGINT
+    updated_by BIGINT,
+    deleted_by BIGINT -- User who performed soft delete
 );
 
 -- Templates table
@@ -175,8 +193,10 @@ CREATE TABLE IF NOT EXISTS templates (
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE, -- Soft delete timestamp
     created_by BIGINT,
-    updated_by BIGINT
+    updated_by BIGINT,
+    deleted_by BIGINT -- User who performed soft delete
 );
 
 -- Purchases table
@@ -191,8 +211,10 @@ CREATE TABLE IF NOT EXISTS purchases (
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE, -- Soft delete timestamp
     created_by BIGINT,
-    updated_by BIGINT
+    updated_by BIGINT,
+    deleted_by BIGINT -- User who performed soft delete
 );
 
 -- Reviews table
@@ -205,8 +227,10 @@ CREATE TABLE IF NOT EXISTS reviews (
     uid UUID DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE, -- Soft delete timestamp
     created_by BIGINT,
-    updated_by BIGINT
+    updated_by BIGINT,
+    deleted_by BIGINT -- User who performed soft delete
 );
 
 -- System Logs table
@@ -271,6 +295,20 @@ CREATE INDEX IF NOT EXISTS idx_reviews_rating ON reviews(rating);
 
 CREATE INDEX IF NOT EXISTS idx_system_logs_level ON system_logs(level);
 CREATE INDEX IF NOT EXISTS idx_system_logs_created_at ON system_logs(created_at);
+
+-- Indexes for soft delete (deleted_at) - improves query performance
+CREATE INDEX IF NOT EXISTS idx_events_deleted_at ON events(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_guests_deleted_at ON guests(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_event_guests_deleted_at ON event_guests(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_invitations_deleted_at ON invitations(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_ticket_types_deleted_at ON ticket_types(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_tickets_deleted_at ON tickets(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_ticket_templates_deleted_at ON ticket_templates(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_ticket_generation_jobs_deleted_at ON ticket_generation_jobs(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_designers_deleted_at ON designers(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_templates_deleted_at ON templates(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_purchases_deleted_at ON purchases(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_reviews_deleted_at ON reviews(deleted_at);
 
 -- Unique constraints to prevent duplicates
 CREATE UNIQUE INDEX IF NOT EXISTS idx_event_guests_unique ON event_guests(event_id, guest_id);

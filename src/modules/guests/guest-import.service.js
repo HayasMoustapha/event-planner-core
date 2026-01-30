@@ -2,6 +2,7 @@ const CSVParser = require('../../utils/parsers/csv.parser');
 const ExcelParser = require('../../utils/parsers/excel.parser');
 const fs = require('fs');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 /**
  * Service d'import des invités pour les fichiers CSV et Excel
@@ -91,25 +92,39 @@ class GuestImportService {
    * @returns {Promise<Object>} - Résultat de l'import
    */
   async importGuestsToEvent(eventId, guests, userId = null) {
-    const transaction = await this.db.beginTransaction();
-    
+    // Get a client from the pool for transaction
+    const client = await this.db.pool.connect();
+
     try {
+      // Start transaction
+      await client.query('BEGIN');
+
       const imported = [];
       const duplicates = [];
       const errors = [];
       const duplicateGuests = [];
 
       // Récupérer les emails existants pour cet événement
-      const existingEmails = await this.getExistingGuestEmails(eventId, transaction);
+      const existingEmails = await this.getExistingGuestEmails(eventId, client);
       const existingEmailSet = new Set(existingEmails.map(email => email.toLowerCase()));
 
       // Traiter les invités par lots
       const batchSize = 100;
       for (let i = 0; i < guests.length; i += batchSize) {
         const batch = guests.slice(i, i + batchSize);
-        
+
         for (const guest of batch) {
           try {
+            // Skip guests without email
+            if (!guest.email) {
+              errors.push({
+                email: 'N/A',
+                error: 'Email is required',
+                data: guest
+              });
+              continue;
+            }
+
             // Vérifier les doublons
             if (existingEmailSet.has(guest.email.toLowerCase())) {
               duplicates.push(guest.email);
@@ -122,20 +137,21 @@ class GuestImportService {
             }
 
             // Créer l'invité
-            const guestResult = await this.createGuest(guest, userId, transaction);
-            
+            const guestResult = await this.createGuest(guest, userId, client);
+
             if (guestResult.success) {
               // Associer l'invité à l'événement
               const eventGuestResult = await this.addGuestToEvent(
-                eventId, 
-                guestResult.guestId, 
-                userId, 
-                transaction
+                eventId,
+                guestResult.guestId,
+                userId,
+                client
               );
 
               if (eventGuestResult.success) {
                 imported.push({
                   id: guestResult.guestId,
+                  invitation_code: eventGuestResult.invitationCode,
                   ...guest,
                   status: 'pending'
                 });
@@ -156,7 +172,7 @@ class GuestImportService {
             }
           } catch (error) {
             errors.push({
-              email: guest.email,
+              email: guest.email || 'N/A',
               error: error.message,
               data: guest
             });
@@ -164,41 +180,44 @@ class GuestImportService {
         }
       }
 
-      // Commit de la transaction
-      await transaction.commit();
+      // Commit the transaction
+      await client.query('COMMIT');
 
       return {
         success: true,
         imported: imported.length,
         duplicates: duplicates.length,
-        errors: errors.length,
+        errorsCount: errors.length,
         importedGuests: imported,
         duplicateGuests: duplicateGuests,
         errors: errors
       };
 
     } catch (error) {
-      // Rollback en cas d'erreur
-      await transaction.rollback();
+      // Rollback on error
+      await client.query('ROLLBACK');
       throw error;
+    } finally {
+      // Always release the client back to the pool
+      client.release();
     }
   }
 
   /**
    * Récupère les emails des invités existants pour un événement
    * @param {string} eventId - ID de l'événement
-   * @param {Object} transaction - Transaction SQL
+   * @param {Object} client - Client pg (transaction)
    * @returns {Promise<Array>} - Liste des emails
    */
-  async getExistingGuestEmails(eventId, transaction) {
+  async getExistingGuestEmails(eventId, client) {
     const query = `
-      SELECT DISTINCT g.email 
+      SELECT DISTINCT g.email
       FROM guests g
       INNER JOIN event_guests eg ON g.id = eg.guest_id
-      WHERE eg.event_id = $1 AND g.email IS NOT NULL
+      WHERE eg.event_id = $1 AND g.email IS NOT NULL AND g.deleted_at IS NULL AND eg.deleted_at IS NULL
     `;
-    
-    const result = await transaction.query(query, [eventId]);
+
+    const result = await client.query(query, [eventId]);
     return result.rows.map(row => row.email);
   }
 
@@ -206,22 +225,22 @@ class GuestImportService {
    * Crée un nouvel invité
    * @param {Object} guestData - Données de l'invité
    * @param {string} userId - ID de l'utilisateur
-   * @param {Object} transaction - Transaction SQL
+   * @param {Object} transaction - Transaction SQL (client pg)
    * @returns {Promise<Object>} - Résultat de la création
    */
   async createGuest(guestData, userId, transaction) {
     const query = `
-      INSERT INTO guests (first_name, last_name, email, phone, user_id, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      INSERT INTO guests (first_name, last_name, email, phone, created_by, updated_by, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING id
     `;
-    
+
     const values = [
       guestData.first_name,
       guestData.last_name,
       guestData.email.toLowerCase(),
       guestData.phone || null,
-      userId || 1 // Valeur par défaut si pas d'auth
+      userId // created_by and updated_by
     ];
 
     try {
@@ -243,23 +262,27 @@ class GuestImportService {
    * @param {string} eventId - ID de l'événement
    * @param {string} guestId - ID de l'invité
    * @param {string} userId - ID de l'utilisateur
-   * @param {Object} transaction - Transaction SQL
+   * @param {Object} transaction - Transaction SQL (client pg)
    * @returns {Promise<Object>} - Résultat de l'association
    */
   async addGuestToEvent(eventId, guestId, userId, transaction) {
+    // Generate unique invitation code
+    const invitationCode = uuidv4();
+
     const query = `
-      INSERT INTO event_guests (event_id, guest_id, status, user_id, created_at, updated_at)
-      VALUES ($1, $2, 'pending', $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      RETURNING id
+      INSERT INTO event_guests (event_id, guest_id, invitation_code, status, created_by, updated_by, created_at, updated_at)
+      VALUES ($1, $2, $3, 'pending', $4, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING id, invitation_code
     `;
-    
-    const values = [eventId, guestId, userId || 1];
+
+    const values = [eventId, guestId, invitationCode, userId];
 
     try {
       const result = await transaction.query(query, values);
       return {
         success: true,
-        eventGuestId: result.rows[0].id
+        eventGuestId: result.rows[0].id,
+        invitationCode: result.rows[0].invitation_code
       };
     } catch (error) {
       return {

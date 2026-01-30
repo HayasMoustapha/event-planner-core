@@ -20,7 +20,7 @@ router.use(marketplaceErrorHandler);
 router.use(paymentRoutes);
 
 // Designer Management - GET routes avec permission spécifique
-router.get('/designers', SecurityMiddleware.withPermissions('marketplace.designers.read'), marketplaceController.getDesigners);
+// router.get('/designers', SecurityMiddleware.withPermissions('marketplace.designers.read'), marketplaceController.getDesigners);
 
 router.get('/designers/:id', SecurityMiddleware.withPermissions('marketplace.designers.read'), marketplaceController.getDesignerById);
 

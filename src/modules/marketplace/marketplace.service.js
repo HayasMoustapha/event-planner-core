@@ -23,7 +23,7 @@ class MarketplaceService {
       };
 
       const designer = await marketplaceRepository.createDesigner(designerDataWithCreator);
-      
+
       return {
         success: true,
         data: designer

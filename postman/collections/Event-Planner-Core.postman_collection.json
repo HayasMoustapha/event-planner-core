@@ -1,8 +1,9 @@
 {
 	"info": {
-		"_postman_id": "event-planner-core-collection",
-		"name": "Event Planner Core - Complete API",
-		"description": "Collection complète pour Event Planner Core Service (Port 3001). Contient Events, Guests, Tickets, Marketplace, Admin, et Ticket Templates.\n\n🔥 RÈGLE STRICTE: Les bodies ne contiennent QUE les champs réels des schémas SQL.\n❌ INTERDITS: id, uid, created_at, updated_at, created_by, updated_by, status (si géré serveur)",
+		"_postman_id": "event-planner-core-complete",
+		"name": "Event Planner Core - API Complète Corrigée",
+		"description": "Collection complète et corrigée pour Event Planner Core Service (Port 3001). Contient Events, Guests, Invitations, Tickets, Marketplace, Admin.\n\n🔥 RÈGLE STRICTE: Les bodies ne contiennent QUE les champs client autorisés.\n❌ INTERDITS: id, created_at, updated_at, created_by, updated_by, deleted_at, deleted_by (gérés serveur)\n✅ AUTORISÉS: Uniquement les champs métier définis dans les schémas SQL",
+		"version": "5.0.0",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -42,8 +43,13 @@
 			"type": "string"
 		},
 		{
-			"key": "testDesignerId",
+			"key": "testInvitationId",
 			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "testInvitationCode",
+			"value": "INV-2026-XYZ789",
 			"type": "string"
 		}
 	],
@@ -667,7 +673,7 @@
 					"response": []
 				},
 				{
-					"name": "Add Guests To Event",
+					"name": "Add Guest To Event",
 					"event": [
 						{
 							"listen": "test",
@@ -678,7 +684,7 @@
 									"    pm.response.to.have.status(201);",
 									"});",
 									"",
-									"pm.test(\"Guests added to event successfully\", function () {",
+									"pm.test(\"Guest added to event successfully\", function () {",
 									"    const jsonData = pm.response.json();",
 									"    pm.expect(jsonData.success).to.be.true;",
 									"});"
@@ -696,7 +702,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"guests\": [\n    {\n      \"guest_id\": 1,\n      \"invitation_code\": \"INV-001-ABC\"\n    },\n    {\n      \"guest_id\": 2,\n      \"invitation_code\": \"INV-002-DEF\"\n    }\n  ]\n}"
+							"raw": "{\n  \"guest_id\": 1\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/guests/events/{{testEventId}}/guests",
@@ -714,7 +720,7 @@
 					"response": []
 				},
 				{
-					"name": "Bulk Add Guests To Event",
+					"name": "📥 IMPORT Guests for Event (NEW)",
 					"event": [
 						{
 							"listen": "test",
@@ -725,9 +731,11 @@
 									"    pm.response.to.have.status(201);",
 									"});",
 									"",
-									"pm.test(\"Bulk guests added successfully\", function () {",
+									"pm.test(\"Guests imported successfully\", function () {",
 									"    const jsonData = pm.response.json();",
 									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.data).to.have.property('imported');",
+									"    pm.expect(jsonData.data).to.have.property('failed');",
 									"});"
 								]
 							}
@@ -743,10 +751,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"guests_data\": [\n    {\n      \"first_name\": \"Marie\",\n      \"last_name\": \"Martin\",\n      \"email\": \"marie.martin@example.com\",\n      \"phone\": \"+33611111111\"\n    },\n    {\n      \"first_name\": \"Pierre\",\n      \"last_name\": \"Durand\",\n      \"email\": \"pierre.durand@example.com\",\n      \"phone\": \"+33622222222\"\n    }\n  ]\n}"
+							"raw": "{\n  \"guests\": [\n    {\n      \"first_name\": \"Marie\",\n      \"last_name\": \"Martin\",\n      \"email\": \"marie.martin@example.com\",\n      \"phone\": \"+33611111111\"\n    },\n    {\n      \"first_name\": \"Pierre\",\n      \"last_name\": \"Durand\",\n      \"email\": \"pierre.durand@example.com\",\n      \"phone\": \"+33622222222\"\n    },\n    {\n      \"first_name\": \"Sophie\",\n      \"last_name\": \"Bernard\",\n      \"email\": \"sophie.bernard@example.com\",\n      \"phone\": \"+33633333333\"\n    }\n  ]\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/guests/events/{{testEventId}}/guests/bulk",
+							"raw": "{{baseUrl}}/guests/events/{{testEventId}}/import",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -754,8 +762,7 @@
 								"guests",
 								"events",
 								"{{testEventId}}",
-								"guests",
-								"bulk"
+								"import"
 							]
 						}
 					},
@@ -791,16 +798,20 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"invitation_code\": \"INV-001-ABC\",\n  \"check_in_time\": \"2025-06-15T09:30:00Z\"\n}"
+							"raw": "{\n  \"check_in_time\": \"2025-06-15T09:30:00Z\"\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/guests/check-in",
+							"raw": "{{baseUrl}}/guests/events/{{testEventId}}/guests/{{testGuestId}}/checkin",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"guests",
-								"check-in"
+								"events",
+								"{{testEventId}}",
+								"guests",
+								"{{testGuestId}}",
+								"checkin"
 							]
 						}
 					},

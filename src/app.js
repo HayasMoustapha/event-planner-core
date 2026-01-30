@@ -176,6 +176,12 @@ const guestsController = require('./modules/guests/guests.controller');
 app.use('/test-import', databaseMiddleware);
 app.post('/test-import/events/:eventId/guests/import', uploadGuestsFile, wrapController(guestsController.importGuests));
 
+// Route de test simple pour debug
+app.post('/test-simple/events/:eventId/guests/import', (req, res) => {
+  console.log('Simple test route hit!');
+  res.json({ success: true, message: 'Simple test works', eventId: req.params.eventId });
+});
+
 // 404 handler
 app.use((req, res, next) => {
   ErrorHandler.notFoundHandler(req, res, next);

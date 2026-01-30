@@ -1,4 +1,5 @@
 const { database } = require('../../config');
+const { v4: uuidv4 } = require('uuid');
 
 class GuestsRepository {
   async create(guestData) {
@@ -279,25 +280,58 @@ class GuestsRepository {
     }
 
     const values = eventGuestsData.map((eventGuest, index) => {
-      const baseIndex = index * 4;
-      return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4})`;
+      const baseIndex = index * 5;
+      return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5})`;
     }).join(', ');
 
     const flatEventGuests = eventGuestsData.flatMap(eventGuest => [
       eventGuest.guest_id,
       eventGuest.event_id,
+      eventGuest.invitation_code || uuidv4(), // Generate invitation_code if not provided
       eventGuest.created_by,
       eventGuest.updated_by
     ]);
 
     const query = `
-      INSERT INTO event_guests (guest_id, event_id, created_by, updated_by)
+      INSERT INTO event_guests (guest_id, event_id, invitation_code, created_by, updated_by)
       VALUES ${values}
-      RETURNING guest_id, event_id, created_at
+      RETURNING id, guest_id, event_id, invitation_code, created_at
     `;
 
     const result = await database.query(query, flatEventGuests);
     return result.rows;
+  }
+
+  /**
+   * Create a single event_guest record (used by invitations service)
+   */
+  async createEventGuest(eventGuestData) {
+    const {
+      event_id,
+      guest_id,
+      invitation_code,
+      status = 'pending',
+      created_by,
+      updated_by
+    } = eventGuestData;
+
+    const query = `
+      INSERT INTO event_guests (event_id, guest_id, invitation_code, status, created_by, updated_by)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `;
+
+    const values = [
+      event_id,
+      guest_id,
+      invitation_code || uuidv4(),
+      status,
+      created_by,
+      updated_by || created_by
+    ];
+
+    const result = await database.query(query, values);
+    return result.rows[0];
   }
 
   async getEventStats(eventId) {

@@ -242,23 +242,27 @@ class EventsService {
 
   async getEventStats(eventId, userId) {
     try {
-      const event = await eventsRepository.findById(eventId);
-      
-      if (!event) {
-        return {
-          success: false,
-          error: 'Event not found'
-        };
+      // If eventId is provided, verify access to that specific event
+      if (eventId) {
+        const event = await eventsRepository.findById(eventId);
+
+        if (!event) {
+          return {
+            success: false,
+            error: 'Event not found'
+          };
+        }
+
+        if (event.organizer_id !== userId && String(event.organizer_id) !== String(userId)) {
+          return {
+            success: false,
+            error: 'Access denied'
+          };
+        }
       }
 
-      if (event.organizer_id !== userId && String(event.organizer_id) !== String(userId)) {
-        return {
-          success: false,
-          error: 'Access denied'
-        };
-      }
-
-      const stats = await eventsRepository.getEventStats(eventId);
+      // Get organizer-wide stats (repository expects organizerId, not eventId)
+      const stats = await eventsRepository.getEventStats(userId);
 
       return {
         success: true,
