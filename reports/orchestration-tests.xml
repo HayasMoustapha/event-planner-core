@@ -1,705 +1,399 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="338" failures="0" errors="0" time="28.455">
-  <testsuite name="Ticket Generator Service - Integration Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T09:52:43" time="11.96" tests="20">
-    <testcase classname="Ticket Generator Service - Integration Tests Health Check" name="should return healthy status when service is running" time="0.005">
+<testsuites name="jest tests" tests="194" failures="0" errors="0" time="4.082">
+  <testsuite name="Ticket Generator Service - Mock Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T13:58:34" time="1.653" tests="56">
+    <testcase classname="Ticket Generator Service - Mock Tests 1. generateTicket - POST /api/tickets/generate" name="should call correct URL with correct method" time="0.018">
     </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 1. generateTicket" name="should generate a single ticket successfully" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests 1. generateTicket - POST /api/tickets/generate" name="should return ticket data on success" time="0.006">
     </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 1. generateTicket" name="should handle invalid ticket data gracefully" time="0.003">
+    <testcase classname="Ticket Generator Service - Mock Tests 1. generateTicket - POST /api/tickets/generate" name="should handle service unavailable error" time="0.038">
     </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 2. generateBatch" name="should queue batch ticket generation" time="0.003">
+    <testcase classname="Ticket Generator Service - Mock Tests 1. generateTicket - POST /api/tickets/generate" name="should handle timeout error" time="0.006">
     </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 3. downloadTicketPDF" name="should handle PDF download request" time="0.006">
+    <testcase classname="Ticket Generator Service - Mock Tests 1. generateTicket - POST /api/tickets/generate" name="should handle invalid response" time="0.004">
     </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 4. getTicketQRCode" name="should handle QR code request" time="0.002">
+    <testcase classname="Ticket Generator Service - Mock Tests 2. generateBatch - POST /api/tickets/batch" name="should call correct URL with correct payload" time="0.005">
     </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 5. getJobStatus" name="should handle job status request" time="0.006">
+    <testcase classname="Ticket Generator Service - Mock Tests 2. generateBatch - POST /api/tickets/batch" name="should return jobId for batch processing" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 6. cancelJob" name="should handle job cancellation request" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests 2. generateBatch - POST /api/tickets/batch" name="should handle large batch requests" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 7. getJobResults" name="should handle job results request" time="0.002">
+    <testcase classname="Ticket Generator Service - Mock Tests 2. generateBatch - POST /api/tickets/batch" name="should handle empty batch" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 8. validateTicket" name="should handle ticket validation request" time="0.002">
+    <testcase classname="Ticket Generator Service - Mock Tests 3. downloadTicketPDF - GET /api/tickets/:id/pdf" name="should call correct URL" time="0.006">
     </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 9. regenerateTicket" name="should handle ticket regeneration request" time="0.006">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 10. listTemplates" name="should list available templates" time="0.004">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 11. getTemplate" name="should handle template retrieval" time="0.002">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 12. previewTemplate" name="should handle template preview" time="0.005">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 13. getGenerationStats" name="should retrieve generation statistics" time="0.002">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 14. generateEventTickets" name="should handle event tickets generation" time="0.003">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests 15. getTicketByCode" name="should handle ticket retrieval by code" time="0.003">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests Performance Tests" name="should handle concurrent requests without blocking" time="0.006">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests Performance Tests" name="should not have memory leaks on repeated requests" time="0.004">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Integration Tests Error Recovery" name="should recover after temporary failure" time="0.003">
-    </testcase>
-  </testsuite>
-  <testsuite name="E2E - Ticket Purchase Flow" errors="0" failures="0" skipped="0" timestamp="2026-01-30T09:52:55" time="4.548" tests="8">
-    <testcase classname="E2E - Ticket Purchase Flow Flow 1: Standard Ticket Purchase" name="Step 1: Create payment intent" time="0.057">
-    </testcase>
-    <testcase classname="E2E - Ticket Purchase Flow Flow 1: Standard Ticket Purchase" name="Step 2: Generate ticket after payment" time="0.003">
-    </testcase>
-    <testcase classname="E2E - Ticket Purchase Flow Flow 1: Standard Ticket Purchase" name="Step 3: Send confirmation email" time="0.051">
-    </testcase>
-    <testcase classname="E2E - Ticket Purchase Flow Flow 1: Standard Ticket Purchase" name="Step 4: Verify notification status" time="0.007">
-    </testcase>
-    <testcase classname="E2E - Ticket Purchase Flow Flow 2: Batch Ticket Purchase" name="should process batch purchase flow" time="0.004">
-    </testcase>
-    <testcase classname="E2E - Ticket Purchase Flow Flow 3: Purchase with Refund" name="should process purchase and refund flow" time="0.116">
-    </testcase>
-    <testcase classname="E2E - Ticket Purchase Flow Performance: Full Flow Timing" name="should complete full purchase flow within acceptable time" time="0.017">
-    </testcase>
-    <testcase classname="E2E - Ticket Purchase Flow Error Handling: Graceful Degradation" name="should handle partial service failure gracefully" time="3.41">
-    </testcase>
-  </testsuite>
-  <testsuite name="Notification Service - Integration Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T09:53:00" time="1.704" tests="19">
-    <testcase classname="Notification Service - Integration Tests Health Check" name="should return healthy status when service is running" time="0.051">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 1. sendEmail" name="should send email successfully" time="0.228">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 1. sendEmail" name="should handle email with template variables" time="0.023">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 2. queueBulkEmail" name="should queue bulk email successfully" time="0.048">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 2. queueBulkEmail" name="should handle large recipient list" time="0.025">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 3. sendSMS" name="should send SMS successfully" time="0.036">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 4. queueBulkSMS" name="should queue bulk SMS" time="0.001">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 5. sendPushNotification" name="should send push notification" time="0.003">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 6. getNotificationStatus" name="should retrieve notification status" time="0.003">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 7. getJobStatus" name="should retrieve job status" time="0.002">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 8. listTemplates" name="should list email templates" time="0.002">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 8. listTemplates" name="should list SMS templates" time="0.002">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 9. createTemplate" name="should create custom template" time="0.002">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 10. notifyEventParticipants" name="should notify event participants" time="0.003">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 10. notifyEventParticipants" name="should handle different notification types" time="0.015">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests 11. sendTicketConfirmation" name="should send ticket confirmation" time="0.005">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests Performance Tests" name="should handle concurrent email requests" time="0.005">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests Performance Tests" name="should handle mixed notification types" time="0.002">
-    </testcase>
-    <testcase classname="Notification Service - Integration Tests Reliability Tests" name="should handle service interruption gracefully" time="0.584">
-    </testcase>
-  </testsuite>
-  <testsuite name="E2E - Event Scan Flow" errors="0" failures="0" skipped="0" timestamp="2026-01-30T09:53:01" time="1.268" tests="16">
-    <testcase classname="E2E - Event Scan Flow Flow 1: Event Setup with Checkpoints" name="Step 1: Create checkpoint for event" time="0.058">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 1: Event Setup with Checkpoints" name="Step 2: Generate tickets for event" time="0.009">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 1: Event Setup with Checkpoints" name="Step 3: Download offline data for scanning devices" time="0.048">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 2: Ticket Scanning and Validation" name="Step 1: Scan first ticket at entry" time="0.006">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 2: Ticket Scanning and Validation" name="Step 2: Attempt duplicate scan (should be rejected)" time="0.005">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 2: Ticket Scanning and Validation" name="Step 3: Scan remaining tickets" time="0.002">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 3: Offline Mode and Sync" name="Step 1: Simulate offline scans" time="0.032">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 3: Offline Mode and Sync" name="Step 2: Batch validate offline scans" time="0.031">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 4: Statistics and Reporting" name="Step 1: Get real-time scan stats" time="0.081">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 4: Statistics and Reporting" name="Step 2: Get attendance count" time="0.004">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 4: Statistics and Reporting" name="Step 3: Generate scan report" time="0.008">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 4: Statistics and Reporting" name="Step 4: Send statistics notification to organizer" time="0.034">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 5: Fraud Detection" name="Step 1: Check for suspicious ticket" time="0.003">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 5: Fraud Detection" name="Step 2: Report suspicious activity" time="0.003">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Flow 5: Fraud Detection" name="Step 3: Alert security team" time="0.034">
-    </testcase>
-    <testcase classname="E2E - Event Scan Flow Performance: High Volume Scanning" name="should handle rapid scan requests" time="0.006">
-    </testcase>
-  </testsuite>
-  <testsuite name="Payment ↔ Core Integration Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T09:53:03" time="1.177" tests="14">
-    <testcase classname="Payment ↔ Core Integration Tests Payment Processing" name="should process payment successfully" time="0.215">
-    </testcase>
-    <testcase classname="Payment ↔ Core Integration Tests Payment Processing" name="should handle payment failure" time="0.034">
-    </testcase>
-    <testcase classname="Payment ↔ Core Integration Tests Template Purchase" name="should purchase event template" time="0.019">
-    </testcase>
-    <testcase classname="Payment ↔ Core Integration Tests Payment Status" name="should get payment status" time="0.053">
-    </testcase>
-    <testcase classname="Payment ↔ Core Integration Tests Payment Statistics" name="should get payment statistics" time="0.022">
-    </testcase>
-    <testcase classname="Payment ↔ Core Integration Tests Payment Gateways" name="should get available payment gateways" time="0.02">
-    </testcase>
-    <testcase classname="Payment ↔ Core Integration Tests Stripe Integration" name="should create Stripe payment intent" time="0.022">
-    </testcase>
-    <testcase classname="Payment ↔ Core Integration Tests Stripe Integration" name="should confirm Stripe payment" time="0.021">
-    </testcase>
-    <testcase classname="Payment ↔ Core Integration Tests Invoice Generation" name="should generate invoice" time="0.023">
-    </testcase>
-    <testcase classname="Payment ↔ Core Integration Tests Error Handling" name="should handle invalid payment data" time="0.018">
-    </testcase>
-    <testcase classname="Payment ↔ Core Integration Tests Error Handling" name="should handle non-existent transaction" time="0.02">
-    </testcase>
-    <testcase classname="Payment ↔ Core Integration Tests Error Handling" name="should handle Payment Service unavailability" time="0.024">
-    </testcase>
-    <testcase classname="Payment ↔ Core Integration Tests Service Health" name="should check Payment Service health" time="0.021">
-    </testcase>
-    <testcase classname="Payment ↔ Core Integration Tests Service Health" name="should test connectivity with Payment Service" time="0.023">
-    </testcase>
-  </testsuite>
-  <testsuite name="E2E - Complete Event Flow" errors="0" failures="0" skipped="0" timestamp="2026-01-30T09:53:04" time="0.887" tests="19">
-    <testcase classname="E2E - Complete Event Flow Phase 1: Pre-Event Setup" name="1.1: Setup event checkpoints" time="0.003">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 1: Pre-Event Setup" name="1.2: Prepare notification templates" time="0.004">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 2: Ticket Sales" name="2.1: Customer initiates ticket purchase" time="0.005">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 2: Ticket Sales" name="2.2: Payment confirmed - Generate ticket" time="0.003">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 2: Ticket Sales" name="2.3: Send purchase confirmation" time="0.001">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 3: Pre-Event Reminders" name="3.1: Send event reminder (24h before)" time="0.001">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 3: Pre-Event Reminders" name="3.2: Prepare offline scanning data" time="0.003">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 4: Event Day - Entry" name="4.1: Guest arrives - Scan ticket" time="0.003">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 4: Event Day - Entry" name="4.2: Check real-time attendance" time="0.004">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 4: Event Day - Entry" name="4.3: Attempt duplicate entry (should fail)" time="0.002">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 5: During Event" name="5.1: Monitor real-time scans" time="0.001">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 5: During Event" name="5.2: Check for fraud indicators" time="0.001">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 5: During Event" name="5.3: Get current statistics" time="0">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 6: Post-Event" name="6.1: Generate final scan report" time="0.002">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 6: Post-Event" name="6.2: Send thank you email to attendees" time="0.003">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 6: Post-Event" name="6.3: Get payment statistics for event" time="0.004">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Phase 6: Post-Event" name="6.4: Deactivate checkpoints" time="0.002">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Scenario: Cancellation and Refund" name="should handle full cancellation flow" time="0.002">
-    </testcase>
-    <testcase classname="E2E - Complete Event Flow Performance Summary" name="should complete entire event lifecycle efficiently" time="0.005">
-    </testcase>
-  </testsuite>
-  <testsuite name="Auth ↔ Core Integration Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T09:53:05" time="0.98" tests="8">
-    <testcase classname="Auth ↔ Core Integration Tests Authentication Flow" name="should validate token with Auth Service" time="0.044">
-    </testcase>
-    <testcase classname="Auth ↔ Core Integration Tests Authentication Flow" name="should reject invalid token gracefully" time="0.019">
-    </testcase>
-    <testcase classname="Auth ↔ Core Integration Tests Authentication Flow" name="should refresh token" time="0.139">
-    </testcase>
-    <testcase classname="Auth ↔ Core Integration Tests Authorization Flow" name="should check user permissions" time="0.063">
-    </testcase>
-    <testcase classname="Auth ↔ Core Integration Tests Authorization Flow" name="should get user roles" time="0.029">
-    </testcase>
-    <testcase classname="Auth ↔ Core Integration Tests Authorization Flow" name="should authorize admin to access all resources" time="0.026">
-    </testcase>
-    <testcase classname="Auth ↔ Core Integration Tests Service Health" name="should check Auth Service health" time="0.025">
-    </testcase>
-    <testcase classname="Auth ↔ Core Integration Tests Service Health" name="should test connectivity with Auth Service" time="0.022">
-    </testcase>
-  </testsuite>
-  <testsuite name="Scan Validation Service - Integration Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T09:53:06" time="1.015" tests="21">
-    <testcase classname="Scan Validation Service - Integration Tests Health Check" name="should return healthy status when service is running" time="0.025">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 1. validateTicket" name="should handle ticket validation request" time="0.162">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 1. validateTicket" name="should handle rapid consecutive validations" time="0.091">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 2. validateBatch" name="should handle batch validation for offline sync" time="0.027">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 3. getEventScanStats" name="should retrieve scan statistics" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 4. getTicketScanHistory" name="should retrieve ticket scan history" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 5. downloadOfflineData" name="should download offline data package" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 6. uploadOfflineScans" name="should upload offline scans for sync" time="0.008">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 7. getEventCheckpoints" name="should list event checkpoints" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 8. createCheckpoint" name="should create a new checkpoint" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 9. updateCheckpoint" name="should update checkpoint" time="0.005">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 10. deactivateCheckpoint" name="should deactivate checkpoint" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 11. getRealtimeScans" name="should retrieve realtime scans" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 12. generateScanReport" name="should generate scan report" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 13. checkFraud" name="should check for fraud indicators" time="0.005">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 14. reportSuspiciousActivity" name="should submit suspicious activity report" time="0.006">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 15. getAttendanceCount" name="should retrieve attendance count" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 16. listDevices" name="should list registered devices" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 16. listDevices" name="should list devices for specific event" time="0.006">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests 17. registerDevice" name="should register a new device" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Integration Tests Performance Tests" name="should handle high-frequency validation requests" time="0.002">
-    </testcase>
-  </testsuite>
-  <testsuite name="Payment Service - Integration Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T09:53:07" time="0.964" tests="19">
-    <testcase classname="Payment Service - Integration Tests Health Check" name="should return healthy status when service is running" time="0.017">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 1. createPaymentIntent" name="should create payment intent" time="0.144">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 1. createPaymentIntent" name="should handle different currencies" time="0.089">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 2. createCheckoutSession" name="should create checkout session" time="0.019">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 3. getPaymentDetails" name="should retrieve payment details" time="0.005">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 4. processRefund" name="should handle refund request" time="0.007">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 4. processRefund" name="should handle full refund" time="0.002">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 5. getUserInvoices" name="should retrieve user invoices" time="0.004">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 6. downloadInvoice" name="should handle invoice download" time="0.005">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 7. createSubscription" name="should create subscription" time="0.004">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 8. cancelSubscription" name="should cancel subscription" time="0.001">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 9. updatePaymentMethod" name="should update payment method" time="0.003">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 10. getTicketPaymentStatus" name="should retrieve ticket payment status" time="0.007">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 11. createTicketPayment" name="should create ticket payment" time="0.003">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 12. processStripeWebhook" name="should process Stripe webhook" time="0.001">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 13. processPayPalWebhook" name="should process PayPal webhook" time="0.002">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests 14. getPaymentStats" name="should retrieve payment statistics" time="0.004">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests Performance Tests" name="should handle concurrent payment intent requests" time="0.006">
-    </testcase>
-    <testcase classname="Payment Service - Integration Tests Security Tests" name="should not leak sensitive data in error responses" time="0.002">
-    </testcase>
-  </testsuite>
-  <testsuite name="Ticket Generator Service - Mock Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T09:53:08" time="0.978" tests="56">
-    <testcase classname="Ticket Generator Service - Mock Tests 1. generateTicket - POST /api/tickets/generate" name="should call correct URL with correct method" time="0.013">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 1. generateTicket - POST /api/tickets/generate" name="should return ticket data on success" time="0.003">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 1. generateTicket - POST /api/tickets/generate" name="should handle service unavailable error" time="0.033">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 1. generateTicket - POST /api/tickets/generate" name="should handle timeout error" time="0.005">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 1. generateTicket - POST /api/tickets/generate" name="should handle invalid response" time="0.008">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 2. generateBatch - POST /api/tickets/batch" name="should call correct URL with correct payload" time="0.002">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 2. generateBatch - POST /api/tickets/batch" name="should return jobId for batch processing" time="0.008">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 2. generateBatch - POST /api/tickets/batch" name="should handle large batch requests" time="0.004">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 2. generateBatch - POST /api/tickets/batch" name="should handle empty batch" time="0.001">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 3. downloadTicketPDF - GET /api/tickets/:id/pdf" name="should call correct URL" time="0.002">
-    </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 3. downloadTicketPDF - GET /api/tickets/:id/pdf" name="should return PDF URL on success" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests 3. downloadTicketPDF - GET /api/tickets/:id/pdf" name="should return PDF URL on success" time="0.009">
     </testcase>
     <testcase classname="Ticket Generator Service - Mock Tests 3. downloadTicketPDF - GET /api/tickets/:id/pdf" name="should handle ticket not found" time="0.006">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 4. getTicketQRCode - GET /api/tickets/:id/qrcode" name="should call correct URL with options" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests 4. getTicketQRCode - GET /api/tickets/:id/qrcode" name="should call correct URL with options" time="0.009">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 4. getTicketQRCode - GET /api/tickets/:id/qrcode" name="should return QR code data" time="0.002">
+    <testcase classname="Ticket Generator Service - Mock Tests 4. getTicketQRCode - GET /api/tickets/:id/qrcode" name="should return QR code data" time="0.005">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 4. getTicketQRCode - GET /api/tickets/:id/qrcode" name="should support different formats" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests 4. getTicketQRCode - GET /api/tickets/:id/qrcode" name="should support different formats" time="0.005">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 5. getJobStatus - GET /api/jobs/:id" name="should call correct URL" time="0.005">
+    <testcase classname="Ticket Generator Service - Mock Tests 5. getJobStatus - GET /api/jobs/:id" name="should call correct URL" time="0.004">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 5. getJobStatus - GET /api/jobs/:id" name="should return job status with progress" time="0.003">
+    <testcase classname="Ticket Generator Service - Mock Tests 5. getJobStatus - GET /api/jobs/:id" name="should return job status with progress" time="0.004">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 5. getJobStatus - GET /api/jobs/:id" name="should handle completed job" time="0.002">
+    <testcase classname="Ticket Generator Service - Mock Tests 5. getJobStatus - GET /api/jobs/:id" name="should handle completed job" time="0.022">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 5. getJobStatus - GET /api/jobs/:id" name="should handle failed job" time="0.002">
+    <testcase classname="Ticket Generator Service - Mock Tests 5. getJobStatus - GET /api/jobs/:id" name="should handle failed job" time="0.004">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 6. cancelJob - POST /api/jobs/:id/cancel" name="should call correct URL" time="0.006">
+    <testcase classname="Ticket Generator Service - Mock Tests 6. cancelJob - POST /api/jobs/:id/cancel" name="should call correct URL" time="0.002">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 6. cancelJob - POST /api/jobs/:id/cancel" name="should return cancelled status" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests 6. cancelJob - POST /api/jobs/:id/cancel" name="should return cancelled status" time="0.001">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 6. cancelJob - POST /api/jobs/:id/cancel" name="should handle already completed job" time="0.003">
+    <testcase classname="Ticket Generator Service - Mock Tests 6. cancelJob - POST /api/jobs/:id/cancel" name="should handle already completed job" time="0.001">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 7. getJobResults - GET /api/jobs/:id/results" name="should call correct URL" time="0.006">
+    <testcase classname="Ticket Generator Service - Mock Tests 7. getJobResults - GET /api/jobs/:id/results" name="should call correct URL" time="0.002">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 7. getJobResults - GET /api/jobs/:id/results" name="should return generated tickets" time="0.006">
+    <testcase classname="Ticket Generator Service - Mock Tests 7. getJobResults - GET /api/jobs/:id/results" name="should return generated tickets" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 7. getJobResults - GET /api/jobs/:id/results" name="should handle job not completed" time="0.002">
+    <testcase classname="Ticket Generator Service - Mock Tests 7. getJobResults - GET /api/jobs/:id/results" name="should handle job not completed" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 8. validateTicket - POST /api/tickets/validate" name="should call correct URL with QR data and signature" time="0.005">
+    <testcase classname="Ticket Generator Service - Mock Tests 8. validateTicket - POST /api/tickets/validate" name="should call correct URL with QR data and signature" time="0.002">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 8. validateTicket - POST /api/tickets/validate" name="should return validation result" time="0.008">
+    <testcase classname="Ticket Generator Service - Mock Tests 8. validateTicket - POST /api/tickets/validate" name="should return validation result" time="0.002">
     </testcase>
     <testcase classname="Ticket Generator Service - Mock Tests 8. validateTicket - POST /api/tickets/validate" name="should handle invalid ticket" time="0.002">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 8. validateTicket - POST /api/tickets/validate" name="should handle forged signature" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests 8. validateTicket - POST /api/tickets/validate" name="should handle forged signature" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 9. regenerateTicket - POST /api/tickets/:id/regenerate" name="should call correct URL with options" time="0.005">
+    <testcase classname="Ticket Generator Service - Mock Tests 9. regenerateTicket - POST /api/tickets/:id/regenerate" name="should call correct URL with options" time="0.002">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 9. regenerateTicket - POST /api/tickets/:id/regenerate" name="should return new ticket data" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests 9. regenerateTicket - POST /api/tickets/:id/regenerate" name="should return new ticket data" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 10. listTemplates - GET /api/templates" name="should call correct URL with filters" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests 10. listTemplates - GET /api/templates" name="should call correct URL with filters" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 10. listTemplates - GET /api/templates" name="should return templates list" time="0.034">
+    <testcase classname="Ticket Generator Service - Mock Tests 10. listTemplates - GET /api/templates" name="should return templates list" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 11. getTemplate - GET /api/templates/:id" name="should call correct URL" time="0.007">
+    <testcase classname="Ticket Generator Service - Mock Tests 11. getTemplate - GET /api/templates/:id" name="should call correct URL" time="0.002">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 11. getTemplate - GET /api/templates/:id" name="should return template details" time="0.003">
+    <testcase classname="Ticket Generator Service - Mock Tests 11. getTemplate - GET /api/templates/:id" name="should return template details" time="0.002">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 11. getTemplate - GET /api/templates/:id" name="should handle template not found" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests 11. getTemplate - GET /api/templates/:id" name="should handle template not found" time="0.007">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 12. previewTemplate - POST /api/templates/:id/preview" name="should call correct URL with sample data" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests 12. previewTemplate - POST /api/templates/:id/preview" name="should call correct URL with sample data" time="0.005">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 12. previewTemplate - POST /api/templates/:id/preview" name="should return preview URL" time="0.005">
+    <testcase classname="Ticket Generator Service - Mock Tests 12. previewTemplate - POST /api/templates/:id/preview" name="should return preview URL" time="0.008">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 13. getGenerationStats - GET /api/stats/generation" name="should call correct URL with filters" time="0.002">
+    <testcase classname="Ticket Generator Service - Mock Tests 13. getGenerationStats - GET /api/stats/generation" name="should call correct URL with filters" time="0.004">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 13. getGenerationStats - GET /api/stats/generation" name="should return statistics" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests 13. getGenerationStats - GET /api/stats/generation" name="should return statistics" time="0.002">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 14. generateEventTickets - POST /api/events/:id/generate-tickets" name="should call correct URL with options" time="0.006">
+    <testcase classname="Ticket Generator Service - Mock Tests 14. generateEventTickets - POST /api/events/:id/generate-tickets" name="should call correct URL with options" time="0.002">
     </testcase>
     <testcase classname="Ticket Generator Service - Mock Tests 14. generateEventTickets - POST /api/events/:id/generate-tickets" name="should return job ID for tracking" time="0.002">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 15. getTicketByCode - GET /api/tickets/code/:code" name="should call correct URL" time="0.002">
+    <testcase classname="Ticket Generator Service - Mock Tests 15. getTicketByCode - GET /api/tickets/code/:code" name="should call correct URL" time="0.004">
     </testcase>
     <testcase classname="Ticket Generator Service - Mock Tests 15. getTicketByCode - GET /api/tickets/code/:code" name="should return ticket details" time="0.006">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 15. getTicketByCode - GET /api/tickets/code/:code" name="should handle invalid code" time="0.007">
+    <testcase classname="Ticket Generator Service - Mock Tests 15. getTicketByCode - GET /api/tickets/code/:code" name="should handle invalid code" time="0.005">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 16. healthCheck - GET /health" name="should call health endpoint" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests 16. healthCheck - GET /health" name="should call health endpoint" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 16. healthCheck - GET /health" name="should return healthy status" time="0.007">
+    <testcase classname="Ticket Generator Service - Mock Tests 16. healthCheck - GET /health" name="should return healthy status" time="0.004">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests 16. healthCheck - GET /health" name="should handle service down" time="0.003">
+    <testcase classname="Ticket Generator Service - Mock Tests 16. healthCheck - GET /health" name="should handle service down" time="0.002">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests Error Handling" name="should handle network timeout gracefully" time="0.005">
+    <testcase classname="Ticket Generator Service - Mock Tests Error Handling" name="should handle network timeout gracefully" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests Error Handling" name="should handle 500 internal server error" time="0.008">
+    <testcase classname="Ticket Generator Service - Mock Tests Error Handling" name="should handle 500 internal server error" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests Error Handling" name="should handle 400 bad request" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests Error Handling" name="should handle 400 bad request" time="0.005">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests Error Handling" name="should handle 401 unauthorized" time="0.005">
+    <testcase classname="Ticket Generator Service - Mock Tests Error Handling" name="should handle 401 unauthorized" time="0.004">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests Error Handling" name="should handle 503 service unavailable" time="0.006">
+    <testcase classname="Ticket Generator Service - Mock Tests Error Handling" name="should handle 503 service unavailable" time="0.003">
     </testcase>
     <testcase classname="Ticket Generator Service - Mock Tests Error Handling" name="should handle malformed JSON response" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests Payload Validation" name="should send correct content-type header" time="0.004">
+    <testcase classname="Ticket Generator Service - Mock Tests Payload Validation" name="should send correct content-type header" time="0.003">
     </testcase>
-    <testcase classname="Ticket Generator Service - Mock Tests Payload Validation" name="should have API key configured" time="0.005">
-    </testcase>
-  </testsuite>
-  <testsuite name="Scan Validation Service - Mock Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T09:53:09" time="0.873" tests="48">
-    <testcase classname="Scan Validation Service - Mock Tests 1. validateTicket - POST /api/scans/validate" name="should call correct URL with correct payload" time="0.007">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 1. validateTicket - POST /api/scans/validate" name="should return valid ticket result" time="0.003">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 1. validateTicket - POST /api/scans/validate" name="should handle already scanned ticket" time="0.006">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 1. validateTicket - POST /api/scans/validate" name="should handle invalid QR code" time="0.007">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 1. validateTicket - POST /api/scans/validate" name="should handle expired ticket" time="0.003">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 1. validateTicket - POST /api/scans/validate" name="should handle service timeout" time="0.037">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 2. validateBatch - POST /api/scans/batch" name="should call correct URL with batch data" time="0.006">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 2. validateBatch - POST /api/scans/batch" name="should return validation results for each scan" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 2. validateBatch - POST /api/scans/batch" name="should handle large batch for offline sync" time="0.005">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 3. getEventScanStats - GET /api/events/:id/stats" name="should call correct URL with filters" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 3. getEventScanStats - GET /api/events/:id/stats" name="should return comprehensive statistics" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 4. getTicketScanHistory - GET /api/tickets/:code/scans" name="should call correct URL" time="0.001">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 4. getTicketScanHistory - GET /api/tickets/:code/scans" name="should return scan history" time="0.003">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 5. downloadOfflineData - GET /api/events/:id/offline-data" name="should call correct URL with options" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 5. downloadOfflineData - GET /api/events/:id/offline-data" name="should return offline package" time="0.005">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 6. uploadOfflineScans - POST /api/sync/upload" name="should call correct URL with device ID and scans" time="0.003">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 6. uploadOfflineScans - POST /api/sync/upload" name="should return sync results" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 6. uploadOfflineScans - POST /api/sync/upload" name="should handle conflicts" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 7. getEventCheckpoints - GET /api/events/:id/checkpoints" name="should call correct URL" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 7. getEventCheckpoints - GET /api/events/:id/checkpoints" name="should return checkpoints list" time="0.003">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 8. createCheckpoint - POST /api/events/:id/checkpoints" name="should call correct URL with checkpoint data" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 8. createCheckpoint - POST /api/events/:id/checkpoints" name="should return created checkpoint" time="0.005">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 9. updateCheckpoint - PUT /api/checkpoints/:id" name="should call correct URL with update data" time="0.006">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 9. updateCheckpoint - PUT /api/checkpoints/:id" name="should return updated checkpoint" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 10. deactivateCheckpoint - POST /api/checkpoints/:id/deactivate" name="should call correct URL" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 10. deactivateCheckpoint - POST /api/checkpoints/:id/deactivate" name="should return deactivation confirmation" time="0.003">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 11. getRealtimeScans - GET /api/events/:id/scans/realtime" name="should call correct URL with filters" time="0.007">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 11. getRealtimeScans - GET /api/events/:id/scans/realtime" name="should return recent scans" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 12. generateScanReport - POST /api/events/:id/reports/scans" name="should call correct URL with options" time="0.006">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 12. generateScanReport - POST /api/events/:id/reports/scans" name="should return report URL" time="0.006">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 12. generateScanReport - POST /api/events/:id/reports/scans" name="should support different formats" time="0.003">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 13. checkFraud - GET /api/anti-fraud/check/:code" name="should call correct URL" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 13. checkFraud - GET /api/anti-fraud/check/:code" name="should return fraud assessment" time="0.007">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 13. checkFraud - GET /api/anti-fraud/check/:code" name="should return clean for legitimate ticket" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 14. reportSuspiciousActivity - POST /api/anti-fraud/report" name="should call correct URL with report data" time="0.005">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 14. reportSuspiciousActivity - POST /api/anti-fraud/report" name="should return report confirmation" time="0.006">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 15. getAttendanceCount - GET /api/events/:id/attendance" name="should call correct URL" time="0.001">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 15. getAttendanceCount - GET /api/events/:id/attendance" name="should return attendance data" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 16. listDevices - GET /api/devices" name="should call correct URL without event filter" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 16. listDevices - GET /api/devices" name="should call event-specific URL when eventId provided" time="0.005">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 16. listDevices - GET /api/devices" name="should return devices list" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 17. registerDevice - POST /api/devices" name="should call correct URL with device data" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests 17. registerDevice - POST /api/devices" name="should return registered device with credentials" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests healthCheck - GET /health" name="should return healthy status" time="0.004">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests healthCheck - GET /health" name="should handle service down" time="0.007">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests Error Handling" name="should handle network timeout" time="0.002">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests Error Handling" name="should handle 500 server error" time="0.003">
-    </testcase>
-    <testcase classname="Scan Validation Service - Mock Tests Error Handling" name="should handle malformed response" time="0.003">
+    <testcase classname="Ticket Generator Service - Mock Tests Payload Validation" name="should have API key configured" time="0.004">
     </testcase>
   </testsuite>
-  <testsuite name="Notification Service - Mock Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T09:53:10" time="0.938" tests="45">
+  <testsuite name="Notification Service - Mock Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T13:58:35" time="0.701" tests="45">
     <testcase classname="Notification Service - Mock Tests 1. sendEmail - POST /api/email/send" name="should call correct URL with email data" time="0.004">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 1. sendEmail - POST /api/email/send" name="should return message ID on success" time="0.009">
+    <testcase classname="Notification Service - Mock Tests 1. sendEmail - POST /api/email/send" name="should return message ID on success" time="0.003">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 1. sendEmail - POST /api/email/send" name="should handle invalid email" time="0.076">
+    <testcase classname="Notification Service - Mock Tests 1. sendEmail - POST /api/email/send" name="should handle invalid email" time="0.015">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 1. sendEmail - POST /api/email/send" name="should handle template not found" time="0.016">
+    <testcase classname="Notification Service - Mock Tests 1. sendEmail - POST /api/email/send" name="should handle template not found" time="0.003">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 1. sendEmail - POST /api/email/send" name="should handle SMTP failure" time="0.052">
+    <testcase classname="Notification Service - Mock Tests 1. sendEmail - POST /api/email/send" name="should handle SMTP failure" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 1. sendEmail - POST /api/email/send" name="should support attachments" time="0.003">
+    <testcase classname="Notification Service - Mock Tests 1. sendEmail - POST /api/email/send" name="should support attachments" time="0.001">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 2. queueBulkEmail - POST /api/email/queue" name="should call correct URL with recipients" time="0.002">
+    <testcase classname="Notification Service - Mock Tests 2. queueBulkEmail - POST /api/email/queue" name="should call correct URL with recipients" time="0.001">
     </testcase>
     <testcase classname="Notification Service - Mock Tests 2. queueBulkEmail - POST /api/email/queue" name="should return job ID for tracking" time="0.002">
     </testcase>
     <testcase classname="Notification Service - Mock Tests 2. queueBulkEmail - POST /api/email/queue" name="should handle large recipient list" time="0.004">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 2. queueBulkEmail - POST /api/email/queue" name="should handle empty recipients" time="0.006">
+    <testcase classname="Notification Service - Mock Tests 2. queueBulkEmail - POST /api/email/queue" name="should handle empty recipients" time="0.003">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 3. sendSMS - POST /api/sms/send" name="should call correct URL with phone and message" time="0.003">
+    <testcase classname="Notification Service - Mock Tests 3. sendSMS - POST /api/sms/send" name="should call correct URL with phone and message" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 3. sendSMS - POST /api/sms/send" name="should return SMS message ID" time="0.001">
+    <testcase classname="Notification Service - Mock Tests 3. sendSMS - POST /api/sms/send" name="should return SMS message ID" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 3. sendSMS - POST /api/sms/send" name="should handle invalid phone number" time="0.003">
+    <testcase classname="Notification Service - Mock Tests 3. sendSMS - POST /api/sms/send" name="should handle invalid phone number" time="0.001">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 3. sendSMS - POST /api/sms/send" name="should handle long messages (multiple segments)" time="0.003">
+    <testcase classname="Notification Service - Mock Tests 3. sendSMS - POST /api/sms/send" name="should handle long messages (multiple segments)" time="0.001">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 4. queueBulkSMS - POST /api/sms/queue" name="should call correct URL with recipients and message" time="0.005">
+    <testcase classname="Notification Service - Mock Tests 4. queueBulkSMS - POST /api/sms/queue" name="should call correct URL with recipients and message" time="0.001">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 4. queueBulkSMS - POST /api/sms/queue" name="should return job ID" time="0.003">
+    <testcase classname="Notification Service - Mock Tests 4. queueBulkSMS - POST /api/sms/queue" name="should return job ID" time="0.001">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 5. sendPushNotification - POST /api/push/send" name="should call correct URL with notification data" time="0.002">
+    <testcase classname="Notification Service - Mock Tests 5. sendPushNotification - POST /api/push/send" name="should call correct URL with notification data" time="0.004">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 5. sendPushNotification - POST /api/push/send" name="should return delivery status" time="0.001">
+    <testcase classname="Notification Service - Mock Tests 5. sendPushNotification - POST /api/push/send" name="should return delivery status" time="0.003">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 5. sendPushNotification - POST /api/push/send" name="should handle user with no devices" time="0.004">
+    <testcase classname="Notification Service - Mock Tests 5. sendPushNotification - POST /api/push/send" name="should handle user with no devices" time="0.001">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 6. getNotificationStatus - GET /api/notifications/:id/status" name="should call correct URL" time="0.007">
+    <testcase classname="Notification Service - Mock Tests 6. getNotificationStatus - GET /api/notifications/:id/status" name="should call correct URL" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 6. getNotificationStatus - GET /api/notifications/:id/status" name="should return detailed status" time="0.002">
+    <testcase classname="Notification Service - Mock Tests 6. getNotificationStatus - GET /api/notifications/:id/status" name="should return detailed status" time="0.001">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 6. getNotificationStatus - GET /api/notifications/:id/status" name="should handle bounced email" time="0.004">
+    <testcase classname="Notification Service - Mock Tests 6. getNotificationStatus - GET /api/notifications/:id/status" name="should handle bounced email" time="0.001">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 7. getJobStatus - GET /api/jobs/:id" name="should call correct URL" time="0.004">
+    <testcase classname="Notification Service - Mock Tests 7. getJobStatus - GET /api/jobs/:id" name="should call correct URL" time="0.001">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 7. getJobStatus - GET /api/jobs/:id" name="should return job progress" time="0.004">
+    <testcase classname="Notification Service - Mock Tests 7. getJobStatus - GET /api/jobs/:id" name="should return job progress" time="0.003">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 7. getJobStatus - GET /api/jobs/:id" name="should handle completed job" time="0.002">
+    <testcase classname="Notification Service - Mock Tests 7. getJobStatus - GET /api/jobs/:id" name="should handle completed job" time="0.005">
     </testcase>
     <testcase classname="Notification Service - Mock Tests 8. listTemplates - GET /api/templates" name="should call correct URL with type filter" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 8. listTemplates - GET /api/templates" name="should return templates list" time="0.005">
+    <testcase classname="Notification Service - Mock Tests 8. listTemplates - GET /api/templates" name="should return templates list" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 8. listTemplates - GET /api/templates" name="should filter by type" time="0.006">
+    <testcase classname="Notification Service - Mock Tests 8. listTemplates - GET /api/templates" name="should filter by type" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 9. createTemplate - POST /api/templates" name="should call correct URL with template data" time="0.003">
+    <testcase classname="Notification Service - Mock Tests 9. createTemplate - POST /api/templates" name="should call correct URL with template data" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 9. createTemplate - POST /api/templates" name="should return created template" time="0.004">
+    <testcase classname="Notification Service - Mock Tests 9. createTemplate - POST /api/templates" name="should return created template" time="0.003">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 9. createTemplate - POST /api/templates" name="should handle invalid template syntax" time="0.009">
+    <testcase classname="Notification Service - Mock Tests 9. createTemplate - POST /api/templates" name="should handle invalid template syntax" time="0.005">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 10. notifyEventParticipants - POST /api/notifications/event" name="should call correct URL with event notification" time="0.003">
+    <testcase classname="Notification Service - Mock Tests 10. notifyEventParticipants - POST /api/notifications/event" name="should call correct URL with event notification" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 10. notifyEventParticipants - POST /api/notifications/event" name="should return job ID for tracking" time="0.005">
+    <testcase classname="Notification Service - Mock Tests 10. notifyEventParticipants - POST /api/notifications/event" name="should return job ID for tracking" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 10. notifyEventParticipants - POST /api/notifications/event" name="should handle different notification types" time="0.006">
+    <testcase classname="Notification Service - Mock Tests 10. notifyEventParticipants - POST /api/notifications/event" name="should handle different notification types" time="0.002">
     </testcase>
     <testcase classname="Notification Service - Mock Tests 11. sendTicketConfirmation - POST /api/email/send" name="should call email send with ticket_confirmation template" time="0.003">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 11. sendTicketConfirmation - POST /api/email/send" name="should return message ID" time="0.004">
+    <testcase classname="Notification Service - Mock Tests 11. sendTicketConfirmation - POST /api/email/send" name="should return message ID" time="0.003">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 12. healthCheck - GET /health" name="should return healthy status" time="0.005">
+    <testcase classname="Notification Service - Mock Tests 12. healthCheck - GET /health" name="should return healthy status" time="0.003">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests 12. healthCheck - GET /health" name="should handle degraded state" time="0.004">
+    <testcase classname="Notification Service - Mock Tests 12. healthCheck - GET /health" name="should handle degraded state" time="0.002">
     </testcase>
     <testcase classname="Notification Service - Mock Tests 12. healthCheck - GET /health" name="should handle service down" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests Error Handling" name="should handle provider rate limiting" time="0.005">
+    <testcase classname="Notification Service - Mock Tests Error Handling" name="should handle provider rate limiting" time="0.003">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests Error Handling" name="should handle network timeout" time="0.007">
+    <testcase classname="Notification Service - Mock Tests Error Handling" name="should handle network timeout" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests Error Handling" name="should handle invalid template variables" time="0.001">
+    <testcase classname="Notification Service - Mock Tests Error Handling" name="should handle invalid template variables" time="0.003">
     </testcase>
     <testcase classname="Notification Service - Mock Tests Error Handling" name="should handle blocked recipient" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests Error Handling" name="should handle malformed response" time="0.004">
+    <testcase classname="Notification Service - Mock Tests Error Handling" name="should handle malformed response" time="0.002">
     </testcase>
-    <testcase classname="Notification Service - Mock Tests Idempotency" name="should support idempotency key for email sending" time="0.007">
+    <testcase classname="Notification Service - Mock Tests Idempotency" name="should support idempotency key for email sending" time="0.002">
     </testcase>
   </testsuite>
-  <testsuite name="Payment Service - Mock Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T09:53:11" time="0.81" tests="45">
-    <testcase classname="Payment Service - Mock Tests 1. createPaymentIntent - POST /api/payments/intent" name="should call correct URL with amount, currency and metadata" time="0.004">
+  <testsuite name="Scan Validation Service - Mock Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T13:58:36" time="0.819" tests="48">
+    <testcase classname="Scan Validation Service - Mock Tests 1. validateTicket - POST /api/scans/validate" name="should call correct URL with correct payload" time="0.003">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 1. createPaymentIntent - POST /api/payments/intent" name="should return client secret for frontend" time="0.006">
+    <testcase classname="Scan Validation Service - Mock Tests 1. validateTicket - POST /api/scans/validate" name="should return valid ticket result" time="0.002">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 1. createPaymentIntent - POST /api/payments/intent" name="should handle invalid amount" time="0.029">
+    <testcase classname="Scan Validation Service - Mock Tests 1. validateTicket - POST /api/scans/validate" name="should handle already scanned ticket" time="0.004">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 1. createPaymentIntent - POST /api/payments/intent" name="should handle Stripe API errors" time="0.007">
+    <testcase classname="Scan Validation Service - Mock Tests 1. validateTicket - POST /api/scans/validate" name="should handle invalid QR code" time="0.003">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 2. createCheckoutSession - POST /api/payments/checkout" name="should call correct URL with items and URLs" time="0.003">
+    <testcase classname="Scan Validation Service - Mock Tests 1. validateTicket - POST /api/scans/validate" name="should handle expired ticket" time="0.002">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 2. createCheckoutSession - POST /api/payments/checkout" name="should return checkout URL" time="0.005">
+    <testcase classname="Scan Validation Service - Mock Tests 1. validateTicket - POST /api/scans/validate" name="should handle service timeout" time="0.06">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 2. createCheckoutSession - POST /api/payments/checkout" name="should handle empty items" time="0.007">
+    <testcase classname="Scan Validation Service - Mock Tests 2. validateBatch - POST /api/scans/batch" name="should call correct URL with batch data" time="0.006">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 3. getPaymentDetails - GET /api/payments/:id" name="should call correct URL" time="0.002">
+    <testcase classname="Scan Validation Service - Mock Tests 2. validateBatch - POST /api/scans/batch" name="should return validation results for each scan" time="0.004">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 3. getPaymentDetails - GET /api/payments/:id" name="should return payment details" time="0.001">
+    <testcase classname="Scan Validation Service - Mock Tests 2. validateBatch - POST /api/scans/batch" name="should handle large batch for offline sync" time="0.007">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 3. getPaymentDetails - GET /api/payments/:id" name="should handle payment not found" time="0.004">
+    <testcase classname="Scan Validation Service - Mock Tests 3. getEventScanStats - GET /api/events/:id/stats" name="should call correct URL with filters" time="0.005">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 4. processRefund - POST /api/payments/:id/refund" name="should call correct URL with amount and reason" time="0.003">
+    <testcase classname="Scan Validation Service - Mock Tests 3. getEventScanStats - GET /api/events/:id/stats" name="should return comprehensive statistics" time="0.003">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 4. processRefund - POST /api/payments/:id/refund" name="should support full refund (null amount)" time="0.005">
+    <testcase classname="Scan Validation Service - Mock Tests 4. getTicketScanHistory - GET /api/tickets/:code/scans" name="should call correct URL" time="0.002">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 4. processRefund - POST /api/payments/:id/refund" name="should return refund details" time="0.002">
+    <testcase classname="Scan Validation Service - Mock Tests 4. getTicketScanHistory - GET /api/tickets/:code/scans" name="should return scan history" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 5. downloadOfflineData - GET /api/events/:id/offline-data" name="should call correct URL with options" time="0.004">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 5. downloadOfflineData - GET /api/events/:id/offline-data" name="should return offline package" time="0.003">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 6. uploadOfflineScans - POST /api/sync/upload" name="should call correct URL with device ID and scans" time="0.001">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 6. uploadOfflineScans - POST /api/sync/upload" name="should return sync results" time="0.003">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 6. uploadOfflineScans - POST /api/sync/upload" name="should handle conflicts" time="0.003">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 7. getEventCheckpoints - GET /api/events/:id/checkpoints" name="should call correct URL" time="0.001">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 7. getEventCheckpoints - GET /api/events/:id/checkpoints" name="should return checkpoints list" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 8. createCheckpoint - POST /api/events/:id/checkpoints" name="should call correct URL with checkpoint data" time="0.004">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 8. createCheckpoint - POST /api/events/:id/checkpoints" name="should return created checkpoint" time="0.001">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 9. updateCheckpoint - PUT /api/checkpoints/:id" name="should call correct URL with update data" time="0.001">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 9. updateCheckpoint - PUT /api/checkpoints/:id" name="should return updated checkpoint" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 10. deactivateCheckpoint - POST /api/checkpoints/:id/deactivate" name="should call correct URL" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 10. deactivateCheckpoint - POST /api/checkpoints/:id/deactivate" name="should return deactivation confirmation" time="0.001">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 11. getRealtimeScans - GET /api/events/:id/scans/realtime" name="should call correct URL with filters" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 11. getRealtimeScans - GET /api/events/:id/scans/realtime" name="should return recent scans" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 12. generateScanReport - POST /api/events/:id/reports/scans" name="should call correct URL with options" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 12. generateScanReport - POST /api/events/:id/reports/scans" name="should return report URL" time="0.003">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 12. generateScanReport - POST /api/events/:id/reports/scans" name="should support different formats" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 13. checkFraud - GET /api/anti-fraud/check/:code" name="should call correct URL" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 13. checkFraud - GET /api/anti-fraud/check/:code" name="should return fraud assessment" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 13. checkFraud - GET /api/anti-fraud/check/:code" name="should return clean for legitimate ticket" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 14. reportSuspiciousActivity - POST /api/anti-fraud/report" name="should call correct URL with report data" time="0.003">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 14. reportSuspiciousActivity - POST /api/anti-fraud/report" name="should return report confirmation" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 15. getAttendanceCount - GET /api/events/:id/attendance" name="should call correct URL" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 15. getAttendanceCount - GET /api/events/:id/attendance" name="should return attendance data" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 16. listDevices - GET /api/devices" name="should call correct URL without event filter" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 16. listDevices - GET /api/devices" name="should call event-specific URL when eventId provided" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 16. listDevices - GET /api/devices" name="should return devices list" time="0.004">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 17. registerDevice - POST /api/devices" name="should call correct URL with device data" time="0.003">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests 17. registerDevice - POST /api/devices" name="should return registered device with credentials" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests healthCheck - GET /health" name="should return healthy status" time="0.003">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests healthCheck - GET /health" name="should handle service down" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests Error Handling" name="should handle network timeout" time="0.002">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests Error Handling" name="should handle 500 server error" time="0.004">
+    </testcase>
+    <testcase classname="Scan Validation Service - Mock Tests Error Handling" name="should handle malformed response" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="Payment Service - Mock Tests" errors="0" failures="0" skipped="0" timestamp="2026-01-30T13:58:37" time="0.784" tests="45">
+    <testcase classname="Payment Service - Mock Tests 1. createPaymentIntent - POST /api/payments/intent" name="should call correct URL with amount, currency and metadata" time="0.003">
+    </testcase>
+    <testcase classname="Payment Service - Mock Tests 1. createPaymentIntent - POST /api/payments/intent" name="should return client secret for frontend" time="0.002">
+    </testcase>
+    <testcase classname="Payment Service - Mock Tests 1. createPaymentIntent - POST /api/payments/intent" name="should handle invalid amount" time="0.028">
+    </testcase>
+    <testcase classname="Payment Service - Mock Tests 1. createPaymentIntent - POST /api/payments/intent" name="should handle Stripe API errors" time="0.004">
+    </testcase>
+    <testcase classname="Payment Service - Mock Tests 2. createCheckoutSession - POST /api/payments/checkout" name="should call correct URL with items and URLs" time="0.002">
+    </testcase>
+    <testcase classname="Payment Service - Mock Tests 2. createCheckoutSession - POST /api/payments/checkout" name="should return checkout URL" time="0.002">
+    </testcase>
+    <testcase classname="Payment Service - Mock Tests 2. createCheckoutSession - POST /api/payments/checkout" name="should handle empty items" time="0.003">
+    </testcase>
+    <testcase classname="Payment Service - Mock Tests 3. getPaymentDetails - GET /api/payments/:id" name="should call correct URL" time="0.001">
+    </testcase>
+    <testcase classname="Payment Service - Mock Tests 3. getPaymentDetails - GET /api/payments/:id" name="should return payment details" time="0.002">
+    </testcase>
+    <testcase classname="Payment Service - Mock Tests 3. getPaymentDetails - GET /api/payments/:id" name="should handle payment not found" time="0.002">
+    </testcase>
+    <testcase classname="Payment Service - Mock Tests 4. processRefund - POST /api/payments/:id/refund" name="should call correct URL with amount and reason" time="0.002">
+    </testcase>
+    <testcase classname="Payment Service - Mock Tests 4. processRefund - POST /api/payments/:id/refund" name="should support full refund (null amount)" time="0.001">
+    </testcase>
+    <testcase classname="Payment Service - Mock Tests 4. processRefund - POST /api/payments/:id/refund" name="should return refund details" time="0.003">
     </testcase>
     <testcase classname="Payment Service - Mock Tests 4. processRefund - POST /api/payments/:id/refund" name="should handle already refunded" time="0.004">
     </testcase>
     <testcase classname="Payment Service - Mock Tests 5. getUserInvoices - GET /api/users/:id/invoices" name="should call correct URL with pagination" time="0.002">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 5. getUserInvoices - GET /api/users/:id/invoices" name="should return invoices list" time="0.005">
+    <testcase classname="Payment Service - Mock Tests 5. getUserInvoices - GET /api/users/:id/invoices" name="should return invoices list" time="0.001">
     </testcase>
     <testcase classname="Payment Service - Mock Tests 6. downloadInvoice - GET /api/invoices/:id/download" name="should call correct URL" time="0.002">
     </testcase>
     <testcase classname="Payment Service - Mock Tests 6. downloadInvoice - GET /api/invoices/:id/download" name="should return download URL" time="0.002">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 7. createSubscription - POST /api/subscriptions" name="should call correct URL with user and plan" time="0.004">
+    <testcase classname="Payment Service - Mock Tests 7. createSubscription - POST /api/subscriptions" name="should call correct URL with user and plan" time="0.001">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 7. createSubscription - POST /api/subscriptions" name="should return subscription details" time="0.004">
+    <testcase classname="Payment Service - Mock Tests 7. createSubscription - POST /api/subscriptions" name="should return subscription details" time="0.002">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 8. cancelSubscription - POST /api/subscriptions/:id/cancel" name="should call correct URL with reason" time="0.004">
+    <testcase classname="Payment Service - Mock Tests 8. cancelSubscription - POST /api/subscriptions/:id/cancel" name="should call correct URL with reason" time="0.003">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 8. cancelSubscription - POST /api/subscriptions/:id/cancel" name="should return cancellation confirmation" time="0.003">
+    <testcase classname="Payment Service - Mock Tests 8. cancelSubscription - POST /api/subscriptions/:id/cancel" name="should return cancellation confirmation" time="0.002">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 9. updatePaymentMethod - PUT /api/users/:id/payment-method" name="should call correct URL with payment method ID" time="0.002">
+    <testcase classname="Payment Service - Mock Tests 9. updatePaymentMethod - PUT /api/users/:id/payment-method" name="should call correct URL with payment method ID" time="0.003">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 9. updatePaymentMethod - PUT /api/users/:id/payment-method" name="should return update confirmation" time="0.004">
+    <testcase classname="Payment Service - Mock Tests 9. updatePaymentMethod - PUT /api/users/:id/payment-method" name="should return update confirmation" time="0.002">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 10. getTicketPaymentStatus - GET /api/payments/ticket/:code" name="should call correct URL" time="0.005">
+    <testcase classname="Payment Service - Mock Tests 10. getTicketPaymentStatus - GET /api/payments/ticket/:code" name="should call correct URL" time="0.002">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 10. getTicketPaymentStatus - GET /api/payments/ticket/:code" name="should return payment status for ticket" time="0.004">
+    <testcase classname="Payment Service - Mock Tests 10. getTicketPaymentStatus - GET /api/payments/ticket/:code" name="should return payment status for ticket" time="0.003">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 10. getTicketPaymentStatus - GET /api/payments/ticket/:code" name="should handle unpaid ticket" time="0.002">
+    <testcase classname="Payment Service - Mock Tests 10. getTicketPaymentStatus - GET /api/payments/ticket/:code" name="should handle unpaid ticket" time="0.004">
     </testcase>
     <testcase classname="Payment Service - Mock Tests 11. createTicketPayment - POST /api/payments/tickets" name="should call correct URL with ticket payment data" time="0.004">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 11. createTicketPayment - POST /api/payments/tickets" name="should return payment details" time="0.003">
+    <testcase classname="Payment Service - Mock Tests 11. createTicketPayment - POST /api/payments/tickets" name="should return payment details" time="0.005">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 12. processStripeWebhook - POST /api/webhooks/stripe" name="should call correct URL with payload and signature header" time="0.002">
+    <testcase classname="Payment Service - Mock Tests 12. processStripeWebhook - POST /api/webhooks/stripe" name="should call correct URL with payload and signature header" time="0.003">
     </testcase>
     <testcase classname="Payment Service - Mock Tests 12. processStripeWebhook - POST /api/webhooks/stripe" name="should return processing result" time="0.003">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 12. processStripeWebhook - POST /api/webhooks/stripe" name="should handle invalid signature" time="0.003">
+    <testcase classname="Payment Service - Mock Tests 12. processStripeWebhook - POST /api/webhooks/stripe" name="should handle invalid signature" time="0.007">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 13. processPayPalWebhook - POST /api/webhooks/paypal" name="should call correct URL with payload" time="0.004">
+    <testcase classname="Payment Service - Mock Tests 13. processPayPalWebhook - POST /api/webhooks/paypal" name="should call correct URL with payload" time="0.003">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 13. processPayPalWebhook - POST /api/webhooks/paypal" name="should return processing result" time="0.003">
+    <testcase classname="Payment Service - Mock Tests 13. processPayPalWebhook - POST /api/webhooks/paypal" name="should return processing result" time="0.002">
     </testcase>
     <testcase classname="Payment Service - Mock Tests 14. getPaymentStats - GET /api/payments/stats" name="should call correct URL with filters" time="0.005">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests 14. getPaymentStats - GET /api/payments/stats" name="should return comprehensive statistics" time="0.003">
+    <testcase classname="Payment Service - Mock Tests 14. getPaymentStats - GET /api/payments/stats" name="should return comprehensive statistics" time="0.005">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests healthCheck - GET /health" name="should return healthy status" time="0.005">
+    <testcase classname="Payment Service - Mock Tests healthCheck - GET /health" name="should return healthy status" time="0.003">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests healthCheck - GET /health" name="should handle degraded state (partial connectivity)" time="0.005">
+    <testcase classname="Payment Service - Mock Tests healthCheck - GET /health" name="should handle degraded state (partial connectivity)" time="0.001">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests healthCheck - GET /health" name="should handle service down" time="0.003">
+    <testcase classname="Payment Service - Mock Tests healthCheck - GET /health" name="should handle service down" time="0.002">
     </testcase>
     <testcase classname="Payment Service - Mock Tests Error Handling" name="should handle payment declined" time="0.004">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests Error Handling" name="should handle rate limiting" time="0.007">
+    <testcase classname="Payment Service - Mock Tests Error Handling" name="should handle rate limiting" time="0.002">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests Error Handling" name="should handle network timeout" time="0.004">
+    <testcase classname="Payment Service - Mock Tests Error Handling" name="should handle network timeout" time="0.002">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests Error Handling" name="should handle invalid currency" time="0.003">
+    <testcase classname="Payment Service - Mock Tests Error Handling" name="should handle invalid currency" time="0.001">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests Error Handling" name="should handle 3D Secure required" time="0.006">
+    <testcase classname="Payment Service - Mock Tests Error Handling" name="should handle 3D Secure required" time="0.001">
     </testcase>
-    <testcase classname="Payment Service - Mock Tests Malformed Responses" name="should handle null response" time="0.005">
+    <testcase classname="Payment Service - Mock Tests Malformed Responses" name="should handle null response" time="0.001">
     </testcase>
   </testsuite>
 </testsuites>

@@ -6,11 +6,14 @@
  * Couverture: création, lecture, mise à jour, suppression, cycle de vie
  */
 
-const EventsService = require('../../../src/modules/events/events.service');
-const EventsRepository = require('../../../src/modules/events/events.repository');
+const EventsService = require('../../../../src/modules/events/events.service');
 
 // Mock du repository
-jest.mock('../../../src/modules/events/events.repository');
+jest.mock('../../../../src/modules/events/events.repository');
+const EventsRepository = require('../../../../src/modules/events/events.repository');
+
+// Mock de la base de données
+jest.mock('../../../../src/config/database');
 
 describe('EventsService', () => {
   let eventsService;
@@ -18,7 +21,8 @@ describe('EventsService', () => {
   beforeEach(() => {
     // Réinitialisation des mocks avant chaque test
     jest.clearAllMocks();
-    eventsService = new EventsService();
+    // Utiliser l'instance singleton
+    eventsService = EventsService;
   });
 
   // ========================================

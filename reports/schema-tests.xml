@@ -1,304 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="50" failures="33" errors="0" time="27.942">
-  <testsuite name="Events Integration - Schema Based Tests" errors="0" failures="28" skipped="0" timestamp="2026-01-30T08:34:15" time="13.543" tests="28">
-    <testcase classname="Events Integration - Schema Based Tests › POST /api/events - Schema Validation" name="should create event with schema-valid data" time="0.151">
-      <failure>Error: expected 201 &quot;Created&quot;, got 500 &quot;Internal Server Error&quot;
-    at Object.expect (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:59:10)
-    at Promise.finally.completed (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1557:28)
-    at new Promise (&lt;anonymous&gt;)
-    at callAsyncCircusFn (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1497:10)
-    at _callCircusTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1007:40)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at _runTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:947:3)
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:849:7
-    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:862:11)
-    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
-    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
-    at run (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:761:3)
-    at runAndTransformResultsToJestFormat (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1918:21)
-    at jestAdapter (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/runner.js:101:19)
-    at runTestInternal (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:275:16)
-    at runTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:343:7)
-----
-    at Test._assertStatus (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:309:14)
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:365:13
-    at Test._assertFunction (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:342:13)
-    at Test.assert (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:195:23)
-    at localAssert (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:138:14)
-    at Server.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:152:11)
-    at Object.onceWrapper (node:events:622:28)
-    at Server.emit (node:events:508:28)
-    at emitCloseNT (node:net:2419:8)
-    at processTicksAndRejections (node:internal/process/task_queues:88:21)</failure>
+<testsuites name="jest tests" tests="22" failures="5" errors="0" time="6.823">
+  <testsuite name="Schema Regression Tests" errors="0" failures="4" skipped="0" timestamp="2026-01-30T10:43:25" time="5.446" tests="13">
+    <testcase classname="Schema Regression Tests › Coverage Analysis" name="should ensure all database tables have tests" time="0.01">
     </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › POST /api/events - Schema Validation" name="should reject schema-invalid data" time="0.052">
-      <failure>Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/pg-pool/index.js:45:11
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at SchemaExtractor.extractFromDatabase (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/tools/schemaExtractors.js:42:29)
-    at SchemaBasedFactory.loadSchema (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:95:24)
-    at SchemaBasedFactory.generate (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:78:7)
-    at SchemaTestHelper.createValidData (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/helpers/schemaTestHelper.js:22:18)
-    at SchemaTestHelper.createInvalidData (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/helpers/schemaTestHelper.js:37:23)
-    at Object.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:81:27)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › POST /api/events - Schema Validation" name="should validate title constraints" time="0.031">
-      <failure>Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/pg-pool/index.js:45:11
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at SchemaExtractor.extractFromDatabase (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/tools/schemaExtractors.js:42:29)
-    at SchemaBasedFactory.loadSchema (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:95:24)
-    at SchemaBasedFactory.generate (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:78:7)
-    at SchemaTestHelper.createValidData (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/helpers/schemaTestHelper.js:22:18)
-    at Object.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:101:32)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › POST /api/events - Schema Validation" name="should validate date format" time="0.036">
-      <failure>Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/pg-pool/index.js:45:11
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at SchemaExtractor.extractFromDatabase (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/tools/schemaExtractors.js:42:29)
-    at SchemaBasedFactory.loadSchema (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:95:24)
-    at SchemaBasedFactory.generate (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:78:7)
-    at SchemaTestHelper.createValidData (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/helpers/schemaTestHelper.js:22:18)
-    at Object.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:116:31)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › POST /api/events - Schema Validation" name="should validate max_attendees constraints" time="0.039">
-      <failure>Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/pg-pool/index.js:45:11
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at SchemaExtractor.extractFromDatabase (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/tools/schemaExtractors.js:42:29)
-    at SchemaBasedFactory.loadSchema (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:95:24)
-    at SchemaBasedFactory.generate (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:78:7)
-    at SchemaTestHelper.createValidData (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/helpers/schemaTestHelper.js:22:18)
-    at Object.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:131:35)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › POST /api/events - Schema Validation" name="should require authentication" time="0.045">
-      <failure>Error: expected 401 &quot;Unauthorized&quot;, got 500 &quot;Internal Server Error&quot;
-    at Object.expect (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:149:10)
-    at Promise.finally.completed (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1557:28)
-    at new Promise (&lt;anonymous&gt;)
-    at callAsyncCircusFn (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1497:10)
-    at _callCircusTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1007:40)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at _runTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:947:3)
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:849:7
-    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:862:11)
-    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
-    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
-    at run (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:761:3)
-    at runAndTransformResultsToJestFormat (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1918:21)
-    at jestAdapter (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/runner.js:101:19)
-    at runTestInternal (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:275:16)
-    at runTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:343:7)
-----
-    at Test._assertStatus (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:309:14)
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:365:13
-    at Test._assertFunction (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:342:13)
-    at Test.assert (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:195:23)
-    at localAssert (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:138:14)
-    at Server.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:152:11)
-    at Object.onceWrapper (node:events:622:28)
-    at Server.emit (node:events:508:28)
-    at emitCloseNT (node:net:2419:8)
-    at processTicksAndRejections (node:internal/process/task_queues:88:21)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › POST /api/events - Schema Validation" name="should handle special characters correctly" time="0.028">
-      <failure>Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/pg-pool/index.js:45:11
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at SchemaExtractor.extractFromDatabase (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/tools/schemaExtractors.js:42:29)
-    at SchemaBasedFactory.loadSchema (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:95:24)
-    at SchemaBasedFactory.generate (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:78:7)
-    at SchemaTestHelper.createValidData (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/helpers/schemaTestHelper.js:22:18)
-    at Object.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:153:31)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › GET /api/events - Schema Validation" name="should return events list with valid schema" time="0.048">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:186:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › GET /api/events - Schema Validation" name="should support pagination with valid schema" time="0.071">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:186:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › GET /api/events - Schema Validation" name="should filter by organizer with valid schema" time="0.058">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:186:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › GET /api/events - Schema Validation" name="should require authentication" time="0.046">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:186:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › GET /api/events/:id - Schema Validation" name="should return specific event with valid schema" time="0.05">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:259:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › GET /api/events/:id - Schema Validation" name="should return 404 for non-existent event" time="0.052">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:259:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › GET /api/events/:id - Schema Validation" name="should validate ID parameter" time="0.072">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:259:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › GET /api/events/:id - Schema Validation" name="should require authentication" time="0.056">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:259:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › PUT /api/events/:id - Schema Validation" name="should update event with valid schema data" time="0.06">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:321:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › PUT /api/events/:id - Schema Validation" name="should reject invalid update data" time="0.04">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:321:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › PUT /api/events/:id - Schema Validation" name="should return 404 for non-existent event" time="0.044">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:321:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › PUT /api/events/:id - Schema Validation" name="should require authentication" time="0.047">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:321:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › DELETE /api/events/:id - Schema Validation" name="should delete event and return valid schema" time="0.064">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:394:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › DELETE /api/events/:id - Schema Validation" name="should return 404 for non-existent event" time="0.052">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:394:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › DELETE /api/events/:id - Schema Validation" name="should require authentication" time="0.05">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:394:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › POST /api/events/:id/publish - Schema Validation" name="should publish event with valid schema response" time="0.048">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:444:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › POST /api/events/:id/publish - Schema Validation" name="should return 404 for non-existent event" time="0.05">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:444:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › POST /api/events/:id/publish - Schema Validation" name="should require authentication" time="0.056">
-      <failure>TypeError: Cannot read properties of undefined (reading &apos;id&apos;)
-    at Object.id (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:444:43)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › Error Handling and Edge Cases" name="should handle malformed JSON" time="0.054">
-      <failure>Error: expected 400 &quot;Bad Request&quot;, got 500 &quot;Internal Server Error&quot;
-    at Object.expect (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:486:10)
-    at Promise.finally.completed (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1557:28)
-    at new Promise (&lt;anonymous&gt;)
-    at callAsyncCircusFn (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1497:10)
-    at _callCircusTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1007:40)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at _runTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:947:3)
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:849:7
-    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:862:11)
-    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
-    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
-    at run (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:761:3)
-    at runAndTransformResultsToJestFormat (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1918:21)
-    at jestAdapter (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/runner.js:101:19)
-    at runTestInternal (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:275:16)
-    at runTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:343:7)
-----
-    at Test._assertStatus (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:309:14)
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:365:13
-    at Test._assertFunction (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:342:13)
-    at Test.assert (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:195:23)
-    at localAssert (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:138:14)
-    at Server.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/supertest/lib/test.js:152:11)
-    at Object.onceWrapper (node:events:622:28)
-    at Server.emit (node:events:508:28)
-    at emitCloseNT (node:net:2419:8)
-    at processTicksAndRejections (node:internal/process/task_queues:88:21)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › Error Handling and Edge Cases" name="should handle extremely large data" time="0.037">
-      <failure>Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/pg-pool/index.js:45:11
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at SchemaExtractor.extractFromDatabase (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/tools/schemaExtractors.js:42:29)
-    at SchemaBasedFactory.loadSchema (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:95:24)
-    at SchemaBasedFactory.generate (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:78:7)
-    at SchemaTestHelper.createValidData (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/helpers/schemaTestHelper.js:22:18)
-    at Object.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:492:25)</failure>
-    </testcase>
-    <testcase classname="Events Integration - Schema Based Tests › Error Handling and Edge Cases" name="should handle concurrent requests" time="0.08">
-      <failure>Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/pg-pool/index.js:45:11
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at SchemaExtractor.extractFromDatabase (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/tools/schemaExtractors.js:42:29)
-    at SchemaBasedFactory.loadSchema (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:95:24)
-    at SchemaBasedFactory.generate (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/factories/schemaBasedFactory.js:78:7)
-    at SchemaTestHelper.createValidData (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/helpers/schemaTestHelper.js:22:18)
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:508:27
-    at async Promise.all (index 0)
-    at Object.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/integration/events.integration.schema.test.js:519:25)</failure>
-    </testcase>
-  </testsuite>
-  <testsuite name="Schema Coverage Tests" errors="0" failures="1" skipped="0" timestamp="2026-01-30T08:34:29" time="2.6" tests="9">
-    <testcase classname="Schema Coverage Tests › Column Coverage" name="should test all columns for each table" time="0.005">
-    </testcase>
-    <testcase classname="Schema Coverage Tests › Column Coverage" name="should test all column types" time="0.005">
-    </testcase>
-    <testcase classname="Schema Coverage Tests › Column Coverage" name="should test column constraints" time="0.003">
-    </testcase>
-    <testcase classname="Schema Coverage Tests › Data Coverage" name="should generate valid data for all column combinations" time="0.002">
-    </testcase>
-    <testcase classname="Schema Coverage Tests › Data Coverage" name="should test edge cases for all data types" time="0.004">
-    </testcase>
-    <testcase classname="Schema Coverage Tests › Constraint Coverage" name="should test all NOT NULL constraints" time="0.005">
-    </testcase>
-    <testcase classname="Schema Coverage Tests › Constraint Coverage" name="should test all UNIQUE constraints" time="0.002">
-    </testcase>
-    <testcase classname="Schema Coverage Tests › Constraint Coverage" name="should test all FOREIGN KEY constraints" time="0.002">
-    </testcase>
-    <testcase classname="Schema Coverage Tests › Coverage Report" name="should generate comprehensive coverage report" time="0.015">
-      <failure>Error: expect(received).toBe(expected) // Object.is equality
-
-Expected: 100
-Received: 0
-    at Object.toBe (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/schema/schemaCoverage.test.js:372:46)
-    at Promise.finally.completed (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1557:28)
-    at new Promise (&lt;anonymous&gt;)
-    at callAsyncCircusFn (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1497:10)
-    at _callCircusTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1007:40)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at _runTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:947:3)
-    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:849:7
-    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:862:11)
-    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
-    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
-    at run (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:761:3)
-    at runAndTransformResultsToJestFormat (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1918:21)
-    at jestAdapter (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/runner.js:101:19)
-    at runTestInternal (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:275:16)
-    at runTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:343:7)</failure>
-    </testcase>
-  </testsuite>
-  <testsuite name="Schema Regression Tests" errors="0" failures="4" skipped="0" timestamp="2026-01-30T08:34:33" time="2.538" tests="13">
-    <testcase classname="Schema Regression Tests › Coverage Analysis" name="should ensure all database tables have tests" time="0.003">
-    </testcase>
-    <testcase classname="Schema Regression Tests › Coverage Analysis" name="should have schema files for all tested tables" time="0.031">
+    <testcase classname="Schema Regression Tests › Coverage Analysis" name="should have schema files for all tested tables" time="0.021">
       <failure>Error: expect(received).resolves.not.toThrow()
 
 Received promise rejected instead of resolved
@@ -321,22 +26,22 @@ Rejected to value: [Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password mus
     at runTestInternal (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:275:16)
     at runTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:343:7)</failure>
     </testcase>
-    <testcase classname="Schema Regression Tests › Coverage Analysis" name="should validate all schemas can generate valid data" time="0.256">
+    <testcase classname="Schema Regression Tests › Coverage Analysis" name="should validate all schemas can generate valid data" time="0.204">
     </testcase>
-    <testcase classname="Schema Regression Tests › Schema Consistency" name="should validate database schema consistency" time="0.176">
+    <testcase classname="Schema Regression Tests › Schema Consistency" name="should validate database schema consistency" time="0.127">
     </testcase>
-    <testcase classname="Schema Regression Tests › Schema Consistency" name="should validate constraint consistency" time="0.197">
+    <testcase classname="Schema Regression Tests › Schema Consistency" name="should validate constraint consistency" time="0.135">
     </testcase>
-    <testcase classname="Schema Regression Tests › Schema Consistency" name="should validate data type consistency" time="0.175">
+    <testcase classname="Schema Regression Tests › Schema Consistency" name="should validate data type consistency" time="0.128">
     </testcase>
-    <testcase classname="Schema Regression Tests › Repository Schema Alignment" name="should validate repository methods match schema" time="0.07">
+    <testcase classname="Schema Regression Tests › Repository Schema Alignment" name="should validate repository methods match schema" time="0.041">
     </testcase>
-    <testcase classname="Schema Regression Tests › Data Generation Regression" name="should consistently generate valid data" time="0.071">
+    <testcase classname="Schema Regression Tests › Data Generation Regression" name="should consistently generate valid data" time="0.046">
     </testcase>
-    <testcase classname="Schema Regression Tests › Data Generation Regression" name="should handle edge cases consistently" time="0.099">
+    <testcase classname="Schema Regression Tests › Data Generation Regression" name="should handle edge cases consistently" time="0.095">
     </testcase>
-    <testcase classname="Schema Regression Tests › Performance Regression" name="should maintain acceptable performance for schema operations" time="0.025">
-      <failure>error: sorry, too many clients already
+    <testcase classname="Schema Regression Tests › Performance Regression" name="should maintain acceptable performance for schema operations" time="0.013">
+      <failure>Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
     at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/pg-pool/index.js:45:11
     at processTicksAndRejections (node:internal/process/task_queues:103:5)
     at SchemaExtractor.extractFromDatabase (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/tools/schemaExtractors.js:42:29)
@@ -344,8 +49,8 @@ Rejected to value: [Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password mus
     at global.ensureSchemaLoaded (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/setup/schemaSetup.js:150:5)
     at Object.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/schema/schemaRegression.test.js:252:9)</failure>
     </testcase>
-    <testcase classname="Schema Regression Tests › Performance Regression" name="should maintain acceptable performance for data generation" time="0.021">
-      <failure>error: sorry, too many clients already
+    <testcase classname="Schema Regression Tests › Performance Regression" name="should maintain acceptable performance for data generation" time="0.017">
+      <failure>Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
     at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/pg-pool/index.js:45:11
     at processTicksAndRejections (node:internal/process/task_queues:103:5)
     at SchemaExtractor.extractFromDatabase (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/tools/schemaExtractors.js:42:29)
@@ -354,8 +59,8 @@ Rejected to value: [Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password mus
     at SchemaTestHelper.createValidData (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/helpers/schemaTestHelper.js:22:18)
     at Object.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/schema/schemaRegression.test.js:268:9)</failure>
     </testcase>
-    <testcase classname="Schema Regression Tests › Performance Regression" name="should maintain acceptable performance for validation" time="0.031">
-      <failure>error: sorry, too many clients already
+    <testcase classname="Schema Regression Tests › Performance Regression" name="should maintain acceptable performance for validation" time="0.018">
+      <failure>Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
     at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/pg-pool/index.js:45:11
     at processTicksAndRejections (node:internal/process/task_queues:103:5)
     at SchemaExtractor.extractFromDatabase (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/tools/schemaExtractors.js:42:29)
@@ -364,7 +69,47 @@ Rejected to value: [Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password mus
     at SchemaTestHelper.createValidData (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/helpers/schemaTestHelper.js:22:18)
     at Object.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/schema/schemaRegression.test.js:285:22)</failure>
     </testcase>
-    <testcase classname="Schema Regression Tests › Integration Regression" name="should maintain compatibility with existing tests" time="0.074">
+    <testcase classname="Schema Regression Tests › Integration Regression" name="should maintain compatibility with existing tests" time="0.047">
+    </testcase>
+  </testsuite>
+  <testsuite name="Schema Coverage Tests" errors="0" failures="1" skipped="0" timestamp="2026-01-30T10:43:31" time="1.241" tests="9">
+    <testcase classname="Schema Coverage Tests › Column Coverage" name="should test all columns for each table" time="0.006">
+    </testcase>
+    <testcase classname="Schema Coverage Tests › Column Coverage" name="should test all column types" time="0.002">
+    </testcase>
+    <testcase classname="Schema Coverage Tests › Column Coverage" name="should test column constraints" time="0.004">
+    </testcase>
+    <testcase classname="Schema Coverage Tests › Data Coverage" name="should generate valid data for all column combinations" time="0.005">
+    </testcase>
+    <testcase classname="Schema Coverage Tests › Data Coverage" name="should test edge cases for all data types" time="0.004">
+    </testcase>
+    <testcase classname="Schema Coverage Tests › Constraint Coverage" name="should test all NOT NULL constraints" time="0.002">
+    </testcase>
+    <testcase classname="Schema Coverage Tests › Constraint Coverage" name="should test all UNIQUE constraints" time="0.004">
+    </testcase>
+    <testcase classname="Schema Coverage Tests › Constraint Coverage" name="should test all FOREIGN KEY constraints" time="0.006">
+    </testcase>
+    <testcase classname="Schema Coverage Tests › Coverage Report" name="should generate comprehensive coverage report" time="0.011">
+      <failure>Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: 100
+Received: 0
+    at Object.toBe (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/schema/schemaCoverage.test.js:372:46)
+    at Promise.finally.completed (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1557:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1497:10)
+    at _callCircusTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1007:40)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at _runTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:947:3)
+    at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:849:7
+    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:862:11)
+    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
+    at _runTestsForDescribeBlock (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
+    at run (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:761:3)
+    at runAndTransformResultsToJestFormat (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/jestAdapterInit.js:1918:21)
+    at jestAdapter (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-circus/build/runner.js:101:19)
+    at runTestInternal (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:275:16)
+    at runTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:343:7)</failure>
     </testcase>
   </testsuite>
 </testsuites>
