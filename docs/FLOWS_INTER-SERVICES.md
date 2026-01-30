@@ -8,6 +8,68 @@ Ce document décrit tous les flows de communication entre les microservices de l
 
 ## 📊 **ARCHITECTURE GLOBALE**
 
+### 🖼️ **DIAGRAMME VISUEL**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    EVENT PLANNER SAAS                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────┐    ┌─────────────────┐                    │
+│  │   USER      │────│  AUTH SERVICE   │ (Port 3000)        │
+│  │             │    │                 │                    │
+│  └─────────────┘    └─────────────────┘                    │
+│           │                   │                              │
+│           │                   ▼                              │
+│           │            ┌─────────────────┐                    │
+│           └───────────│ EVENT-PLANNER-  │ (Port 3001)        │
+│                        │     CORE        │                    │
+│                        └─────────────────┘                    │
+│                                   │                          │
+│                    ┌──────────────┼──────────────┐           │
+│                    ▼              ▼              ▼           │
+│        ┌─────────────────┐ ┌─────────────────┐ ┌───────────┐ │
+│        │ NOTIFICATION     │ │  PAYMENT        │ │TICKET-GEN │ │
+│        │ SERVICE          │ │  SERVICE        │ │  SERVICE   │ │
+│        │ (Port 3002)      │ │ (Port 3003)     │ │(Port 3004)│ │
+│        └─────────────────┘ └─────────────────┘ └───────────┘ │
+│                                   ▲                          │
+│                    ┌──────────────┼──────────────┐           │
+│                    │              │              │           │
+│                    ▼              ▼              ▼           │
+│        ┌─────────────────┐ ┌─────────────────┐ ┌───────────┐ │
+│        │ SCAN-VALIDATION  │ │   SMTP/SendGrid │ │  QR/PDF   │ │
+│        │ SERVICE          │ │   PROVIDERS     │ │ GENERATOR │ │
+│        │ (Port 3005)      │ │                 │ │           │ │
+│        └─────────────────┘ └─────────────────┘ └───────────┘ │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 🔄 **FLOW DE DONNÉES**
+
+```
+Utilisateur
+    │
+    ├──► Auth Service (Login/Permissions)
+    │
+    └──► Event-Planner-Core (Business Logic)
+            │
+            ├──► Notification Service ──► SMTP/SendGrid
+            │
+            ├──► Payment Service ────────► Stripe/PayPal
+            │
+            ├──► Ticket-Generator ───────► QR/PDF Files
+            │
+            └──► Scan-Validation ─────────► Fraud Detection
+            
+            ▲
+            │
+            └──► Webhooks de confirmation
+```
+
+### 📋 **MERMAID VERSION (pour IDE compatibles)**
+
 ```mermaid
 graph TB
     subgraph "Event Planner SaaS"
@@ -40,7 +102,49 @@ graph TB
 ### 📋 **DESCRIPTION**
 Gestion de l'authentification, autorisation, et sessions utilisateur.
 
-### 🔄 **FLOW COMPLET**
+### �️ **FLOW VISUEL**
+
+```
+┌─────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   UTILISA-  │    │ EVENT-PLANNER-  │    │   AUTH SERVICE  │
+│    TEUR     │    │     CORE        │    │                 │
+│             │    │                 │    │                 │
+│ 1. Login    │───►│ 2. Forward      │───►│ 3. Validate     │
+│             │    │    request      │    │   credentials   │
+│             │    │                 │    │                 │
+│             │◄───│ 5. Session      │◄───│ 4. JWT + User   │
+│ 6. Active   │    │    active       │    │     data         │
+│             │    │                 │    │                 │
+└─────────────┘    └─────────────────┘    └─────────────────┘
+                                    │
+                                    ▼
+                           ┌─────────────────┐
+                           │   REQUÊTES      │
+                           │   PROTÉGÉES     │
+                           │                 │
+                           │ 7. Validation    │
+                           │    JWT          │
+                           │                 │
+                           └─────────────────┘
+```
+
+### � **FLOW DÉTAILLÉ**
+
+```
+1. UTILISATEUR ──► Login credentials
+2. EVENT-PLANNER-CORE ──► POST /api/auth/login
+3. AUTH SERVICE ──► Validation email/password
+4. AUTH SERVICE ──► JWT token + user permissions
+5. EVENT-PLANNER-CORE ──► Session active pour utilisateur
+6. UTILISATEUR ──► Accès autorisé
+
+Pour chaque requête protégée :
+7. EVENT-PLANNER-CORE ──► Validation JWT
+8. AUTH SERVICE ──► Permissions utilisateur
+```
+
+### 📋 **MERMAID VERSION (pour IDE compatibles)**
+
 ```mermaid
 sequenceDiagram
     participant User as Utilisateur
@@ -109,7 +213,50 @@ sequenceDiagram
 ### 📋 **DESCRIPTION**
 Gestion des paiements, refunds, et abonnements avec Stripe/PayPal.
 
-### 🔄 **FLOW COMPLET**
+### 🖼️ **FLOW VISUEL**
+
+```
+┌─────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   UTILISA-  │    │ EVENT-PLANNER-  │    │  PAYMENT        │    │  STRIPE/PAYPAL │
+│    TEUR     │    │     CORE        │    │  SERVICE        │    │   PROVIDERS    │
+│             │    │                 │    │                 │    │                 │
+│ 1. Achat    │───►│ 2. Process      │───►│ 3. Create       │───►│ 4. Payment      │
+│    tickets  │    │    payment       │    │   intent        │    │   intent        │
+│             │    │                 │    │                 │    │                 │
+│             │◄───│ 6. Redirect     │◄───│ 5. Intent ID    │◄───│                 │
+│ 7. Paiement │    │    paiement      │    │   + Secret      │    │                 │
+│   Stripe/   │    │                 │    │                 │    │                 │
+│   PayPal    │    │                 │    │                 │    │                 │
+│             │    │                 │    │                 │    │                 │
+│             │    │                 │    │                 │    │                 │
+│             │    │                 │    │◄───│ 8. Confirm     │◄───│ 9. Payment      │
+│             │    │                 │    │    payment       │    │   completed     │
+│             │    │                 │    │                 │    │                 │
+│             │    │◄───│11. Webhook       │◄───│10. Send         │
+│12. Confirm  │    │    confirmation   │    │   webhook       │    │                 │
+│             │    │                 │    │                 │    │                 │
+└─────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### 🔄 **FLOW DÉTAILLÉ**
+
+```
+1. UTILISATEUR ──► Demande achat tickets
+2. EVENT-PLANNER-CORE ──► POST /api/payments/process
+3. PAYMENT SERVICE ──► Création payment intent
+4. STRIPE/PAYPAL ──► Génération payment intent
+5. PAYMENT SERVICE ──► paymentIntentId + clientSecret
+6. EVENT-PLANNER-CORE ──► Redirection utilisateur
+7. UTILISATEUR ──► Paiement sur Stripe/PayPal
+8. STRIPE/PAYPAL ──► Confirmation paiement
+9. PAYMENT SERVICE ──► Paiement confirmé
+10. PAYMENT SERVICE ──► POST /api/internal/payment-webhook
+11. EVENT-PLANNER-CORE ──► Mise à jour statuts
+12. UTILISATEUR ──► Confirmation finale
+```
+
+### 📋 **MERMAID VERSION (pour IDE compatibles)**
+
 ```mermaid
 sequenceDiagram
     participant User as Utilisateur
@@ -177,7 +324,44 @@ sequenceDiagram
 ### 📋 **DESCRIPTION**
 Génération de QR codes, PDF tickets, et fichiers d'événements.
 
-### 🔄 **FLOW COMPLET**
+### �️ **FLOW VISUEL**
+
+```
+┌─────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   UTILISA-  │    │ EVENT-PLANNER-  │    │ TICKET-GENERATOR│    │   QR/PDF FILES  │
+│    TEUR     │    │     CORE        │    │    SERVICE      │    │   STORAGE      │
+│             │    │                 │    │                 │    │                 │
+│ 1. Demande  │───►│ 2. Create       │───►│ 3. Redis Queue  │───►│ 4. Generate     │
+│   tickets   │    │    generation    │    │   job           │    │   QR + PDF      │
+│             │    │    job          │    │                 │    │                 │
+│             │    │                 │    │                 │    │                 │
+│             │    │                 │    │◄───│ 5. Files        │◄───│ 6. Store        │
+│             │    │                 │    │   generated      │    │   files         │
+│             │    │                 │    │                 │    │                 │
+│             │    │                 │    │                 │    │                 │
+│             │    │◄───│ 8. Webhook       │◄───│ 7. Update       │
+│ 9. Tickets  │    │    confirmation   │    │   logs          │
+│   générés   │    │                 │    │                 │
+│             │    │                 │    │                 │
+└─────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### � **FLOW DÉTAILLÉ**
+
+```
+1. UTILISATEUR ──► Demande génération tickets
+2. EVENT-PLANNER-CORE ──► Création job génération
+3. TICKET-GENERATOR ──► Redis Queue (job)
+4. QR/PDF STORAGE ──► Génération QR codes + PDFs
+5. QR/PDF STORAGE ──► Fichiers générés
+6. TICKET-GENERATOR ──► Stockage fichiers
+7. TICKET-GENERATOR ──► Mise à jour logs locaux
+8. EVENT-PLANNER-CORE ──► POST /api/internal/ticket-generation-webhook
+9. UTILISATEUR ──► Tickets générés disponibles
+```
+
+### 📋 **MERMAID VERSION (pour IDE compatibles)**
+
 ```mermaid
 sequenceDiagram
     participant User as Utilisateur
@@ -255,7 +439,52 @@ sequenceDiagram
 ### 📋 **DESCRIPTION**
 Envoi d'emails transactionnels, SMS, et notifications de masse.
 
-### 🔄 **FLOW COMPLET**
+### 🖼️ **FLOW VISUEL**
+
+```
+┌─────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   UTILISA-  │    │ EVENT-PLANNER-  │    │ NOTIFICATION     │    │  SMTP/SENDGRID  │
+│    TEUR     │    │     CORE        │    │    SERVICE      │    │   PROVIDERS    │
+│             │    │                 │    │                 │    │                 │
+│ 1. Action   │───►│ 2. Send         │───►│ 3. Generate     │───►│ 4. Send         │
+│   trigger   │    │   notification   │    │    email         │    │   email         │
+│             │    │                 │    │                 │    │                 │
+│             │    │◄───│ 6. Notification  │◄───│ 5. Message ID    │◄───│                 │
+│ 7. Confirm  │    │    ID + status    │    │   + status      │    │                 │
+│             │    │                 │    │                 │    │                 │
+│             │    │                 │    │                 │    │                 │
+│             │    │    ┌─────────────┐│    │                 │    │                 │
+│             │    │    │ CONSULTATION ││    │                 │    │                 │
+│             │    │    │ STATUT      ││    │                 │    │                 │
+│             │    │    └─────────────┘│    │                 │    │                 │
+│             │    │           ▲       │    │                 │    │                 │
+│             │    │           │       │    │                 │    │                 │
+│             │    │    8. GET │       │    │                 │    │                 │
+│             │    │   status │       │    │                 │    │                 │
+│             │    │           ▼       │    │                 │    │                 │
+│             │    │    9. Statut      │    │                 │    │                 │
+│             │    │     complet      │    │                 │    │                 │
+└─────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### 🔄 **FLOW DÉTAILLÉ**
+
+```
+1. UTILISATEUR ──► Action nécessitant notification
+2. EVENT-PLANNER-CORE ──► POST /api/notifications/email
+3. NOTIFICATION SERVICE ──► Génération email avec template
+4. SMTP/SENDGRID ──► Envoi email
+5. SMTP/SENDGRID ──► messageId + confirmation
+6. NOTIFICATION SERVICE ──► Stockage en BDD + notificationId
+7. EVENT-PLANNER-CORE ──► 201 Created + notificationId
+
+Plus tard (consultation) :
+8. EVENT-PLANNER-CORE ──► GET /api/notifications/{id}/status
+9. NOTIFICATION SERVICE ──► Statut complet + métadonnées
+```
+
+### 📋 **MERMAID VERSION (pour IDE compatibles)**
+
 ```mermaid
 sequenceDiagram
     participant User as Utilisateur
@@ -336,7 +565,49 @@ sequenceDiagram
 ### 📋 **DESCRIPTION**
 Validation des tickets, scan sur place, et détection de fraude.
 
-### 🔄 **FLOW COMPLET**
+### �️ **FLOW VISUEL**
+
+```
+┌─────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   PERSONNEL │    │ EVENT-PLANNER-  │    │ SCAN-VALIDATION │    │   FRAUD DETECT  │
+│   ÉVÉNEMENT │    │     CORE        │    │    SERVICE      │    │     ENGINE      │
+│             │    │                 │    │                 │    │                 │
+│ 1. Scan     │───►│ 2. Forward      │───►│ 3. Validate     │───►│ 4. QR Code      │
+│   ticket    │    │    scan         │    │    QR code      │    │   validation    │
+│             │    │                 │    │                 │    │                 │
+│             │    │                 │    │◄───│ 5. QR valid     │◄───│                 │
+│             │    │                 │    │                 │    │                 │
+│             │    │                 │    │                 │    │                 │
+│             │    │◄───│ 8. Validation    │◄───│ 7. Business      │
+│ 9. Validé   │    │    result        │    │    validation    │    │    check        │
+│   / Refusé  │    │                 │    │                 │    │                 │
+│             │    │                 │    │                 │    │                 │
+│             │    │                 │    │                 │    │                 │
+│             │    │◄───│11. Confirmation  │◄───│10. Update       │
+│             │    │    scan          │    │    logs          │    │                 │
+│             │    │                 │    │                 │    │                 │
+└─────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### �🔄 **FLOW DÉTAILLÉ**
+
+```
+1. PERSONNEL ÉVÉNEMENT ──► Scan ticket QR code
+2. EVENT-PLANNER-CORE ──► POST /api/scans/validate
+3. SCAN-VALIDATION SERVICE ──► Validation QR code
+4. FRAUD DETECT ENGINE ──► Validation cryptographique
+5. SCAN-VALIDATION SERVICE ──► QR code valide
+6. SCAN-VALIDATION SERVICE ──► POST /api/internal/validation/validate-ticket
+7. EVENT-PLANNER-CORE ──► Vérification métier (ticket valide, pas utilisé, etc.)
+8. EVENT-PLANNER-CORE ──► Résultat validation
+9. PERSONNEL ÉVÉNEMENT ──► Ticket validé/refusé
+10. SCAN-VALIDATION SERVICE ──► Mise à jour logs locaux
+11. EVENT-PLANNER-CORE ──► POST /api/internal/scan-confirmation
+12. EVENT-PLANNER-CORE ──► Mise à jour statut ticket
+```
+
+### 📋 **MERMAID VERSION (pour IDE compatibles)**
+
 ```mermaid
 sequenceDiagram
     participant Staff as Personnel
