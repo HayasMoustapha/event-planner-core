@@ -34,6 +34,7 @@ const scanValidationController = require('./controllers/scan-validation-controll
 
 // Import des routes webhook pour communication inter-services
 const paymentWebhookRoutes = require('./routes/payment-webhook.routes');
+const ticketWebhookRoutes = require('./routes/ticket-webhook.routes');
 
 // Create Express app
 const app = express();
@@ -124,6 +125,7 @@ app.get('/api/internal/tickets/:ticketId/status', scanValidationController.check
 // Routes webhooks pour communication inter-services
 // IMPORTANT : Ces routes reçoivent les notifications des autres services
 app.use('/api/internal', paymentWebhookRoutes);
+app.use('/api/internal', ticketWebhookRoutes);
 
 // Routes protégées (avec authentification)
 app.use('/api', RobustAuthMiddleware.authenticate());
