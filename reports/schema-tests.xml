@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="22" failures="5" errors="0" time="20.205">
-  <testsuite name="Schema Coverage Tests" errors="0" failures="1" skipped="0" timestamp="2026-01-29T18:12:21" time="2.463" tests="9">
-    <testcase classname="Schema Coverage Tests › Column Coverage" name="should test all columns for each table" time="0.007">
+<testsuites name="jest tests" tests="22" failures="5" errors="0" time="20.648">
+  <testsuite name="Schema Coverage Tests" errors="0" failures="1" skipped="0" timestamp="2026-01-30T02:55:31" time="2.465" tests="9">
+    <testcase classname="Schema Coverage Tests › Column Coverage" name="should test all columns for each table" time="0.003">
     </testcase>
-    <testcase classname="Schema Coverage Tests › Column Coverage" name="should test all column types" time="0.001">
+    <testcase classname="Schema Coverage Tests › Column Coverage" name="should test all column types" time="0.005">
     </testcase>
-    <testcase classname="Schema Coverage Tests › Column Coverage" name="should test column constraints" time="0.005">
+    <testcase classname="Schema Coverage Tests › Column Coverage" name="should test column constraints" time="0.004">
     </testcase>
-    <testcase classname="Schema Coverage Tests › Data Coverage" name="should generate valid data for all column combinations" time="0.005">
+    <testcase classname="Schema Coverage Tests › Data Coverage" name="should generate valid data for all column combinations" time="0.002">
     </testcase>
     <testcase classname="Schema Coverage Tests › Data Coverage" name="should test edge cases for all data types" time="0.003">
     </testcase>
-    <testcase classname="Schema Coverage Tests › Constraint Coverage" name="should test all NOT NULL constraints" time="0.003">
+    <testcase classname="Schema Coverage Tests › Constraint Coverage" name="should test all NOT NULL constraints" time="0.004">
     </testcase>
-    <testcase classname="Schema Coverage Tests › Constraint Coverage" name="should test all UNIQUE constraints" time="0.006">
+    <testcase classname="Schema Coverage Tests › Constraint Coverage" name="should test all UNIQUE constraints" time="0.004">
     </testcase>
-    <testcase classname="Schema Coverage Tests › Constraint Coverage" name="should test all FOREIGN KEY constraints" time="0.004">
+    <testcase classname="Schema Coverage Tests › Constraint Coverage" name="should test all FOREIGN KEY constraints" time="0.001">
     </testcase>
     <testcase classname="Schema Coverage Tests › Coverage Report" name="should generate comprehensive coverage report" time="0.013">
       <failure>Error: expect(received).toBe(expected) // Object.is equality
@@ -40,10 +40,10 @@ Received: 0
     at runTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:343:7)</failure>
     </testcase>
   </testsuite>
-  <testsuite name="Schema Regression Tests" errors="0" failures="4" skipped="0" timestamp="2026-01-29T18:12:25" time="2.614" tests="13">
-    <testcase classname="Schema Regression Tests › Coverage Analysis" name="should ensure all database tables have tests" time="0.004">
+  <testsuite name="Schema Regression Tests" errors="0" failures="4" skipped="0" timestamp="2026-01-30T02:55:35" time="2.444" tests="13">
+    <testcase classname="Schema Regression Tests › Coverage Analysis" name="should ensure all database tables have tests" time="0.008">
     </testcase>
-    <testcase classname="Schema Regression Tests › Coverage Analysis" name="should have schema files for all tested tables" time="0.026">
+    <testcase classname="Schema Regression Tests › Coverage Analysis" name="should have schema files for all tested tables" time="0.028">
       <failure>Error: expect(received).resolves.not.toThrow()
 
 Received promise rejected instead of resolved
@@ -66,22 +66,22 @@ Rejected to value: [Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password mus
     at runTestInternal (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:275:16)
     at runTest (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/jest-runner/build/index.js:343:7)</failure>
     </testcase>
-    <testcase classname="Schema Regression Tests › Coverage Analysis" name="should validate all schemas can generate valid data" time="0.243">
+    <testcase classname="Schema Regression Tests › Coverage Analysis" name="should validate all schemas can generate valid data" time="0.234">
     </testcase>
-    <testcase classname="Schema Regression Tests › Schema Consistency" name="should validate database schema consistency" time="0.184">
+    <testcase classname="Schema Regression Tests › Schema Consistency" name="should validate database schema consistency" time="0.163">
     </testcase>
-    <testcase classname="Schema Regression Tests › Schema Consistency" name="should validate constraint consistency" time="0.188">
+    <testcase classname="Schema Regression Tests › Schema Consistency" name="should validate constraint consistency" time="0.176">
     </testcase>
-    <testcase classname="Schema Regression Tests › Schema Consistency" name="should validate data type consistency" time="0.178">
+    <testcase classname="Schema Regression Tests › Schema Consistency" name="should validate data type consistency" time="0.183">
     </testcase>
-    <testcase classname="Schema Regression Tests › Repository Schema Alignment" name="should validate repository methods match schema" time="0.058">
+    <testcase classname="Schema Regression Tests › Repository Schema Alignment" name="should validate repository methods match schema" time="0.085">
     </testcase>
-    <testcase classname="Schema Regression Tests › Data Generation Regression" name="should consistently generate valid data" time="0.086">
+    <testcase classname="Schema Regression Tests › Data Generation Regression" name="should consistently generate valid data" time="0.08">
     </testcase>
-    <testcase classname="Schema Regression Tests › Data Generation Regression" name="should handle edge cases consistently" time="0.111">
+    <testcase classname="Schema Regression Tests › Data Generation Regression" name="should handle edge cases consistently" time="0.096">
     </testcase>
-    <testcase classname="Schema Regression Tests › Performance Regression" name="should maintain acceptable performance for schema operations" time="0.028">
-      <failure>Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
+    <testcase classname="Schema Regression Tests › Performance Regression" name="should maintain acceptable performance for schema operations" time="0.026">
+      <failure>error: sorry, too many clients already
     at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/pg-pool/index.js:45:11
     at processTicksAndRejections (node:internal/process/task_queues:103:5)
     at SchemaExtractor.extractFromDatabase (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/tools/schemaExtractors.js:42:29)
@@ -89,8 +89,8 @@ Rejected to value: [Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password mus
     at global.ensureSchemaLoaded (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/setup/schemaSetup.js:150:5)
     at Object.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/schema/schemaRegression.test.js:252:9)</failure>
     </testcase>
-    <testcase classname="Schema Regression Tests › Performance Regression" name="should maintain acceptable performance for data generation" time="0.023">
-      <failure>Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
+    <testcase classname="Schema Regression Tests › Performance Regression" name="should maintain acceptable performance for data generation" time="0.024">
+      <failure>error: sorry, too many clients already
     at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/pg-pool/index.js:45:11
     at processTicksAndRejections (node:internal/process/task_queues:103:5)
     at SchemaExtractor.extractFromDatabase (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/tools/schemaExtractors.js:42:29)
@@ -99,7 +99,7 @@ Rejected to value: [Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password mus
     at SchemaTestHelper.createValidData (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/helpers/schemaTestHelper.js:22:18)
     at Object.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/schema/schemaRegression.test.js:268:9)</failure>
     </testcase>
-    <testcase classname="Schema Regression Tests › Performance Regression" name="should maintain acceptable performance for validation" time="0.029">
+    <testcase classname="Schema Regression Tests › Performance Regression" name="should maintain acceptable performance for validation" time="0.019">
       <failure>error: sorry, too many clients already
     at /home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/node_modules/pg-pool/index.js:45:11
     at processTicksAndRejections (node:internal/process/task_queues:103:5)
@@ -109,7 +109,7 @@ Rejected to value: [Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password mus
     at SchemaTestHelper.createValidData (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/helpers/schemaTestHelper.js:22:18)
     at Object.&lt;anonymous&gt; (/home/hbelkassim/dev/ginutech/web_dev/event-planner-saas/event-planner-backend/event-planner-core/tests/schema/schemaRegression.test.js:285:22)</failure>
     </testcase>
-    <testcase classname="Schema Regression Tests › Integration Regression" name="should maintain compatibility with existing tests" time="0.096">
+    <testcase classname="Schema Regression Tests › Integration Regression" name="should maintain compatibility with existing tests" time="0.078">
     </testcase>
   </testsuite>
 </testsuites>
