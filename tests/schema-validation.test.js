@@ -1,7 +1,17 @@
 const request = require('supertest');
 const app = require('../src/app');
+const { createMockToken } = require('./setup');
 
 describe('Schema Validation Tests', () => {
+  let authToken;
+
+  beforeAll(async () => {
+    authToken = createMockToken({
+      id: 1,
+      email: 'test@example.com',
+      role: 'admin'
+    });
+  });
   describe('Events Module Schema', () => {
     test('should use correct event_date field', async () => {
       // Test that events module uses event_date instead of start_date/end_date

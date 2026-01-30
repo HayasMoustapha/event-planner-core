@@ -8,6 +8,7 @@
 
 const request = require('supertest');
 const app = require('../../src/app');
+const { createMockToken } = require('../setup');
 
 describe('Events Integration - Schema Based Tests', () => {
   let authToken;
@@ -15,16 +16,24 @@ describe('Events Integration - Schema Based Tests', () => {
   let createdEventId;
 
   beforeAll(async () => {
-    // Créer un token d'authentification valide
-    // En pratique, cela viendrait du service d'authentification
-    authToken = 'mock-jwt-token-for-testing';
+    // Créer un token JWT mock pour les tests
+    authToken = createMockToken({
+      id: 1,
+      email: 'test@example.com',
+      role: 'admin'
+    });
   });
 
   beforeEach(async () => {
     // Générer des données de test valides selon le schéma
-    testEventData = await global.createValidData('events', {
-      organizer_id: 1 // ID d'organisateur fixe pour les tests
-    });
+    testEventData = {
+      title: 'Événement Test Intégration',
+      description: 'Description pour test d\'intégration',
+      event_date: '2024-12-31T23:59:59.000Z',
+      location: 'Paris, France',
+      max_attendees: 100,
+      organizer_id: 1
+    };
   });
 
   afterEach(async () => {

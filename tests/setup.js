@@ -59,7 +59,7 @@ beforeAll(async () => {
     console.log('✅ Base de données de test connectée');
     
     // Créer les tables nécessaires en dehors des transactions
-    await createPersistentTestTables();
+    await setupTestDatabase();
   } catch (error) {
     console.error('❌ Erreur de connexion à la base de test:', error.message);
     // Ne pas quitter le processus, juste logger l'erreur
