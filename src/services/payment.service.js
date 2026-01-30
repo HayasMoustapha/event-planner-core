@@ -175,8 +175,8 @@ class PaymentService {
           gateway: result.gateway
         });
 
-        // Enregistrer la transaction locale pour suivi
-        await recordLocalPayment(paymentData, result);
+        // // Enregistrer la transaction locale pour suivi
+        // await recordLocalPayment(paymentData, result);
 
         return {
           success: true,
