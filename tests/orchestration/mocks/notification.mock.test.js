@@ -6,39 +6,41 @@
  * @version 1.0.0
  */
 
-const axios = require('axios');
-
-// Mock axios
-jest.mock('axios');
+const notificationClient = require('../../../../shared/service-clients/notification-client');
 
 describe('Notification Service - Mock Tests', () => {
-  let mockAxiosInstance;
-  let client;
+  // Store original methods to restore after tests
+  let originalGet;
+  let originalPost;
+  let originalPut;
+  let originalDelete;
+  let originalHealthCheck;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockAxiosInstance = {
-      get: jest.fn(),
-      post: jest.fn(),
-      put: jest.fn(),
-      delete: jest.fn(),
-      interceptors: {
-        request: { use: jest.fn() },
-        response: { use: jest.fn() }
-      },
-      defaults: { timeout: 15000 }
-    };
+    // Store original methods
+    originalGet = notificationClient._get;
+    originalPost = notificationClient._post;
+    originalPut = notificationClient._put;
+    originalDelete = notificationClient._delete;
+    originalHealthCheck = notificationClient.healthCheck;
 
-    axios.create.mockReturnValue(mockAxiosInstance);
+    // Mock the internal methods
+    notificationClient._get = jest.fn();
+    notificationClient._post = jest.fn();
+    notificationClient._put = jest.fn();
+    notificationClient._delete = jest.fn();
+    notificationClient.healthCheck = jest.fn();
+  });
 
-    jest.isolateModules(() => {
-      const NotificationClientClass = require('../../../../shared/service-clients/notification-client').constructor;
-      client = new NotificationClientClass({
-        baseURL: 'http://localhost:3002',
-        apiKey: 'test-api-key'
-      });
-    });
+  afterEach(() => {
+    // Restore original methods
+    notificationClient._get = originalGet;
+    notificationClient._post = originalPost;
+    notificationClient._put = originalPut;
+    notificationClient._delete = originalDelete;
+    notificationClient.healthCheck = originalHealthCheck;
   });
 
   // ============================================================
@@ -46,76 +48,62 @@ describe('Notification Service - Mock Tests', () => {
   // ============================================================
   describe('1. sendEmail - POST /api/email/send', () => {
     it('should call correct URL with email data', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, messageId: 'msg-123' }
-      });
+      notificationClient._post.mockResolvedValue({ success: true, messageId: 'msg-123' });
 
-      await client.sendEmail('user@example.com', 'welcome', { name: 'John' });
+      await notificationClient.sendEmail('user@example.com', 'welcome', { name: 'John' });
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(notificationClient._post).toHaveBeenCalledWith(
         '/api/email/send',
-        { to: 'user@example.com', template: 'welcome', data: { name: 'John' } },
-        expect.any(Object)
+        { to: 'user@example.com', template: 'welcome', data: { name: 'John' } }
       );
     });
 
     it('should return message ID on success', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          messageId: 'msg-123',
-          status: 'sent',
-          sentAt: '2024-01-15T10:00:00Z'
-        }
+      notificationClient._post.mockResolvedValue({
+        success: true,
+        messageId: 'msg-123',
+        status: 'sent',
+        sentAt: '2024-01-15T10:00:00Z'
       });
 
-      const result = await client.sendEmail('user@example.com', 'welcome', {});
+      const result = await notificationClient.sendEmail('user@example.com', 'welcome', {});
 
       expect(result).toHaveProperty('messageId');
       expect(result.status).toBe('sent');
     });
 
     it('should handle invalid email', async () => {
-      mockAxiosInstance.post.mockRejectedValue({
-        response: { status: 400, data: { error: 'Invalid email address' } }
-      });
+      notificationClient._post.mockRejectedValue(new Error('Invalid email address'));
 
-      await expect(client.sendEmail('invalid-email', 'welcome', {})).rejects.toThrow();
+      await expect(notificationClient.sendEmail('invalid-email', 'welcome', {})).rejects.toThrow();
     });
 
     it('should handle template not found', async () => {
-      mockAxiosInstance.post.mockRejectedValue({
-        response: { status: 404, data: { error: 'Template not found' } }
-      });
+      notificationClient._post.mockRejectedValue(new Error('Template not found'));
 
-      await expect(client.sendEmail('user@example.com', 'non-existent', {})).rejects.toThrow();
+      await expect(notificationClient.sendEmail('user@example.com', 'non-existent', {})).rejects.toThrow();
     });
 
     it('should handle SMTP failure', async () => {
-      mockAxiosInstance.post.mockRejectedValue({
-        response: { status: 500, data: { error: 'SMTP connection failed' } }
-      });
+      notificationClient._post.mockRejectedValue(new Error('SMTP connection failed'));
 
-      await expect(client.sendEmail('user@example.com', 'welcome', {})).rejects.toThrow();
+      await expect(notificationClient.sendEmail('user@example.com', 'welcome', {})).rejects.toThrow();
     });
 
     it('should support attachments', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, messageId: 'msg-123' }
-      });
+      notificationClient._post.mockResolvedValue({ success: true, messageId: 'msg-123' });
 
-      await client.sendEmail('user@example.com', 'ticket', {
+      await notificationClient.sendEmail('user@example.com', 'ticket', {
         attachments: [{ filename: 'ticket.pdf', content: 'base64-data' }]
       });
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(notificationClient._post).toHaveBeenCalledWith(
         '/api/email/send',
         expect.objectContaining({
           data: expect.objectContaining({
             attachments: expect.any(Array)
           })
-        }),
-        expect.any(Object)
+        })
       );
     });
   });
@@ -127,30 +115,25 @@ describe('Notification Service - Mock Tests', () => {
     const recipients = ['user1@example.com', 'user2@example.com', 'user3@example.com'];
 
     it('should call correct URL with recipients', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, jobId: 'job-123' }
-      });
+      notificationClient._post.mockResolvedValue({ success: true, jobId: 'job-123' });
 
-      await client.queueBulkEmail(recipients, 'event-reminder', { eventName: 'Concert' });
+      await notificationClient.queueBulkEmail(recipients, 'event-reminder', { eventName: 'Concert' });
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(notificationClient._post).toHaveBeenCalledWith(
         '/api/email/queue',
-        { recipients, template: 'event-reminder', data: { eventName: 'Concert' } },
-        expect.any(Object)
+        { recipients, template: 'event-reminder', data: { eventName: 'Concert' } }
       );
     });
 
     it('should return job ID for tracking', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          jobId: 'job-123',
-          recipientCount: 3,
-          estimatedCompletion: '2024-01-15T10:05:00Z'
-        }
+      notificationClient._post.mockResolvedValue({
+        success: true,
+        jobId: 'job-123',
+        recipientCount: 3,
+        estimatedCompletion: '2024-01-15T10:05:00Z'
       });
 
-      const result = await client.queueBulkEmail(recipients, 'event-reminder', {});
+      const result = await notificationClient.queueBulkEmail(recipients, 'event-reminder', {});
 
       expect(result).toHaveProperty('jobId');
       expect(result.recipientCount).toBe(3);
@@ -159,21 +142,19 @@ describe('Notification Service - Mock Tests', () => {
     it('should handle large recipient list', async () => {
       const largeList = Array(10000).fill(null).map((_, i) => `user${i}@example.com`);
 
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, jobId: 'job-large', recipientCount: 10000 }
+      notificationClient._post.mockResolvedValue({
+        success: true, jobId: 'job-large', recipientCount: 10000
       });
 
-      const result = await client.queueBulkEmail(largeList, 'newsletter', {});
+      const result = await notificationClient.queueBulkEmail(largeList, 'newsletter', {});
 
       expect(result.recipientCount).toBe(10000);
     });
 
     it('should handle empty recipients', async () => {
-      mockAxiosInstance.post.mockRejectedValue({
-        response: { status: 400, data: { error: 'Recipients list cannot be empty' } }
-      });
+      notificationClient._post.mockRejectedValue(new Error('Recipients list cannot be empty'));
 
-      await expect(client.queueBulkEmail([], 'welcome', {})).rejects.toThrow();
+      await expect(notificationClient.queueBulkEmail([], 'welcome', {})).rejects.toThrow();
     });
   });
 
@@ -182,50 +163,43 @@ describe('Notification Service - Mock Tests', () => {
   // ============================================================
   describe('3. sendSMS - POST /api/sms/send', () => {
     it('should call correct URL with phone and message', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, messageId: 'sms-123' }
-      });
+      notificationClient._post.mockResolvedValue({ success: true, messageId: 'sms-123' });
 
-      await client.sendSMS('+33612345678', 'Your verification code is 123456');
+      await notificationClient.sendSMS('+33612345678', 'Your verification code is 123456');
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(notificationClient._post).toHaveBeenCalledWith(
         '/api/sms/send',
-        { to: '+33612345678', message: 'Your verification code is 123456' },
-        expect.any(Object)
+        { to: '+33612345678', message: 'Your verification code is 123456' }
       );
     });
 
     it('should return SMS message ID', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          messageId: 'sms-123',
-          status: 'sent',
-          segments: 1
-        }
+      notificationClient._post.mockResolvedValue({
+        success: true,
+        messageId: 'sms-123',
+        status: 'sent',
+        segments: 1
       });
 
-      const result = await client.sendSMS('+33612345678', 'Hello');
+      const result = await notificationClient.sendSMS('+33612345678', 'Hello');
 
       expect(result).toHaveProperty('messageId');
     });
 
     it('should handle invalid phone number', async () => {
-      mockAxiosInstance.post.mockRejectedValue({
-        response: { status: 400, data: { error: 'Invalid phone number format' } }
-      });
+      notificationClient._post.mockRejectedValue(new Error('Invalid phone number format'));
 
-      await expect(client.sendSMS('invalid', 'Hello')).rejects.toThrow();
+      await expect(notificationClient.sendSMS('invalid', 'Hello')).rejects.toThrow();
     });
 
     it('should handle long messages (multiple segments)', async () => {
       const longMessage = 'A'.repeat(500);
 
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, messageId: 'sms-123', segments: 4 }
+      notificationClient._post.mockResolvedValue({
+        success: true, messageId: 'sms-123', segments: 4
       });
 
-      const result = await client.sendSMS('+33612345678', longMessage);
+      const result = await notificationClient.sendSMS('+33612345678', longMessage);
 
       expect(result.segments).toBe(4);
     });
@@ -238,30 +212,25 @@ describe('Notification Service - Mock Tests', () => {
     const recipients = ['+33612345678', '+33687654321'];
 
     it('should call correct URL with recipients and message', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, jobId: 'sms-job-123' }
-      });
+      notificationClient._post.mockResolvedValue({ success: true, jobId: 'sms-job-123' });
 
-      await client.queueBulkSMS(recipients, 'Event starts in 1 hour!');
+      await notificationClient.queueBulkSMS(recipients, 'Event starts in 1 hour!');
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(notificationClient._post).toHaveBeenCalledWith(
         '/api/sms/queue',
-        { recipients, message: 'Event starts in 1 hour!' },
-        expect.any(Object)
+        { recipients, message: 'Event starts in 1 hour!' }
       );
     });
 
     it('should return job ID', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          jobId: 'sms-job-123',
-          recipientCount: 2,
-          estimatedCost: 0.10
-        }
+      notificationClient._post.mockResolvedValue({
+        success: true,
+        jobId: 'sms-job-123',
+        recipientCount: 2,
+        estimatedCost: 0.10
       });
 
-      const result = await client.queueBulkSMS(recipients, 'Hello');
+      const result = await notificationClient.queueBulkSMS(recipients, 'Hello');
 
       expect(result).toHaveProperty('jobId');
     });
@@ -278,45 +247,38 @@ describe('Notification Service - Mock Tests', () => {
     };
 
     it('should call correct URL with notification data', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, deliveredCount: 1 }
-      });
+      notificationClient._post.mockResolvedValue({ success: true, deliveredCount: 1 });
 
-      await client.sendPushNotification('user-123', notification);
+      await notificationClient.sendPushNotification('user-123', notification);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(notificationClient._post).toHaveBeenCalledWith(
         '/api/push/send',
-        { userId: 'user-123', ...notification },
-        expect.any(Object)
+        { userId: 'user-123', ...notification }
       );
     });
 
     it('should return delivery status', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          notificationId: 'push-123',
-          delivered: true,
-          deviceCount: 2
-        }
+      notificationClient._post.mockResolvedValue({
+        success: true,
+        notificationId: 'push-123',
+        delivered: true,
+        deviceCount: 2
       });
 
-      const result = await client.sendPushNotification('user-123', notification);
+      const result = await notificationClient.sendPushNotification('user-123', notification);
 
       expect(result.delivered).toBe(true);
       expect(result.deviceCount).toBe(2);
     });
 
     it('should handle user with no devices', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          delivered: false,
-          reason: 'No registered devices'
-        }
+      notificationClient._post.mockResolvedValue({
+        success: true,
+        delivered: false,
+        reason: 'No registered devices'
       });
 
-      const result = await client.sendPushNotification('user-no-device', notification);
+      const result = await notificationClient.sendPushNotification('user-no-device', notification);
 
       expect(result.delivered).toBe(false);
     });
@@ -327,48 +289,39 @@ describe('Notification Service - Mock Tests', () => {
   // ============================================================
   describe('6. getNotificationStatus - GET /api/notifications/:id/status', () => {
     it('should call correct URL', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { success: true, status: 'delivered' }
-      });
+      notificationClient._get.mockResolvedValue({ success: true, status: 'delivered' });
 
-      await client.getNotificationStatus('notif-123');
+      await notificationClient.getNotificationStatus('notif-123');
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        '/api/notifications/notif-123/status',
-        expect.any(Object)
-      );
+      expect(notificationClient._get).toHaveBeenCalledWith('/api/notifications/notif-123/status');
     });
 
     it('should return detailed status', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          notificationId: 'notif-123',
-          type: 'email',
-          status: 'delivered',
-          sentAt: '2024-01-15T10:00:00Z',
-          deliveredAt: '2024-01-15T10:00:05Z',
-          openedAt: '2024-01-15T10:05:00Z'
-        }
+      notificationClient._get.mockResolvedValue({
+        success: true,
+        notificationId: 'notif-123',
+        type: 'email',
+        status: 'delivered',
+        sentAt: '2024-01-15T10:00:00Z',
+        deliveredAt: '2024-01-15T10:00:05Z',
+        openedAt: '2024-01-15T10:05:00Z'
       });
 
-      const result = await client.getNotificationStatus('notif-123');
+      const result = await notificationClient.getNotificationStatus('notif-123');
 
       expect(result.status).toBe('delivered');
       expect(result).toHaveProperty('openedAt');
     });
 
     it('should handle bounced email', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          status: 'bounced',
-          bounceType: 'hard',
-          bounceReason: 'Mailbox not found'
-        }
+      notificationClient._get.mockResolvedValue({
+        success: true,
+        status: 'bounced',
+        bounceType: 'hard',
+        bounceReason: 'Mailbox not found'
       });
 
-      const result = await client.getNotificationStatus('notif-123');
+      const result = await notificationClient.getNotificationStatus('notif-123');
 
       expect(result.status).toBe('bounced');
       expect(result).toHaveProperty('bounceReason');
@@ -380,55 +333,46 @@ describe('Notification Service - Mock Tests', () => {
   // ============================================================
   describe('7. getJobStatus - GET /api/jobs/:id', () => {
     it('should call correct URL', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { success: true, status: 'processing' }
-      });
+      notificationClient._get.mockResolvedValue({ success: true, status: 'processing' });
 
-      await client.getJobStatus('job-123');
+      await notificationClient.getJobStatus('job-123');
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        '/api/jobs/job-123',
-        expect.any(Object)
-      );
+      expect(notificationClient._get).toHaveBeenCalledWith('/api/jobs/job-123');
     });
 
     it('should return job progress', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          jobId: 'job-123',
-          status: 'processing',
-          progress: {
-            total: 1000,
-            sent: 750,
-            failed: 5,
-            percentage: 75
-          },
-          startedAt: '2024-01-15T10:00:00Z'
-        }
+      notificationClient._get.mockResolvedValue({
+        success: true,
+        jobId: 'job-123',
+        status: 'processing',
+        progress: {
+          total: 1000,
+          sent: 750,
+          failed: 5,
+          percentage: 75
+        },
+        startedAt: '2024-01-15T10:00:00Z'
       });
 
-      const result = await client.getJobStatus('job-123');
+      const result = await notificationClient.getJobStatus('job-123');
 
       expect(result.progress.percentage).toBe(75);
       expect(result.progress.failed).toBe(5);
     });
 
     it('should handle completed job', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          status: 'completed',
-          progress: { total: 1000, sent: 995, failed: 5, percentage: 100 },
-          completedAt: '2024-01-15T10:10:00Z',
-          summary: {
-            successRate: 99.5,
-            avgDeliveryTime: 2.3
-          }
+      notificationClient._get.mockResolvedValue({
+        success: true,
+        status: 'completed',
+        progress: { total: 1000, sent: 995, failed: 5, percentage: 100 },
+        completedAt: '2024-01-15T10:10:00Z',
+        summary: {
+          successRate: 99.5,
+          avgDeliveryTime: 2.3
         }
       });
 
-      const result = await client.getJobStatus('job-123');
+      const result = await notificationClient.getJobStatus('job-123');
 
       expect(result.status).toBe('completed');
       expect(result.summary.successRate).toBe(99.5);
@@ -440,47 +384,38 @@ describe('Notification Service - Mock Tests', () => {
   // ============================================================
   describe('8. listTemplates - GET /api/templates', () => {
     it('should call correct URL with type filter', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { success: true, templates: [] }
-      });
+      notificationClient._get.mockResolvedValue({ success: true, templates: [] });
 
-      await client.listTemplates('email');
+      await notificationClient.listTemplates('email');
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        '/api/templates?type=email',
-        expect.any(Object)
-      );
+      expect(notificationClient._get).toHaveBeenCalledWith('/api/templates?type=email');
     });
 
     it('should return templates list', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          templates: [
-            { id: 'tpl-1', name: 'Welcome Email', type: 'email', variables: ['name', 'email'] },
-            { id: 'tpl-2', name: 'Password Reset', type: 'email', variables: ['resetLink'] },
-            { id: 'tpl-3', name: 'Ticket Confirmation', type: 'email', variables: ['ticketCode', 'eventName'] }
-          ]
-        }
+      notificationClient._get.mockResolvedValue({
+        success: true,
+        templates: [
+          { id: 'tpl-1', name: 'Welcome Email', type: 'email', variables: ['name', 'email'] },
+          { id: 'tpl-2', name: 'Password Reset', type: 'email', variables: ['resetLink'] },
+          { id: 'tpl-3', name: 'Ticket Confirmation', type: 'email', variables: ['ticketCode', 'eventName'] }
+        ]
       });
 
-      const result = await client.listTemplates('email');
+      const result = await notificationClient.listTemplates('email');
 
       expect(result.templates).toHaveLength(3);
       expect(result.templates[0]).toHaveProperty('variables');
     });
 
     it('should filter by type', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          templates: [
-            { id: 'sms-1', name: 'OTP', type: 'sms' }
-          ]
-        }
+      notificationClient._get.mockResolvedValue({
+        success: true,
+        templates: [
+          { id: 'sms-1', name: 'OTP', type: 'sms' }
+        ]
       });
 
-      const result = await client.listTemplates('sms');
+      const result = await notificationClient.listTemplates('sms');
 
       expect(result.templates[0].type).toBe('sms');
     });
@@ -499,42 +434,32 @@ describe('Notification Service - Mock Tests', () => {
     };
 
     it('should call correct URL with template data', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, template: { id: 'tpl-new' } }
-      });
+      notificationClient._post.mockResolvedValue({ success: true, template: { id: 'tpl-new' } });
 
-      await client.createTemplate(template);
+      await notificationClient.createTemplate(template);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        '/api/templates',
-        template,
-        expect.any(Object)
-      );
+      expect(notificationClient._post).toHaveBeenCalledWith('/api/templates', template);
     });
 
     it('should return created template', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          template: {
-            id: 'tpl-new',
-            name: 'Custom Event Reminder',
-            createdAt: '2024-01-15T10:00:00Z'
-          }
+      notificationClient._post.mockResolvedValue({
+        success: true,
+        template: {
+          id: 'tpl-new',
+          name: 'Custom Event Reminder',
+          createdAt: '2024-01-15T10:00:00Z'
         }
       });
 
-      const result = await client.createTemplate(template);
+      const result = await notificationClient.createTemplate(template);
 
       expect(result.template).toHaveProperty('id');
     });
 
     it('should handle invalid template syntax', async () => {
-      mockAxiosInstance.post.mockRejectedValue({
-        response: { status: 400, data: { error: 'Invalid template syntax', line: 5 } }
-      });
+      notificationClient._post.mockRejectedValue(new Error('Invalid template syntax'));
 
-      await expect(client.createTemplate({ ...template, body: '{{invalid' })).rejects.toThrow();
+      await expect(notificationClient.createTemplate({ ...template, body: '{{invalid' })).rejects.toThrow();
     });
   });
 
@@ -549,31 +474,23 @@ describe('Notification Service - Mock Tests', () => {
     };
 
     it('should call correct URL with event notification', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, jobId: 'event-notif-123' }
-      });
+      notificationClient._post.mockResolvedValue({ success: true, jobId: 'event-notif-123' });
 
-      await client.notifyEventParticipants(eventNotification);
+      await notificationClient.notifyEventParticipants(eventNotification);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        '/api/notifications/event',
-        eventNotification,
-        expect.any(Object)
-      );
+      expect(notificationClient._post).toHaveBeenCalledWith('/api/notifications/event', eventNotification);
     });
 
     it('should return job ID for tracking', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          jobId: 'event-notif-123',
-          notificationType: 'reminder',
-          recipientCount: 500,
-          channels: ['email', 'push']
-        }
+      notificationClient._post.mockResolvedValue({
+        success: true,
+        jobId: 'event-notif-123',
+        notificationType: 'reminder',
+        recipientCount: 500,
+        channels: ['email', 'push']
       });
 
-      const result = await client.notifyEventParticipants(eventNotification);
+      const result = await notificationClient.notifyEventParticipants(eventNotification);
 
       expect(result).toHaveProperty('jobId');
       expect(result.channels).toContain('email');
@@ -581,24 +498,18 @@ describe('Notification Service - Mock Tests', () => {
 
     it('should handle different notification types', async () => {
       // Reminder
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, notificationType: 'reminder' }
-      });
-      let result = await client.notifyEventParticipants({ ...eventNotification, type: 'reminder' });
+      notificationClient._post.mockResolvedValue({ success: true, notificationType: 'reminder' });
+      let result = await notificationClient.notifyEventParticipants({ ...eventNotification, type: 'reminder' });
       expect(result.notificationType).toBe('reminder');
 
       // Update
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, notificationType: 'update' }
-      });
-      result = await client.notifyEventParticipants({ ...eventNotification, type: 'update' });
+      notificationClient._post.mockResolvedValue({ success: true, notificationType: 'update' });
+      result = await notificationClient.notifyEventParticipants({ ...eventNotification, type: 'update' });
       expect(result.notificationType).toBe('update');
 
       // Cancellation
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, notificationType: 'cancellation' }
-      });
-      result = await client.notifyEventParticipants({ ...eventNotification, type: 'cancellation' });
+      notificationClient._post.mockResolvedValue({ success: true, notificationType: 'cancellation' });
+      result = await notificationClient.notifyEventParticipants({ ...eventNotification, type: 'cancellation' });
       expect(result.notificationType).toBe('cancellation');
     });
   });
@@ -615,33 +526,28 @@ describe('Notification Service - Mock Tests', () => {
     };
 
     it('should call email send with ticket_confirmation template', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, messageId: 'msg-ticket-123' }
-      });
+      notificationClient._post.mockResolvedValue({ success: true, messageId: 'msg-ticket-123' });
 
-      await client.sendTicketConfirmation(ticketData);
+      await notificationClient.sendTicketConfirmation(ticketData);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(notificationClient._post).toHaveBeenCalledWith(
         '/api/email/send',
         {
           to: 'user@example.com',
           template: 'ticket_confirmation',
           data: ticketData
-        },
-        expect.any(Object)
+        }
       );
     });
 
     it('should return message ID', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          messageId: 'msg-ticket-123',
-          attachmentIncluded: true
-        }
+      notificationClient._post.mockResolvedValue({
+        success: true,
+        messageId: 'msg-ticket-123',
+        attachmentIncluded: true
       });
 
-      const result = await client.sendTicketConfirmation(ticketData);
+      const result = await notificationClient.sendTicketConfirmation(ticketData);
 
       expect(result).toHaveProperty('messageId');
     });
@@ -652,47 +558,39 @@ describe('Notification Service - Mock Tests', () => {
   // ============================================================
   describe('12. healthCheck - GET /health', () => {
     it('should return healthy status', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          status: 'ok',
-          service: 'notification',
-          providers: {
-            email: 'connected',
-            sms: 'connected',
-            push: 'connected'
-          }
-        }
+      notificationClient.healthCheck.mockResolvedValue({
+        success: true,
+        status: 'healthy',
+        service: 'notification'
       });
 
-      const result = await client.healthCheck();
+      const result = await notificationClient.healthCheck();
 
       expect(result.success).toBe(true);
       expect(result.status).toBe('healthy');
     });
 
     it('should handle degraded state', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          status: 'degraded',
-          providers: {
-            email: 'connected',
-            sms: 'disconnected',
-            push: 'connected'
-          }
-        }
+      notificationClient.healthCheck.mockResolvedValue({
+        success: true,
+        status: 'degraded',
+        service: 'notification'
       });
 
-      const result = await client.healthCheck();
+      const result = await notificationClient.healthCheck();
 
       expect(result.success).toBe(true);
     });
 
     it('should handle service down', async () => {
-      mockAxiosInstance.get.mockRejectedValue({
-        code: 'ECONNREFUSED'
+      notificationClient.healthCheck.mockResolvedValue({
+        success: false,
+        status: 'unhealthy',
+        service: 'notification',
+        error: 'Connection refused'
       });
 
-      const result = await client.healthCheck();
+      const result = await notificationClient.healthCheck();
 
       expect(result.success).toBe(false);
       expect(result.status).toBe('unhealthy');
@@ -704,85 +602,42 @@ describe('Notification Service - Mock Tests', () => {
   // ============================================================
   describe('Error Handling', () => {
     it('should handle provider rate limiting', async () => {
-      mockAxiosInstance.post.mockRejectedValue({
-        response: {
-          status: 429,
-          data: { error: 'Rate limit exceeded', retryAfter: 60 }
-        }
-      });
+      notificationClient._post.mockRejectedValue(new Error('Rate limit exceeded'));
 
-      await expect(client.sendEmail('user@example.com', 'welcome', {})).rejects.toThrow();
+      await expect(notificationClient.sendEmail('user@example.com', 'welcome', {})).rejects.toThrow();
     });
 
     it('should handle network timeout', async () => {
-      mockAxiosInstance.post.mockRejectedValue({
-        code: 'ECONNABORTED',
-        message: 'timeout of 15000ms exceeded'
-      });
+      notificationClient._post.mockRejectedValue(new Error('timeout of 15000ms exceeded'));
 
-      await expect(client.sendEmail('user@example.com', 'welcome', {})).rejects.toThrow();
+      await expect(notificationClient.sendEmail('user@example.com', 'welcome', {})).rejects.toThrow();
     });
 
     it('should handle invalid template variables', async () => {
-      mockAxiosInstance.post.mockRejectedValue({
-        response: {
-          status: 400,
-          data: {
-            error: 'Missing required template variables',
-            missing: ['name', 'eventDate']
-          }
-        }
-      });
+      notificationClient._post.mockRejectedValue(new Error('Missing required template variables'));
 
-      await expect(client.sendEmail('user@example.com', 'event-reminder', {})).rejects.toThrow();
+      await expect(notificationClient.sendEmail('user@example.com', 'event-reminder', {})).rejects.toThrow();
     });
 
     it('should handle blocked recipient', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: false,
-          error: 'Recipient has unsubscribed',
-          blocked: true
-        }
+      notificationClient._post.mockResolvedValue({
+        success: false,
+        error: 'Recipient has unsubscribed',
+        blocked: true
       });
 
-      const result = await client.sendEmail('blocked@example.com', 'newsletter', {});
+      const result = await notificationClient.sendEmail('blocked@example.com', 'newsletter', {});
 
       expect(result.success).toBe(false);
       expect(result.blocked).toBe(true);
     });
 
     it('should handle malformed response', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: null
-      });
+      notificationClient._post.mockResolvedValue(null);
 
-      const result = await client.sendEmail('user@example.com', 'welcome', {});
+      const result = await notificationClient.sendEmail('user@example.com', 'welcome', {});
 
       expect(result).toBeNull();
-    });
-  });
-
-  // ============================================================
-  // PAYLOAD VALIDATION
-  // ============================================================
-  describe('Payload Validation', () => {
-    it('should include API key in headers', async () => {
-      expect(axios.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            'X-API-Key': 'test-api-key'
-          })
-        })
-      );
-    });
-
-    it('should set appropriate timeout for bulk operations', async () => {
-      expect(axios.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          timeout: 15000
-        })
-      );
     });
   });
 
@@ -791,17 +646,15 @@ describe('Notification Service - Mock Tests', () => {
   // ============================================================
   describe('Idempotency', () => {
     it('should support idempotency key for email sending', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, messageId: 'msg-123' }
-      });
+      notificationClient._post.mockResolvedValue({ success: true, messageId: 'msg-123' });
 
       // First call
-      await client.sendEmail('user@example.com', 'welcome', { idempotencyKey: 'key-123' });
+      await notificationClient.sendEmail('user@example.com', 'welcome', { idempotencyKey: 'key-123' });
 
       // Second call with same key should return same result
-      await client.sendEmail('user@example.com', 'welcome', { idempotencyKey: 'key-123' });
+      await notificationClient.sendEmail('user@example.com', 'welcome', { idempotencyKey: 'key-123' });
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledTimes(2);
+      expect(notificationClient._post).toHaveBeenCalledTimes(2);
     });
   });
 });

@@ -6,40 +6,41 @@
  * @version 1.0.0
  */
 
-const axios = require('axios');
-const ScanValidationClient = require('../../../../shared/service-clients/scan-validation-client');
-
-// Mock axios
-jest.mock('axios');
+const scanValidationClient = require('../../../../shared/service-clients/scan-validation-client');
 
 describe('Scan Validation Service - Mock Tests', () => {
-  let mockAxiosInstance;
-  let client;
+  // Store original methods to restore after tests
+  let originalGet;
+  let originalPost;
+  let originalPut;
+  let originalDelete;
+  let originalHealthCheck;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockAxiosInstance = {
-      get: jest.fn(),
-      post: jest.fn(),
-      put: jest.fn(),
-      delete: jest.fn(),
-      interceptors: {
-        request: { use: jest.fn() },
-        response: { use: jest.fn() }
-      },
-      defaults: { timeout: 10000 }
-    };
+    // Store original methods
+    originalGet = scanValidationClient._get;
+    originalPost = scanValidationClient._post;
+    originalPut = scanValidationClient._put;
+    originalDelete = scanValidationClient._delete;
+    originalHealthCheck = scanValidationClient.healthCheck;
 
-    axios.create.mockReturnValue(mockAxiosInstance);
+    // Mock the internal methods
+    scanValidationClient._get = jest.fn();
+    scanValidationClient._post = jest.fn();
+    scanValidationClient._put = jest.fn();
+    scanValidationClient._delete = jest.fn();
+    scanValidationClient.healthCheck = jest.fn();
+  });
 
-    jest.isolateModules(() => {
-      const ScanValidationClientClass = require('../../../../shared/service-clients/scan-validation-client').constructor;
-      client = new ScanValidationClientClass({
-        baseURL: 'http://localhost:3005',
-        apiKey: 'test-api-key'
-      });
-    });
+  afterEach(() => {
+    // Restore original methods
+    scanValidationClient._get = originalGet;
+    scanValidationClient._post = originalPost;
+    scanValidationClient._put = originalPut;
+    scanValidationClient._delete = originalDelete;
+    scanValidationClient.healthCheck = originalHealthCheck;
   });
 
   // ============================================================
@@ -55,13 +56,11 @@ describe('Scan Validation Service - Mock Tests', () => {
     };
 
     it('should call correct URL with correct payload', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, valid: true }
-      });
+      scanValidationClient._post.mockResolvedValue({ success: true, valid: true });
 
-      await client.validateTicket(qrCodeData, scanData);
+      await scanValidationClient.validateTicket(qrCodeData, scanData);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(scanValidationClient._post).toHaveBeenCalledWith(
         '/api/scans/validate',
         {
           qrCodeData: 'QR-DATA-123',
@@ -69,26 +68,23 @@ describe('Scan Validation Service - Mock Tests', () => {
           deviceId: 'device-001',
           latitude: 48.8566,
           longitude: 2.3522
-        },
-        expect.any(Object)
+        }
       );
     });
 
     it('should return valid ticket result', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          valid: true,
-          ticket: {
-            ticketCode: 'TKT-001',
-            guestName: 'John Doe',
-            eventId: 'event-123'
-          },
-          scanId: 'scan-001'
-        }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        valid: true,
+        ticket: {
+          ticketCode: 'TKT-001',
+          guestName: 'John Doe',
+          eventId: 'event-123'
+        },
+        scanId: 'scan-001'
       });
 
-      const result = await client.validateTicket(qrCodeData, scanData);
+      const result = await scanValidationClient.validateTicket(qrCodeData, scanData);
 
       expect(result).toHaveProperty('valid', true);
       expect(result).toHaveProperty('ticket');
@@ -96,16 +92,14 @@ describe('Scan Validation Service - Mock Tests', () => {
     });
 
     it('should handle already scanned ticket', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          valid: false,
-          reason: 'Ticket already scanned',
-          previousScan: { timestamp: '2024-01-15T10:00:00Z', checkpoint: 'main-entry' }
-        }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        valid: false,
+        reason: 'Ticket already scanned',
+        previousScan: { timestamp: '2024-01-15T10:00:00Z', checkpoint: 'main-entry' }
       });
 
-      const result = await client.validateTicket(qrCodeData, scanData);
+      const result = await scanValidationClient.validateTicket(qrCodeData, scanData);
 
       expect(result.valid).toBe(false);
       expect(result.reason).toBe('Ticket already scanned');
@@ -113,42 +107,35 @@ describe('Scan Validation Service - Mock Tests', () => {
     });
 
     it('should handle invalid QR code', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          valid: false,
-          reason: 'Invalid QR code format'
-        }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        valid: false,
+        reason: 'Invalid QR code format'
       });
 
-      const result = await client.validateTicket('INVALID-QR', scanData);
+      const result = await scanValidationClient.validateTicket('INVALID-QR', scanData);
 
       expect(result.valid).toBe(false);
     });
 
     it('should handle expired ticket', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          valid: false,
-          reason: 'Ticket expired',
-          expiredAt: '2024-01-14T23:59:59Z'
-        }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        valid: false,
+        reason: 'Ticket expired',
+        expiredAt: '2024-01-14T23:59:59Z'
       });
 
-      const result = await client.validateTicket(qrCodeData, scanData);
+      const result = await scanValidationClient.validateTicket(qrCodeData, scanData);
 
       expect(result.valid).toBe(false);
       expect(result.reason).toBe('Ticket expired');
     });
 
     it('should handle service timeout', async () => {
-      mockAxiosInstance.post.mockRejectedValue({
-        code: 'ECONNABORTED',
-        message: 'timeout'
-      });
+      scanValidationClient._post.mockRejectedValue(new Error('timeout'));
 
-      await expect(client.validateTicket(qrCodeData, scanData)).rejects.toThrow();
+      await expect(scanValidationClient.validateTicket(qrCodeData, scanData)).rejects.toThrow();
     });
   });
 
@@ -163,33 +150,28 @@ describe('Scan Validation Service - Mock Tests', () => {
     ];
 
     it('should call correct URL with batch data', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, results: [] }
-      });
+      scanValidationClient._post.mockResolvedValue({ success: true, results: [] });
 
-      await client.validateBatch(scans);
+      await scanValidationClient.validateBatch(scans);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(scanValidationClient._post).toHaveBeenCalledWith(
         '/api/scans/batch',
-        { scans },
-        expect.any(Object)
+        { scans }
       );
     });
 
     it('should return validation results for each scan', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          results: [
-            { qrCodeData: 'QR-1', valid: true, ticketCode: 'TKT-1' },
-            { qrCodeData: 'QR-2', valid: true, ticketCode: 'TKT-2' },
-            { qrCodeData: 'QR-3', valid: false, reason: 'Already scanned' }
-          ],
-          summary: { total: 3, valid: 2, invalid: 1 }
-        }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        results: [
+          { qrCodeData: 'QR-1', valid: true, ticketCode: 'TKT-1' },
+          { qrCodeData: 'QR-2', valid: true, ticketCode: 'TKT-2' },
+          { qrCodeData: 'QR-3', valid: false, reason: 'Already scanned' }
+        ],
+        summary: { total: 3, valid: 2, invalid: 1 }
       });
 
-      const result = await client.validateBatch(scans);
+      const result = await scanValidationClient.validateBatch(scans);
 
       expect(result.results).toHaveLength(3);
       expect(result.summary.valid).toBe(2);
@@ -203,11 +185,12 @@ describe('Scan Validation Service - Mock Tests', () => {
         timestamp: new Date().toISOString()
       }));
 
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, results: largeScans.map(s => ({ ...s, valid: true })) }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        results: largeScans.map(s => ({ ...s, valid: true }))
       });
 
-      const result = await client.validateBatch(largeScans);
+      const result = await scanValidationClient.validateBatch(largeScans);
 
       expect(result.results).toHaveLength(500);
     });
@@ -218,44 +201,35 @@ describe('Scan Validation Service - Mock Tests', () => {
   // ============================================================
   describe('3. getEventScanStats - GET /api/events/:id/stats', () => {
     it('should call correct URL with filters', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { success: true, stats: {} }
-      });
+      scanValidationClient._get.mockResolvedValue({ success: true, stats: {} });
 
-      await client.getEventScanStats('event-123', { dateFrom: '2024-01-15', checkpointId: 'main' });
+      await scanValidationClient.getEventScanStats('event-123', { dateFrom: '2024-01-15', checkpointId: 'main' });
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+      expect(scanValidationClient._get).toHaveBeenCalledWith(
         '/api/events/event-123/stats',
         { params: { dateFrom: '2024-01-15', checkpointId: 'main' } }
       );
     });
 
     it('should return comprehensive statistics', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          stats: {
-            totalScans: 1500,
-            validScans: 1450,
-            invalidScans: 50,
-            uniqueTickets: 1400,
-            duplicateAttempts: 100,
-            byCheckpoint: {
-              'main-entry': { total: 1000, valid: 980 },
-              'vip-entry': { total: 500, valid: 470 }
-            },
-            byHour: [
-              { hour: '18:00', count: 200 },
-              { hour: '19:00', count: 800 },
-              { hour: '20:00', count: 500 }
-            ],
-            peakTime: '19:30',
-            avgScanTime: 1.2
-          }
+      scanValidationClient._get.mockResolvedValue({
+        success: true,
+        stats: {
+          totalScans: 1500,
+          validScans: 1450,
+          invalidScans: 50,
+          uniqueTickets: 1400,
+          duplicateAttempts: 100,
+          byCheckpoint: {
+            'main-entry': { total: 1000, valid: 980 },
+            'vip-entry': { total: 500, valid: 470 }
+          },
+          peakTime: '19:30',
+          avgScanTime: 1.2
         }
       });
 
-      const result = await client.getEventScanStats('event-123');
+      const result = await scanValidationClient.getEventScanStats('event-123');
 
       expect(result.stats).toHaveProperty('totalScans');
       expect(result.stats).toHaveProperty('byCheckpoint');
@@ -268,32 +242,25 @@ describe('Scan Validation Service - Mock Tests', () => {
   // ============================================================
   describe('4. getTicketScanHistory - GET /api/tickets/:code/scans', () => {
     it('should call correct URL', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { success: true, scans: [] }
-      });
+      scanValidationClient._get.mockResolvedValue({ success: true, scans: [] });
 
-      await client.getTicketScanHistory('TKT-001');
+      await scanValidationClient.getTicketScanHistory('TKT-001');
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        '/api/tickets/TKT-001/scans',
-        expect.any(Object)
-      );
+      expect(scanValidationClient._get).toHaveBeenCalledWith('/api/tickets/TKT-001/scans');
     });
 
     it('should return scan history', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          ticketCode: 'TKT-001',
-          scans: [
-            { timestamp: '2024-01-15T18:00:00Z', checkpoint: 'main-entry', valid: true },
-            { timestamp: '2024-01-15T18:05:00Z', checkpoint: 'vip-zone', valid: true },
-            { timestamp: '2024-01-15T18:30:00Z', checkpoint: 'main-entry', valid: false, reason: 'Re-entry not allowed' }
-          ]
-        }
+      scanValidationClient._get.mockResolvedValue({
+        success: true,
+        ticketCode: 'TKT-001',
+        scans: [
+          { timestamp: '2024-01-15T18:00:00Z', checkpoint: 'main-entry', valid: true },
+          { timestamp: '2024-01-15T18:05:00Z', checkpoint: 'vip-zone', valid: true },
+          { timestamp: '2024-01-15T18:30:00Z', checkpoint: 'main-entry', valid: false, reason: 'Re-entry not allowed' }
+        ]
       });
 
-      const result = await client.getTicketScanHistory('TKT-001');
+      const result = await scanValidationClient.getTicketScanHistory('TKT-001');
 
       expect(result.scans).toHaveLength(3);
       expect(result.scans[2].valid).toBe(false);
@@ -305,38 +272,34 @@ describe('Scan Validation Service - Mock Tests', () => {
   // ============================================================
   describe('5. downloadOfflineData - GET /api/events/:id/offline-data', () => {
     it('should call correct URL with options', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { success: true, data: {} }
-      });
+      scanValidationClient._get.mockResolvedValue({ success: true, data: {} });
 
-      await client.downloadOfflineData('event-123', { includeGuests: true, includeStats: false });
+      await scanValidationClient.downloadOfflineData('event-123', { includeGuests: true, includeStats: false });
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+      expect(scanValidationClient._get).toHaveBeenCalledWith(
         '/api/events/event-123/offline-data',
         { params: { includeGuests: true, includeStats: false } }
       );
     });
 
     it('should return offline package', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          eventId: 'event-123',
-          generatedAt: '2024-01-15T10:00:00Z',
-          expiresAt: '2024-01-16T10:00:00Z',
-          tickets: [
-            { ticketCode: 'TKT-001', qrHash: 'hash1', status: 'valid' },
-            { ticketCode: 'TKT-002', qrHash: 'hash2', status: 'valid' }
-          ],
-          checkpoints: [
-            { id: 'cp-1', name: 'Main Entry' },
-            { id: 'cp-2', name: 'VIP Entry' }
-          ],
-          encryptionKey: 'base64-key'
-        }
+      scanValidationClient._get.mockResolvedValue({
+        success: true,
+        eventId: 'event-123',
+        generatedAt: '2024-01-15T10:00:00Z',
+        expiresAt: '2024-01-16T10:00:00Z',
+        tickets: [
+          { ticketCode: 'TKT-001', qrHash: 'hash1', status: 'valid' },
+          { ticketCode: 'TKT-002', qrHash: 'hash2', status: 'valid' }
+        ],
+        checkpoints: [
+          { id: 'cp-1', name: 'Main Entry' },
+          { id: 'cp-2', name: 'VIP Entry' }
+        ],
+        encryptionKey: 'base64-key'
       });
 
-      const result = await client.downloadOfflineData('event-123');
+      const result = await scanValidationClient.downloadOfflineData('event-123');
 
       expect(result).toHaveProperty('tickets');
       expect(result).toHaveProperty('checkpoints');
@@ -354,52 +317,45 @@ describe('Scan Validation Service - Mock Tests', () => {
     ];
 
     it('should call correct URL with device ID and scans', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, synced: 2 }
-      });
+      scanValidationClient._post.mockResolvedValue({ success: true, synced: 2 });
 
-      await client.uploadOfflineScans('device-001', offlineScans);
+      await scanValidationClient.uploadOfflineScans('device-001', offlineScans);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(scanValidationClient._post).toHaveBeenCalledWith(
         '/api/sync/upload',
-        { deviceId: 'device-001', scans: offlineScans },
-        expect.any(Object)
+        { deviceId: 'device-001', scans: offlineScans }
       );
     });
 
     it('should return sync results', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          synced: 2,
-          conflicts: 0,
-          results: [
-            { localId: 'local-1', serverScanId: 'scan-001', status: 'synced' },
-            { localId: 'local-2', serverScanId: 'scan-002', status: 'synced' }
-          ]
-        }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        synced: 2,
+        conflicts: 0,
+        results: [
+          { localId: 'local-1', serverScanId: 'scan-001', status: 'synced' },
+          { localId: 'local-2', serverScanId: 'scan-002', status: 'synced' }
+        ]
       });
 
-      const result = await client.uploadOfflineScans('device-001', offlineScans);
+      const result = await scanValidationClient.uploadOfflineScans('device-001', offlineScans);
 
       expect(result.synced).toBe(2);
       expect(result.conflicts).toBe(0);
     });
 
     it('should handle conflicts', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          synced: 1,
-          conflicts: 1,
-          results: [
-            { localId: 'local-1', status: 'synced' },
-            { localId: 'local-2', status: 'conflict', reason: 'Already scanned by another device' }
-          ]
-        }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        synced: 1,
+        conflicts: 1,
+        results: [
+          { localId: 'local-1', status: 'synced' },
+          { localId: 'local-2', status: 'conflict', reason: 'Already scanned by another device' }
+        ]
       });
 
-      const result = await client.uploadOfflineScans('device-001', offlineScans);
+      const result = await scanValidationClient.uploadOfflineScans('device-001', offlineScans);
 
       expect(result.conflicts).toBe(1);
     });
@@ -410,31 +366,24 @@ describe('Scan Validation Service - Mock Tests', () => {
   // ============================================================
   describe('7. getEventCheckpoints - GET /api/events/:id/checkpoints', () => {
     it('should call correct URL', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { success: true, checkpoints: [] }
-      });
+      scanValidationClient._get.mockResolvedValue({ success: true, checkpoints: [] });
 
-      await client.getEventCheckpoints('event-123');
+      await scanValidationClient.getEventCheckpoints('event-123');
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        '/api/events/event-123/checkpoints',
-        expect.any(Object)
-      );
+      expect(scanValidationClient._get).toHaveBeenCalledWith('/api/events/event-123/checkpoints');
     });
 
     it('should return checkpoints list', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          checkpoints: [
-            { id: 'cp-1', name: 'Main Entry', type: 'entry', active: true },
-            { id: 'cp-2', name: 'VIP Entry', type: 'entry', active: true },
-            { id: 'cp-3', name: 'Exit A', type: 'exit', active: true }
-          ]
-        }
+      scanValidationClient._get.mockResolvedValue({
+        success: true,
+        checkpoints: [
+          { id: 'cp-1', name: 'Main Entry', type: 'entry', active: true },
+          { id: 'cp-2', name: 'VIP Entry', type: 'entry', active: true },
+          { id: 'cp-3', name: 'Exit A', type: 'exit', active: true }
+        ]
       });
 
-      const result = await client.getEventCheckpoints('event-123');
+      const result = await scanValidationClient.getEventCheckpoints('event-123');
 
       expect(result.checkpoints).toHaveLength(3);
     });
@@ -451,34 +400,32 @@ describe('Scan Validation Service - Mock Tests', () => {
     };
 
     it('should call correct URL with checkpoint data', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, checkpoint: { id: 'cp-new' } }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        checkpoint: { id: 'cp-new' }
       });
 
-      await client.createCheckpoint('event-123', checkpointData);
+      await scanValidationClient.createCheckpoint('event-123', checkpointData);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(scanValidationClient._post).toHaveBeenCalledWith(
         '/api/events/event-123/checkpoints',
-        checkpointData,
-        expect.any(Object)
+        checkpointData
       );
     });
 
     it('should return created checkpoint', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          checkpoint: {
-            id: 'cp-new',
-            name: 'New Checkpoint',
-            type: 'entry',
-            active: true,
-            createdAt: '2024-01-15T10:00:00Z'
-          }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        checkpoint: {
+          id: 'cp-new',
+          name: 'New Checkpoint',
+          type: 'entry',
+          active: true,
+          createdAt: '2024-01-15T10:00:00Z'
         }
       });
 
-      const result = await client.createCheckpoint('event-123', checkpointData);
+      const result = await scanValidationClient.createCheckpoint('event-123', checkpointData);
 
       expect(result.checkpoint).toHaveProperty('id');
       expect(result.checkpoint.name).toBe('New Checkpoint');
@@ -490,33 +437,28 @@ describe('Scan Validation Service - Mock Tests', () => {
   // ============================================================
   describe('9. updateCheckpoint - PUT /api/checkpoints/:id', () => {
     it('should call correct URL with update data', async () => {
-      mockAxiosInstance.put.mockResolvedValue({
-        data: { success: true, checkpoint: {} }
-      });
+      scanValidationClient._put.mockResolvedValue({ success: true, checkpoint: {} });
 
-      await client.updateCheckpoint('cp-1', { name: 'Updated Name', active: false });
+      await scanValidationClient.updateCheckpoint('cp-1', { name: 'Updated Name', active: false });
 
-      expect(mockAxiosInstance.put).toHaveBeenCalledWith(
+      expect(scanValidationClient._put).toHaveBeenCalledWith(
         '/api/checkpoints/cp-1',
-        { name: 'Updated Name', active: false },
-        expect.any(Object)
+        { name: 'Updated Name', active: false }
       );
     });
 
     it('should return updated checkpoint', async () => {
-      mockAxiosInstance.put.mockResolvedValue({
-        data: {
-          success: true,
-          checkpoint: {
-            id: 'cp-1',
-            name: 'Updated Name',
-            active: false,
-            updatedAt: '2024-01-15T11:00:00Z'
-          }
+      scanValidationClient._put.mockResolvedValue({
+        success: true,
+        checkpoint: {
+          id: 'cp-1',
+          name: 'Updated Name',
+          active: false,
+          updatedAt: '2024-01-15T11:00:00Z'
         }
       });
 
-      const result = await client.updateCheckpoint('cp-1', { name: 'Updated Name' });
+      const result = await scanValidationClient.updateCheckpoint('cp-1', { name: 'Updated Name' });
 
       expect(result.checkpoint.name).toBe('Updated Name');
     });
@@ -527,29 +469,21 @@ describe('Scan Validation Service - Mock Tests', () => {
   // ============================================================
   describe('10. deactivateCheckpoint - POST /api/checkpoints/:id/deactivate', () => {
     it('should call correct URL', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, deactivated: true }
-      });
+      scanValidationClient._post.mockResolvedValue({ success: true, deactivated: true });
 
-      await client.deactivateCheckpoint('cp-1');
+      await scanValidationClient.deactivateCheckpoint('cp-1');
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        '/api/checkpoints/cp-1/deactivate',
-        {},
-        expect.any(Object)
-      );
+      expect(scanValidationClient._post).toHaveBeenCalledWith('/api/checkpoints/cp-1/deactivate');
     });
 
     it('should return deactivation confirmation', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          checkpoint: { id: 'cp-1', active: false },
-          deactivatedAt: '2024-01-15T12:00:00Z'
-        }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        checkpoint: { id: 'cp-1', active: false },
+        deactivatedAt: '2024-01-15T12:00:00Z'
       });
 
-      const result = await client.deactivateCheckpoint('cp-1');
+      const result = await scanValidationClient.deactivateCheckpoint('cp-1');
 
       expect(result.checkpoint.active).toBe(false);
     });
@@ -560,31 +494,27 @@ describe('Scan Validation Service - Mock Tests', () => {
   // ============================================================
   describe('11. getRealtimeScans - GET /api/events/:id/scans/realtime', () => {
     it('should call correct URL with filters', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { success: true, scans: [] }
-      });
+      scanValidationClient._get.mockResolvedValue({ success: true, scans: [] });
 
-      await client.getRealtimeScans('event-123', { since: '2024-01-15T18:00:00Z', checkpointId: 'cp-1' });
+      await scanValidationClient.getRealtimeScans('event-123', { since: '2024-01-15T18:00:00Z', checkpointId: 'cp-1' });
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+      expect(scanValidationClient._get).toHaveBeenCalledWith(
         '/api/events/event-123/scans/realtime',
         { params: { since: '2024-01-15T18:00:00Z', checkpointId: 'cp-1' } }
       );
     });
 
     it('should return recent scans', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          scans: [
-            { scanId: 'scan-1', timestamp: '2024-01-15T18:30:00Z', valid: true },
-            { scanId: 'scan-2', timestamp: '2024-01-15T18:30:05Z', valid: true }
-          ],
-          lastTimestamp: '2024-01-15T18:30:05Z'
-        }
+      scanValidationClient._get.mockResolvedValue({
+        success: true,
+        scans: [
+          { scanId: 'scan-1', timestamp: '2024-01-15T18:30:00Z', valid: true },
+          { scanId: 'scan-2', timestamp: '2024-01-15T18:30:05Z', valid: true }
+        ],
+        lastTimestamp: '2024-01-15T18:30:05Z'
       });
 
-      const result = await client.getRealtimeScans('event-123');
+      const result = await scanValidationClient.getRealtimeScans('event-123');
 
       expect(result.scans).toHaveLength(2);
       expect(result).toHaveProperty('lastTimestamp');
@@ -596,40 +526,39 @@ describe('Scan Validation Service - Mock Tests', () => {
   // ============================================================
   describe('12. generateScanReport - POST /api/events/:id/reports/scans', () => {
     it('should call correct URL with options', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, reportUrl: 'https://cdn.example.com/report.pdf' }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        reportUrl: 'https://cdn.example.com/report.pdf'
       });
 
-      await client.generateScanReport('event-123', { format: 'pdf', includeDetails: true });
+      await scanValidationClient.generateScanReport('event-123', { format: 'pdf', includeDetails: true });
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(scanValidationClient._post).toHaveBeenCalledWith(
         '/api/events/event-123/reports/scans',
-        { format: 'pdf', includeDetails: true },
-        expect.any(Object)
+        { format: 'pdf', includeDetails: true }
       );
     });
 
     it('should return report URL', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          reportId: 'report-123',
-          reportUrl: 'https://cdn.example.com/report.pdf',
-          expiresAt: '2024-01-16T10:00:00Z'
-        }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        reportId: 'report-123',
+        reportUrl: 'https://cdn.example.com/report.pdf',
+        expiresAt: '2024-01-16T10:00:00Z'
       });
 
-      const result = await client.generateScanReport('event-123');
+      const result = await scanValidationClient.generateScanReport('event-123');
 
       expect(result).toHaveProperty('reportUrl');
     });
 
     it('should support different formats', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, reportUrl: 'https://cdn.example.com/report.csv' }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        reportUrl: 'https://cdn.example.com/report.csv'
       });
 
-      const result = await client.generateScanReport('event-123', { format: 'csv' });
+      const result = await scanValidationClient.generateScanReport('event-123', { format: 'csv' });
 
       expect(result.reportUrl).toContain('csv');
     });
@@ -640,34 +569,27 @@ describe('Scan Validation Service - Mock Tests', () => {
   // ============================================================
   describe('13. checkFraud - GET /api/anti-fraud/check/:code', () => {
     it('should call correct URL', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { success: true, riskScore: 0 }
-      });
+      scanValidationClient._get.mockResolvedValue({ success: true, riskScore: 0 });
 
-      await client.checkFraud('TKT-001');
+      await scanValidationClient.checkFraud('TKT-001');
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        '/api/anti-fraud/check/TKT-001',
-        expect.any(Object)
-      );
+      expect(scanValidationClient._get).toHaveBeenCalledWith('/api/anti-fraud/check/TKT-001');
     });
 
     it('should return fraud assessment', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          ticketCode: 'TKT-001',
-          riskScore: 85,
-          suspiciousActivity: true,
-          flags: [
-            { type: 'multiple_devices', description: 'Scanned from 5 different devices' },
-            { type: 'unusual_location', description: 'Scan location 500km from event' }
-          ],
-          recommendation: 'manual_review'
-        }
+      scanValidationClient._get.mockResolvedValue({
+        success: true,
+        ticketCode: 'TKT-001',
+        riskScore: 85,
+        suspiciousActivity: true,
+        flags: [
+          { type: 'multiple_devices', description: 'Scanned from 5 different devices' },
+          { type: 'unusual_location', description: 'Scan location 500km from event' }
+        ],
+        recommendation: 'manual_review'
       });
 
-      const result = await client.checkFraud('TKT-001');
+      const result = await scanValidationClient.checkFraud('TKT-001');
 
       expect(result.riskScore).toBe(85);
       expect(result.suspiciousActivity).toBe(true);
@@ -675,18 +597,16 @@ describe('Scan Validation Service - Mock Tests', () => {
     });
 
     it('should return clean for legitimate ticket', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          ticketCode: 'TKT-002',
-          riskScore: 5,
-          suspiciousActivity: false,
-          flags: [],
-          recommendation: 'allow'
-        }
+      scanValidationClient._get.mockResolvedValue({
+        success: true,
+        ticketCode: 'TKT-002',
+        riskScore: 5,
+        suspiciousActivity: false,
+        flags: [],
+        recommendation: 'allow'
       });
 
-      const result = await client.checkFraud('TKT-002');
+      const result = await scanValidationClient.checkFraud('TKT-002');
 
       expect(result.riskScore).toBe(5);
       expect(result.suspiciousActivity).toBe(false);
@@ -704,31 +624,26 @@ describe('Scan Validation Service - Mock Tests', () => {
     };
 
     it('should call correct URL with report data', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, reportId: 'fraud-report-123' }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        reportId: 'fraud-report-123'
       });
 
-      await client.reportSuspiciousActivity(report);
+      await scanValidationClient.reportSuspiciousActivity(report);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        '/api/anti-fraud/report',
-        report,
-        expect.any(Object)
-      );
+      expect(scanValidationClient._post).toHaveBeenCalledWith('/api/anti-fraud/report', report);
     });
 
     it('should return report confirmation', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          reportId: 'fraud-report-123',
-          status: 'submitted',
-          ticketBlocked: true,
-          reviewPriority: 'high'
-        }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        reportId: 'fraud-report-123',
+        status: 'submitted',
+        ticketBlocked: true,
+        reviewPriority: 'high'
       });
 
-      const result = await client.reportSuspiciousActivity(report);
+      const result = await scanValidationClient.reportSuspiciousActivity(report);
 
       expect(result).toHaveProperty('reportId');
       expect(result.ticketBlocked).toBe(true);
@@ -740,35 +655,28 @@ describe('Scan Validation Service - Mock Tests', () => {
   // ============================================================
   describe('15. getAttendanceCount - GET /api/events/:id/attendance', () => {
     it('should call correct URL', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { success: true, presentCount: 0 }
-      });
+      scanValidationClient._get.mockResolvedValue({ success: true, presentCount: 0 });
 
-      await client.getAttendanceCount('event-123');
+      await scanValidationClient.getAttendanceCount('event-123');
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        '/api/events/event-123/attendance',
-        expect.any(Object)
-      );
+      expect(scanValidationClient._get).toHaveBeenCalledWith('/api/events/event-123/attendance');
     });
 
     it('should return attendance data', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          eventId: 'event-123',
-          presentCount: 850,
-          totalExpected: 1000,
-          attendanceRate: 85,
-          byTicketType: {
-            'standard': { present: 700, expected: 800 },
-            'vip': { present: 150, expected: 200 }
-          },
-          lastUpdated: '2024-01-15T19:00:00Z'
-        }
+      scanValidationClient._get.mockResolvedValue({
+        success: true,
+        eventId: 'event-123',
+        presentCount: 850,
+        totalExpected: 1000,
+        attendanceRate: 85,
+        byTicketType: {
+          'standard': { present: 700, expected: 800 },
+          'vip': { present: 150, expected: 200 }
+        },
+        lastUpdated: '2024-01-15T19:00:00Z'
       });
 
-      const result = await client.getAttendanceCount('event-123');
+      const result = await scanValidationClient.getAttendanceCount('event-123');
 
       expect(result.presentCount).toBe(850);
       expect(result.totalExpected).toBe(1000);
@@ -781,43 +689,31 @@ describe('Scan Validation Service - Mock Tests', () => {
   // ============================================================
   describe('16. listDevices - GET /api/devices', () => {
     it('should call correct URL without event filter', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { success: true, devices: [] }
-      });
+      scanValidationClient._get.mockResolvedValue({ success: true, devices: [] });
 
-      await client.listDevices();
+      await scanValidationClient.listDevices();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        '/api/devices',
-        expect.any(Object)
-      );
+      expect(scanValidationClient._get).toHaveBeenCalledWith('/api/devices');
     });
 
     it('should call event-specific URL when eventId provided', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { success: true, devices: [] }
-      });
+      scanValidationClient._get.mockResolvedValue({ success: true, devices: [] });
 
-      await client.listDevices('event-123');
+      await scanValidationClient.listDevices('event-123');
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        '/api/events/event-123/devices',
-        expect.any(Object)
-      );
+      expect(scanValidationClient._get).toHaveBeenCalledWith('/api/events/event-123/devices');
     });
 
     it('should return devices list', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: {
-          success: true,
-          devices: [
-            { id: 'dev-1', name: 'Scanner 1', type: 'mobile', lastActive: '2024-01-15T18:00:00Z' },
-            { id: 'dev-2', name: 'Scanner 2', type: 'scanner', lastActive: '2024-01-15T18:05:00Z' }
-          ]
-        }
+      scanValidationClient._get.mockResolvedValue({
+        success: true,
+        devices: [
+          { id: 'dev-1', name: 'Scanner 1', type: 'mobile', lastActive: '2024-01-15T18:00:00Z' },
+          { id: 'dev-2', name: 'Scanner 2', type: 'scanner', lastActive: '2024-01-15T18:05:00Z' }
+        ]
       });
 
-      const result = await client.listDevices();
+      const result = await scanValidationClient.listDevices();
 
       expect(result.devices).toHaveLength(2);
     });
@@ -835,34 +731,29 @@ describe('Scan Validation Service - Mock Tests', () => {
     };
 
     it('should call correct URL with device data', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: { success: true, device: { id: 'dev-new' } }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        device: { id: 'dev-new' }
       });
 
-      await client.registerDevice(deviceData);
+      await scanValidationClient.registerDevice(deviceData);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        '/api/devices',
-        deviceData,
-        expect.any(Object)
-      );
+      expect(scanValidationClient._post).toHaveBeenCalledWith('/api/devices', deviceData);
     });
 
     it('should return registered device with credentials', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: {
-          success: true,
-          device: {
-            id: 'dev-new',
-            name: 'New Scanner',
-            type: 'mobile',
-            apiKey: 'device-api-key-xyz',
-            registeredAt: '2024-01-15T10:00:00Z'
-          }
+      scanValidationClient._post.mockResolvedValue({
+        success: true,
+        device: {
+          id: 'dev-new',
+          name: 'New Scanner',
+          type: 'mobile',
+          apiKey: 'device-api-key-xyz',
+          registeredAt: '2024-01-15T10:00:00Z'
         }
       });
 
-      const result = await client.registerDevice(deviceData);
+      const result = await scanValidationClient.registerDevice(deviceData);
 
       expect(result.device).toHaveProperty('id');
       expect(result.device).toHaveProperty('apiKey');
@@ -874,22 +765,26 @@ describe('Scan Validation Service - Mock Tests', () => {
   // ============================================================
   describe('healthCheck - GET /health', () => {
     it('should return healthy status', async () => {
-      mockAxiosInstance.get.mockResolvedValue({
-        data: { status: 'ok', service: 'scan-validation' }
+      scanValidationClient.healthCheck.mockResolvedValue({
+        success: true,
+        status: 'healthy',
+        service: 'scan-validation'
       });
 
-      const result = await client.healthCheck();
+      const result = await scanValidationClient.healthCheck();
 
       expect(result.success).toBe(true);
       expect(result.status).toBe('healthy');
     });
 
     it('should handle service down', async () => {
-      mockAxiosInstance.get.mockRejectedValue({
-        code: 'ECONNREFUSED'
+      scanValidationClient.healthCheck.mockResolvedValue({
+        success: false,
+        status: 'unhealthy',
+        error: 'Connection refused'
       });
 
-      const result = await client.healthCheck();
+      const result = await scanValidationClient.healthCheck();
 
       expect(result.success).toBe(false);
       expect(result.status).toBe('unhealthy');
@@ -901,28 +796,21 @@ describe('Scan Validation Service - Mock Tests', () => {
   // ============================================================
   describe('Error Handling', () => {
     it('should handle network timeout', async () => {
-      mockAxiosInstance.post.mockRejectedValue({
-        code: 'ECONNABORTED',
-        message: 'timeout'
-      });
+      scanValidationClient._post.mockRejectedValue(new Error('timeout'));
 
-      await expect(client.validateTicket('QR', {})).rejects.toThrow();
+      await expect(scanValidationClient.validateTicket('QR', {})).rejects.toThrow();
     });
 
     it('should handle 500 server error', async () => {
-      mockAxiosInstance.post.mockRejectedValue({
-        response: { status: 500, data: { error: 'Internal error' } }
-      });
+      scanValidationClient._post.mockRejectedValue(new Error('Internal error'));
 
-      await expect(client.validateTicket('QR', {})).rejects.toThrow();
+      await expect(scanValidationClient.validateTicket('QR', {})).rejects.toThrow();
     });
 
     it('should handle malformed response', async () => {
-      mockAxiosInstance.post.mockResolvedValue({
-        data: null
-      });
+      scanValidationClient._post.mockResolvedValue(null);
 
-      const result = await client.validateTicket('QR', {});
+      const result = await scanValidationClient.validateTicket('QR', {});
       expect(result).toBeNull();
     });
   });

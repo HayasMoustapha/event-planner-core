@@ -6,23 +6,22 @@
  * Couverture: CRUD, requêtes SQL, gestion d'erreurs
  */
 
-const EventsRepository = require('../../../src/modules/events/events.repository');
-
-// Mock de la base de données
-jest.mock('../../../src/config/database', () => ({
+// Mock de la base de données AVANT l'import du repository
+jest.mock('../../../../src/config', () => ({
   database: {
     query: jest.fn()
   }
 }));
 
-const { database } = require('../../../src/config/database');
+const EventsRepository = require('../../../../src/modules/events/events.repository');
+const { database } = require('../../../../src/config');
 
 describe('EventsRepository', () => {
   let eventsRepository;
   
   beforeEach(() => {
     jest.clearAllMocks();
-    eventsRepository = new EventsRepository();
+    eventsRepository = EventsRepository;
   });
 
   // ========================================
@@ -84,7 +83,7 @@ describe('EventsRepository', () => {
       
       const error = new Error('duplicate key value violates unique constraint');
       error.code = '23505';
-      database.query.mockRejectedValue(error);
+      query.mockRejectedValue(error);
       
       // Act & Assert
       await expect(eventsRepository.create(eventData)).rejects.toThrow(
@@ -103,7 +102,7 @@ describe('EventsRepository', () => {
       
       const error = new Error('check constraint violation');
       error.code = '23514';
-      database.query.mockRejectedValue(error);
+      query.mockRejectedValue(error);
       
       // Act & Assert
       await expect(eventsRepository.create(eventData)).rejects.toThrow(

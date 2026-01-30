@@ -5,7 +5,11 @@ const app = require('../src/app');
 
 // Configuration de la base de données de test
 const testDb = new Pool({
-  connectionString: process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://test:test@localhost:5432/event_planner_test'
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432', 10),
+  database: process.env.DB_NAME || 'event_planner_core',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres'
 });
 
 // Fonction pour créer un token JWT mock
@@ -70,11 +74,15 @@ beforeAll(async () => {
 // Créer les tables de test persistantes
 async function setupTestDatabase() {
   const { Pool } = require('pg');
-  
+
   try {
     // Créer une connexion dédiée pour la configuration
     const setupDb = new Pool({
-      connectionString: process.env.TEST_DATABASE_URL || process.env.DATABASE_URL,
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+      database: process.env.DB_NAME || 'event_planner_core',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'postgres'
     });
     
     // Créer uniquement les tables nécessaires pour le core business
