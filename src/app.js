@@ -27,6 +27,7 @@ const guestsRoutes = require('./modules/guests/guests.routes');
 const ticketsRoutes = require('./modules/tickets/tickets.routes');
 const marketplaceRoutes = require('./modules/marketplace/marketplace.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
+const invitationsRoutes = require('./modules/invitations/invitations.routes');
 const healthRoutes = require('./health/health.routes');
 
 // Import du controller de validation (utilisé pour les endpoints utilisateur ET internes)
@@ -134,6 +135,7 @@ app.use('/api/guests', guestsRoutes);
 app.use('/api/tickets', ticketsRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/invitations', invitationsRoutes);
 
 // Routes de validation utilisateur (protégées)
 app.post('/api/scan-validation/validate', scanValidationController.validateScannedTicket);

@@ -25,6 +25,10 @@ global.checkServiceHealth = async (client) => {
     const result = await client.healthCheck();
     return result.success && result.status === 'healthy';
   } catch (error) {
+    // 429 means the service IS running, just rate limited - treat as available
+    if (error.response && error.response.status === 429) {
+      return true;
+    }
     return false;
   }
 };

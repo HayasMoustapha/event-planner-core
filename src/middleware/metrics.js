@@ -82,6 +82,18 @@ const metricsMiddleware = (req, res, next) => {
   activeConnectionsCount++;
   activeConnections.set(activeConnectionsCount);
 
+  // Flag pour éviter le double décrément
+  let connectionClosed = false;
+
+  // Fonction pour décrémenter le compteur une seule fois
+  const decrementConnection = () => {
+    if (!connectionClosed) {
+      connectionClosed = true;
+      activeConnectionsCount = Math.max(0, activeConnectionsCount - 1);
+      activeConnections.set(activeConnectionsCount);
+    }
+  };
+
   // Intercepter la fin de la requête
   res.on('finish', () => {
     const duration = (Date.now() - start) / 1000;
@@ -104,9 +116,11 @@ const metricsMiddleware = (req, res, next) => {
         .inc();
     }
 
-    activeConnectionsCount--;
-    activeConnections.set(activeConnectionsCount);
+    decrementConnection();
   });
+
+  // Intercepter la fermeture de connexion (client disconnect)
+  res.on('close', decrementConnection);
 
   next();
 };

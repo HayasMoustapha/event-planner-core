@@ -24,6 +24,9 @@ router.get('/designers', SecurityMiddleware.withPermissions('marketplace.designe
 
 router.get('/designers/:id', SecurityMiddleware.withPermissions('marketplace.designers.read'), marketplaceController.getDesignerById);
 
+// Inscription comme designer
+router.post('/designers/register', SecurityMiddleware.withPermissions('marketplace.designers.create'), marketplaceController.becomeDesigner);
+
 router.put('/designers/:id', SecurityMiddleware.withPermissions('marketplace.designers.update'), ValidationMiddleware.createMarketplaceValidator('updateDesigner'), marketplaceController.updateDesigner);
 
 // Template Management

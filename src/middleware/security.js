@@ -158,7 +158,7 @@ class SecurityMiddleware {
           error: error.message,
           identifier: this.extractIdentifier(req, config.identifier)
         });
-        next();
+        next(error);
       }
     };
   }
@@ -222,7 +222,7 @@ class SecurityMiddleware {
           error: error.message,
           ip: req.ip
         });
-        next();
+        next(error);
       }
     };
   }
