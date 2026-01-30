@@ -32,6 +32,9 @@ const healthRoutes = require('./health/health.routes');
 // Import du controller de validation (utilisé pour les endpoints utilisateur ET internes)
 const scanValidationController = require('./controllers/scan-validation-controller');
 
+// Import des routes webhook pour communication inter-services
+const paymentWebhookRoutes = require('./routes/payment-webhook.routes');
+
 // Create Express app
 const app = express();
 
@@ -113,10 +116,14 @@ app.use('/health', healthRoutes);
 app.get('/metrics', metricsEndpoint);
 
 // Routes internes (pour communication inter-services, SANS authentification utilisateur)
-// IMPORTANT : Ces routes sont utilisées par Scan-Validation Service
+// IMPORTANT : Ces routes sont utilisées par les autres services
 // Pas d'authentification utilisateur standard, mais validation par token de service
 app.post('/api/internal/validation/validate-ticket', scanValidationController.validateTicketInternal);
 app.get('/api/internal/tickets/:ticketId/status', scanValidationController.checkTicketStatus);
+
+// Routes webhooks pour communication inter-services
+// IMPORTANT : Ces routes reçoivent les notifications des autres services
+app.use('/api/internal', paymentWebhookRoutes);
 
 // Routes protégées (avec authentification)
 app.use('/api', RobustAuthMiddleware.authenticate());
