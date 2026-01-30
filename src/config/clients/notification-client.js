@@ -207,6 +207,60 @@ class NotificationClient {
   }
 
   /**
+   * Récupère l'historique des notifications
+   * @param {Object} filters - Filtres de recherche
+   * @returns {Promise<Object>} Historique des notifications
+   */
+  async getNotificationHistory(filters = {}) {
+    try {
+      const response = await this.client.get('/api/notifications/history', {
+        params: filters
+      });
+
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      logger.error('Failed to get notification history', {
+        filters,
+        error: error.message
+      });
+      return {
+        success: false,
+        error: error.response?.data || error.message
+      };
+    }
+  }
+
+  /**
+   * Récupère les statistiques des notifications
+   * @param {Object} filters - Filtres pour les stats
+   * @returns {Promise<Object>} Statistiques des notifications
+   */
+  async getNotificationStatistics(filters = {}) {
+    try {
+      const response = await this.client.get('/api/notifications/statistics', {
+        params: filters
+      });
+
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      logger.error('Failed to get notification statistics', {
+        filters,
+        error: error.message
+      });
+      return {
+        success: false,
+        error: error.response?.data || error.message
+      };
+    }
+  }
+
+  /**
    * Liste les templates disponibles
    * @returns {Promise<Object>} Liste des templates
    */
