@@ -59,4 +59,10 @@ router.get('/events/:event_id/tickets/generation', SecurityMiddleware.withPermis
   await getEventGenerationJobs(req, res, req.db);
 });
 
+
+// Initiation du job pour la creation d'un ticket
+router.post('/jobs', SecurityMiddleware.withPermissions('tickets.jobs.create'), async (req, res) => {
+  await createTicketGenerationJob(req, res, req.db);
+});
+
 module.exports = router;

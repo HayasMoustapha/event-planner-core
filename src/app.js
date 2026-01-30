@@ -29,6 +29,9 @@ const marketplaceRoutes = require('./modules/marketplace/marketplace.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 const healthRoutes = require('./health/health.routes');
 
+// Import routes internes (pour communication inter-services)
+const internalRoutes = require('./routes/internal/scan-validation-internal.routes');
+
 // Create Express app
 const app = express();
 
@@ -108,6 +111,11 @@ const RobustAuthMiddleware = require('../../shared/middlewares/robust-auth-middl
 // Routes publiques (sans authentification)
 app.use('/health', healthRoutes);
 app.get('/metrics', metricsEndpoint);
+
+// Routes internes (pour communication inter-services, authentification par service token)
+// IMPORTANT : Ces routes sont utilisées par Scan-Validation Service
+// Pas d'authentification utilisateur standard, mais validation par token de service
+app.use('/api/internal', internalRoutes);
 
 // Routes protégées (avec authentification)
 app.use('/api', RobustAuthMiddleware.authenticate());

@@ -1,20 +1,30 @@
 /**
- * Controller pour la validation de scan de billets
- * Gère les endpoints HTTP pour la validation en temps réel des billets scannés
+ * Controller pour la validation de scan de billets (ARCHITECTURE CORRIGÉE)
+ * 
+ * IMPORTANT : Ce controller gère la validation métier LOCALE pour éviter les appels circulaires
+ * 
+ * Architecture correcte :
+ * 1. Scan-Validation Service reçoit le QR code scan
+ * 2. Scan-Validation Service décode et valide cryptographiquement le QR
+ * 3. Scan-Validation Service appelle Event-Planner-Core pour validation métier
+ * 4. Event-Planner-Core effectue la validation métier LOCALE (pas d'appel retour)
+ * 5. Event-Planner-Core met à jour la base de données
+ * 6. Event-Planner-Core retourne le résultat à Scan-Validation Service
  * 
  * Principes :
  * - Validation des permissions utilisateur (scan_ticket)
- * - Communication synchrone avec scan-validation-service
+ * - Validation métier LOCALE (pas d'appel circulaire)
  * - Délai de réponse < 2s garanti
  * - Mise à jour immédiate du statut du ticket
  * - Logs structurés pour audit
+ * - Architecture sans deadlock ni boucle infinie
  */
 
-const axios = require('axios');
+// NOTE : La dépendance axios a été supprimée car nous n'avons plus d'appel externe
+// La validation est maintenant effectuée localement pour éviter les appels circulaires
 
-// Configuration du service de validation
-const SCAN_VALIDATION_SERVICE_URL = process.env.SCAN_VALIDATION_SERVICE_URL || 'http://localhost:3005';
-const SCAN_TIMEOUT = parseInt(process.env.SCAN_TIMEOUT_MS) || 2000; // 2 secondes max
+// Configuration locale (plus besoin de configuration externe)
+const VALIDATION_TIMEOUT = parseInt(process.env.VALIDATION_TIMEOUT_MS) || 2000; // 2 secondes max
 
 /**
  * Valide un billet scanné
@@ -102,10 +112,11 @@ async function validateScannedTicket(req, res, db) {
       }
     };
     
-    console.log(`[SCAN_VALIDATION] Envoi requête validation pour ticket ${ticket_code}`);
+    console.log(`[SCAN_VALIDATION] Validation locale pour ticket ${ticket_code}`);
     
-    // Appel synchrone au service de validation
-    const validationResponse = await callScanValidationService(validationPayload);
+    // CORRIGÉ : Validation locale au lieu d'appel circulaire au scan-validation-service
+    // L'architecture correcte évite les appels circulaires entre services
+    const validationResponse = await validateTicketLocally(validationPayload, db);
     
     // Si la validation est réussie, mettre à jour le ticket en base
     if (validationResponse.valid && !validationResponse.already_used) {
@@ -135,29 +146,41 @@ async function validateScannedTicket(req, res, db) {
     const processingTime = Date.now() - startTime;
     console.error('[SCAN_VALIDATION] Erreur validation scan:', error.message);
     
-    // Gestion des erreurs spécifiques
-    if (error.code === 'ECONNABORTED') {
-      return res.status(504).json({
+    // CORRIGÉ : Gestion des erreurs locales (plus d'erreurs réseau)
+    if (error.code === '23505') { // Violation de contrainte unique (ticket déjà utilisé)
+      return res.status(409).json({
         success: false,
-        error: 'Timeout du service de validation',
-        code: 'VALIDATION_TIMEOUT',
+        error: 'Ticket déjà utilisé par une autre validation',
+        code: 'TICKET_ALREADY_USED',
         processing_time_ms: processingTime
       });
     }
     
-    if (error.code === 'ECONNREFUSED') {
-      return res.status(503).json({
+    if (error.code === '23503') { // Violation de contrainte foreign key
+      return res.status(400).json({
         success: false,
-        error: 'Service de validation indisponible',
-        code: 'VALIDATION_SERVICE_UNAVAILABLE',
+        error: 'Référence de ticket invalide',
+        code: 'INVALID_TICKET_REFERENCE',
         processing_time_ms: processingTime
       });
     }
     
+    // Erreur de validation métier
+    if (error.code && error.code.startsWith('VALIDATION_')) {
+      return res.status(400).json({
+        success: false,
+        error: error.message,
+        code: error.code,
+        processing_time_ms: processingTime
+      });
+    }
+    
+    // Erreur interne
     res.status(500).json({
       success: false,
       error: 'Erreur interne lors de la validation du ticket',
       code: 'INTERNAL_VALIDATION_ERROR',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
       processing_time_ms: processingTime
     });
   }
@@ -196,44 +219,215 @@ async function checkScanPermission(user_id, event_id, db) {
 }
 
 /**
- * Appelle le service de validation de scan
- * @param {Object} payload - Données à valider
- * @returns {Promise<Object>} Résultat de la validation
+ * Effectue la validation locale du ticket (CORRIGÉ - PAS D'APPEL CIRCULAIRE)
+ * 
+ * IMPORTANT : Cette fonction remplace l'appel circulaire au scan-validation-service
+ * L'architecture correcte est :
+ * 1. Scan-Validation Service décode le QR et fait la validation cryptographique
+ * 2. Scan-Validation Service appelle Event-Planner-Core pour la validation métier
+ * 3. Event-Planner-Core effectue la validation métier LOCALEMENT (pas d'appel retour)
+ * 4. Event-Planner-Core met à jour la base de données
+ * 
+ * @param {Object} payload - Données du ticket à valider
+ * @param {Object} db - Instance de base de données
+ * @returns {Promise<Object>} Résultat de la validation locale
  */
-async function callScanValidationService(payload) {
+async function validateTicketLocally(payload, db) {
   try {
-    const response = await axios.post(
-      `${SCAN_VALIDATION_SERVICE_URL}/api/validate`,
-      payload,
-      {
-        timeout: SCAN_TIMEOUT,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Service-Name': 'event-planner-core',
-          'X-Request-ID': `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        }
-      }
-    );
+    const { ticket_data, operator_id, scan_time } = payload;
     
-    return response.data.data || response.data;
+    console.log(`[SCAN_VALIDATION] Validation locale du ticket ${ticket_data.ticket_id}`);
+    
+    // 1. Vérifier si le ticket est déjà validé
+    const ticketStatusQuery = `
+      SELECT is_validated, validated_at 
+      FROM tickets 
+      WHERE id = $1
+    `;
+    
+    const statusResult = await db.query(ticketStatusQuery, [ticket_data.ticket_id]);
+    
+    if (statusResult.rows.length === 0) {
+      return {
+        valid: false,
+        error: 'Ticket non trouvé',
+        code: 'TICKET_NOT_FOUND'
+      };
+    }
+    
+    const ticketStatus = statusResult.rows[0];
+    
+    // 2. Vérifier si le ticket est déjà utilisé
+    if (ticketStatus.is_validated) {
+      return {
+        valid: false,
+        already_used: true,
+        error: 'Ticket déjà utilisé',
+        code: 'TICKET_ALREADY_USED',
+        validated_at: ticketStatus.validated_at
+      };
+    }
+    
+    // 3. Validation métier (règles business)
+    const businessValidation = await validateBusinessRules(ticket_data, db);
+    
+    if (!businessValidation.valid) {
+      return {
+        valid: false,
+        error: businessValidation.error,
+        code: businessValidation.code,
+        details: businessValidation.details
+      };
+    }
+    
+    // 4. Mettre à jour le statut du ticket
+    await updateTicketValidation(ticket_data.ticket_id, operator_id, db);
+    
+    console.log(`[SCAN_VALIDATION] Ticket ${ticket_data.ticket_id} validé avec succès`);
+    
+    return {
+      valid: true,
+      already_used: false,
+      validated_at: new Date().toISOString(),
+      ticket_id: ticket_data.ticket_id,
+      operator_id: operator_id
+    };
     
   } catch (error) {
-    console.error('[SCAN_VALIDATION] Erreur appel service validation:', error.message);
+    console.error('[SCAN_VALIDATION] Erreur validation locale:', error.message);
     
-    if (error.code === 'ECONNABORTED') {
-      throw new Error('Timeout du service de validation');
+    // Gestion des erreurs spécifiques
+    if (error.code === '23505') { // Violation de contrainte unique
+      return {
+        valid: false,
+        already_used: true,
+        error: 'Ticket déjà utilisé (race condition)',
+        code: 'TICKET_ALREADY_USED'
+      };
     }
     
-    if (error.code === 'ECONNREFUSED') {
-      throw new Error('Service de validation indisponible');
+    return {
+      valid: false,
+      error: 'Erreur lors de la validation locale',
+      code: 'VALIDATION_ERROR',
+      details: error.message
+    };
+  }
+}
+
+/**
+ * Valide les règles métier pour un ticket
+ * @param {Object} ticketData - Données du ticket
+ * @param {Object} db - Instance de base de données
+ * @returns {Promise<Object>} Résultat de la validation métier
+ */
+async function validateBusinessRules(ticketData, db) {
+  try {
+    // 1. Vérifier que l'événement est actif
+    const eventQuery = `
+      SELECT status, event_date, max_attendees 
+      FROM events 
+      WHERE id = (SELECT event_id FROM event_guests WHERE id = $1)
+    `;
+    
+    const eventResult = await db.query(eventQuery, [ticketData.event_guest_id]);
+    
+    if (eventResult.rows.length === 0) {
+      return {
+        valid: false,
+        error: 'Événement non trouvé',
+        code: 'EVENT_NOT_FOUND'
+      };
     }
     
-    if (error.response) {
-      // Le service a répondu avec une erreur
-      throw new Error(`Service validation error: ${error.response.data.error || error.response.statusText}`);
+    const event = eventResult.rows[0];
+    
+    // 2. Vérifier que l'événement est actif
+    if (event.status !== 'active') {
+      return {
+        valid: false,
+        error: 'Événement non actif',
+        code: 'EVENT_NOT_ACTIVE'
+      };
     }
     
-    throw new Error('Erreur lors de l\'appel au service de validation');
+    // 3. Vérifier que l'événement n'est pas terminé
+    const eventDate = new Date(event.event_date);
+    const now = new Date();
+    
+    if (eventDate < now) {
+      return {
+        valid: false,
+        error: 'Événement terminé',
+        code: 'EVENT_ENDED'
+      };
+    }
+    
+    // 4. Vérifier la capacité maximale (si définie)
+    if (event.max_attendees) {
+      const capacityQuery = `
+        SELECT COUNT(*) as validated_count
+        FROM tickets t
+        JOIN event_guests eg ON t.event_guest_id = eg.id
+        WHERE eg.event_id = (SELECT event_id FROM event_guests WHERE id = $1)
+        AND t.is_validated = TRUE
+      `;
+      
+      const capacityResult = await db.query(capacityQuery, [ticketData.event_guest_id]);
+      const validatedCount = parseInt(capacityResult.rows[0].validated_count);
+      
+      if (validatedCount >= event.max_attendees) {
+        return {
+          valid: false,
+          error: 'Capacité maximale atteinte',
+          code: 'EVENT_FULL'
+        };
+      }
+    }
+    
+    // 5. Validation du format du QR code (si présent)
+    if (ticketData.qr_code_data) {
+      try {
+        const qrData = JSON.parse(ticketData.qr_code_data);
+        
+        // Vérifier la structure minimale du QR code
+        if (!qrData.id || !qrData.eventId || !qrData.timestamp) {
+          return {
+            valid: false,
+            error: 'Format du QR code invalide',
+            code: 'INVALID_QR_FORMAT'
+          };
+        }
+        
+        // Vérifier que l'ID du QR correspond à l'ID du ticket
+        if (qrData.id !== ticketData.ticket_id) {
+          return {
+            valid: false,
+            error: 'Incohérence QR code / ticket',
+            code: 'QR_TICKET_MISMATCH'
+          };
+        }
+        
+      } catch (parseError) {
+        return {
+          valid: false,
+          error: 'QR code corrompu',
+          code: 'CORRUPTED_QR_CODE'
+        };
+      }
+    }
+    
+    return {
+      valid: true
+    };
+    
+  } catch (error) {
+    console.error('[SCAN_VALIDATION] Erreur validation métier:', error.message);
+    return {
+      valid: false,
+      error: 'Erreur lors de la validation métier',
+      code: 'BUSINESS_VALIDATION_ERROR'
+    };
   }
 }
 
