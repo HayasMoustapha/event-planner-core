@@ -23,10 +23,29 @@ process.env.NOTIFICATION_SERVICE_API_KEY = process.env.NOTIFICATION_SERVICE_API_
 global.checkServiceHealth = async (client) => {
   try {
     const result = await client.healthCheck();
-    return result.success && result.status === 'healthy';
+
+    // Service is healthy
+    if (result.success && result.status === 'healthy') {
+      return true;
+    }
+
+    // 429 means the service IS running, just rate limited - treat as available
+    if (result.error && result.error.includes('429')) {
+      return true;
+    }
+
+    // Check if error message indicates rate limiting
+    if (result.error && (result.error.includes('Too many requests') || result.error.includes('rate limit'))) {
+      return true;
+    }
+
+    return false;
   } catch (error) {
     // 429 means the service IS running, just rate limited - treat as available
     if (error.response && error.response.status === 429) {
+      return true;
+    }
+    if (error.message && error.message.includes('429')) {
       return true;
     }
     return false;

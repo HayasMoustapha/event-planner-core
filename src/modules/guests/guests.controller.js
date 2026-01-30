@@ -1,4 +1,5 @@
 const guestsService = require('./guests.service');
+const GuestImportService = require('./guest-import.service');
 const { ResponseFormatter } = require('../../../../shared');
 
 class GuestsController {
@@ -241,6 +242,38 @@ class GuestsController {
       }
 
       res.json(ResponseFormatter.success('Event guest statistics retrieved', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async importGuests(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      const userId = req.user?.id;
+      
+      // Vérifier qu'un fichier a été uploadé
+      if (!req.file) {
+        return res.status(400).json(ResponseFormatter.error('No file uploaded', null, 'VALIDATION_ERROR'));
+      }
+
+      // Vérifier que l'ID de l'événement est valide
+      if (!eventId) {
+        return res.status(400).json(ResponseFormatter.error('Event ID is required', null, 'VALIDATION_ERROR'));
+      }
+
+      // Initialiser le service d'import
+      const guestImportService = new GuestImportService(req.db);
+
+      // Importer les invités depuis le fichier
+      const result = await guestImportService.importGuestsFromFile(eventId, req.file.path, userId);
+
+      if (!result.success) {
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'IMPORT_ERROR'));
+      }
+
+      // Retourner le résultat détaillé
+      res.json(ResponseFormatter.success('Guest import completed', result.data));
     } catch (error) {
       next(error);
     }

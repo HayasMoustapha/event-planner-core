@@ -3,6 +3,7 @@ const Joi = require('joi');
 const guestsController = require('./guests.controller');
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
 const guestsErrorHandler = require('./guests.errorHandler');
+const { uploadGuestsFile } = require('../../middleware/upload.middleware');
 
 const router = express.Router();
 
@@ -41,5 +42,12 @@ router.post('/events/:eventId/guests/:guestId/checkin', SecurityMiddleware.withP
 
 // Statistics - GET routes avec permission spécifique
 router.get('/events/:eventId/stats', SecurityMiddleware.withPermissions('guests.stats.read'), guestsController.getEventGuestStats);
+
+// Import guests from CSV/Excel file
+router.post('/events/:eventId/guests/import', 
+  SecurityMiddleware.withPermissions('guests.create'), 
+  uploadGuestsFile, 
+  guestsController.importGuests
+);
 
 module.exports = router;

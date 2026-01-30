@@ -11,6 +11,23 @@ const router = express.Router();
 // Import du controller
 const ticketWebhookController = require('../controllers/ticket-webhook.controller');
 
+// Middleware pour wrapper les controllers et injecter req.db
+function wrapController(controllerFn) {
+  return (req, res, next) => {
+    console.log('[TICKET_WEBHOOK_ROUTE] Entering:', req.method, req.originalUrl);
+    
+    // Appeler le controller avec req, res, next (req.db est déjà injecté par le middleware)
+    Promise.resolve(controllerFn(req, res, next))
+      .then(() => {
+        console.log('[TICKET_WEBHOOK_ROUTE] Exiting:', req.originalUrl);
+      })
+      .catch((error) => {
+        console.error('[TICKET_WEBHOOK_ROUTE] Error:', error.message);
+        next(error);
+      });
+  };
+}
+
 /**
  * POST /api/internal/ticket-generation-webhook
  * Reçoit un webhook du Ticket Generator Service
@@ -49,6 +66,6 @@ const ticketWebhookController = require('../controllers/ticket-webhook.controlle
  * - X-Timestamp: ISO string
  * - X-Webhook-Signature: HMAC-SHA256
  */
-router.post('/ticket-generation-webhook', ticketWebhookController.receiveTicketGenerationWebhook);
+router.post('/ticket-generation-webhook', wrapController(ticketWebhookController.receiveTicketGenerationWebhook));
 
 module.exports = router;

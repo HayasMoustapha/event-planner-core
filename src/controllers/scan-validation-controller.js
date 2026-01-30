@@ -23,8 +23,14 @@
 // NOTE : La dépendance axios a été supprimée car nous n'avons plus d'appel externe
 // La validation est maintenant effectuée localement pour éviter les appels circulaires
 
+// Import des utilitaires de timeout
+const { queryWithTimeout } = require('../utils/database-timeout');
+const { fetchWithTimeout, callWithRetry } = require('../utils/http-timeout');
+
 // Configuration locale (plus besoin de configuration externe)
 const VALIDATION_TIMEOUT = parseInt(process.env.VALIDATION_TIMEOUT_MS) || 2000; // 2 secondes max
+const DATABASE_TIMEOUT = parseInt(process.env.DATABASE_TIMEOUT_MS) || 5000; // 5s max par requête
+const HTTP_TIMEOUT = parseInt(process.env.HTTP_TIMEOUT_MS) || 3000; // 3s max par appel HTTP
 
 /**
  * Valide un billet scanné (endpoint utilisateur)
@@ -75,7 +81,7 @@ async function validateScannedTicket(req, res, db) {
       WHERE t.ticket_code = $1 AND eg.event_id = $2
     `;
     
-    const ticketResult = await db.query(ticketQuery, [ticket_code, event_id]);
+    const ticketResult = await queryWithTimeout(db, ticketQuery, [ticket_code, event_id], DATABASE_TIMEOUT);
     
     if (ticketResult.rows.length === 0) {
       return res.status(404).json({
@@ -746,7 +752,7 @@ async function sendConfirmationToScanValidationService(ticketId, scanContext) {
     
     console.log(`[SCAN_VALIDATION] Envoi confirmation à Scan-Validation Service pour ticket ${ticketId}`);
     
-    const response = await fetch(`${SCAN_VALIDATION_SERVICE_URL}/api/internal/scan-confirmation`, {
+    const response = await fetchWithTimeout(`${SCAN_VALIDATION_SERVICE_URL}/api/internal/scan-confirmation`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -755,7 +761,7 @@ async function sendConfirmationToScanValidationService(ticketId, scanContext) {
         'X-Timestamp': new Date().toISOString()
       },
       body: JSON.stringify(confirmationPayload)
-    });
+    }, HTTP_TIMEOUT);
     
     if (!response.ok) {
       throw new Error(`Scan-Validation Service responded with ${response.status}: ${response.statusText}`);

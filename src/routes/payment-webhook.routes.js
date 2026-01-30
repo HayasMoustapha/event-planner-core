@@ -11,6 +11,23 @@ const router = express.Router();
 // Import du controller
 const paymentWebhookController = require('../controllers/payment-webhook.controller');
 
+// Middleware pour wrapper les controllers et injecter req.db
+function wrapController(controllerFn) {
+  return (req, res, next) => {
+    console.log('[PAYMENT_WEBHOOK_ROUTE] Entering:', req.method, req.originalUrl);
+    
+    // Appeler le controller avec req, res, next (req.db est déjà injecté par le middleware)
+    Promise.resolve(controllerFn(req, res, next))
+      .then(() => {
+        console.log('[PAYMENT_WEBHOOK_ROUTE] Exiting:', req.originalUrl);
+      })
+      .catch((error) => {
+        console.error('[PAYMENT_WEBHOOK_ROUTE] Error:', error.message);
+        next(error);
+      });
+  };
+}
+
 /**
  * POST /api/internal/payment-webhook
  * Reçoit un webhook du Payment Service
@@ -41,6 +58,6 @@ const paymentWebhookController = require('../controllers/payment-webhook.control
  * - X-Timestamp: ISO string
  * - X-Webhook-Signature: HMAC-SHA256
  */
-router.post('/payment-webhook', paymentWebhookController.receivePaymentWebhook);
+router.post('/payment-webhook', wrapController(paymentWebhookController.receivePaymentWebhook));
 
 module.exports = router;

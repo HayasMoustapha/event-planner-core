@@ -37,6 +37,12 @@ const scanValidationController = require('./controllers/scan-validation-controll
 const paymentWebhookRoutes = require('./routes/payment-webhook.routes');
 const ticketWebhookRoutes = require('./routes/ticket-webhook.routes');
 
+// Middleware pour injecter la base de données dans les requêtes
+const databaseMiddleware = require('./middleware/database');
+
+// Middleware de garde pour détecter les routes sans réponse
+const responseGuard = require('./middleware/response-guard');
+
 // Create Express app
 const app = express();
 
@@ -117,14 +123,35 @@ const RobustAuthMiddleware = require('../../shared/middlewares/robust-auth-middl
 app.use('/health', healthRoutes);
 app.get('/metrics', metricsEndpoint);
 
+// Middleware pour wrapper les controllers et injecter req.db
+function wrapController(controllerFn) {
+  return (req, res, next) => {
+    console.log('[SCAN_VALIDATION_ROUTE] Entering:', req.method, req.originalUrl);
+    
+    // Appeler le controller avec req, res, next (req.db est déjà injecté par le middleware)
+    Promise.resolve(controllerFn(req, res, next))
+      .then(() => {
+        console.log('[SCAN_VALIDATION_ROUTE] Exiting:', req.originalUrl);
+      })
+      .catch((error) => {
+        console.error('[SCAN_VALIDATION_ROUTE] Error:', error.message);
+        next(error);
+      });
+  };
+}
+
 // Routes internes (pour communication inter-services, SANS authentification utilisateur)
 // IMPORTANT : Ces routes sont utilisées par les autres services
 // Pas d'authentification utilisateur standard, mais validation par token de service
-app.post('/api/internal/validation/validate-ticket', scanValidationController.validateTicketInternal);
-app.get('/api/internal/tickets/:ticketId/status', scanValidationController.checkTicketStatus);
+app.use('/api/internal', responseGuard);
+app.use('/api/internal', databaseMiddleware);
+app.post('/api/internal/validation/validate-ticket', wrapController(scanValidationController.validateTicketInternal));
+app.get('/api/internal/tickets/:ticketId/status', wrapController(scanValidationController.checkTicketStatus));
 
 // Routes webhooks pour communication inter-services
 // IMPORTANT : Ces routes reçoivent les notifications des autres services
+app.use('/api/internal', responseGuard);
+app.use('/api/internal', databaseMiddleware);
 app.use('/api/internal', paymentWebhookRoutes);
 app.use('/api/internal', ticketWebhookRoutes);
 
@@ -138,8 +165,16 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/invitations', invitationsRoutes);
 
 // Routes de validation utilisateur (protégées)
-app.post('/api/scan-validation/validate', scanValidationController.validateScannedTicket);
-app.get('/api/scan-validation/history/:eventId', scanValidationController.getScanHistory);
+app.use('/api/scan-validation', responseGuard);
+app.use('/api/scan-validation', databaseMiddleware);
+app.post('/api/scan-validation/validate', wrapController(scanValidationController.validateScannedTicket));
+app.get('/api/scan-validation/history/:eventId', wrapController(scanValidationController.getScanHistory));
+
+// Route de test pour l'import (sans authentification)
+const { uploadGuestsFile } = require('./middleware/upload.middleware');
+const guestsController = require('./modules/guests/guests.controller');
+app.use('/test-import', databaseMiddleware);
+app.post('/test-import/events/:eventId/guests/import', uploadGuestsFile, wrapController(guestsController.importGuests));
 
 // 404 handler
 app.use((req, res, next) => {
