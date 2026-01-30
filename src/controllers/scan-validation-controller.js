@@ -668,7 +668,7 @@ async function updateTicketValidation(ticket_id, operator_id, db) {
     
     await db.query(updateQuery, [ticket_id]);
     
-    // TODO: Enregistrer l'opération dans une table d'audit/scan_logs
+    // Enregistrer l'opération dans la table d'audit locale
     const auditQuery = `
       INSERT INTO scan_logs (ticket_id, operator_id, scan_time, created_at)
       VALUES ($1, $2, NOW(), NOW())
@@ -679,6 +679,95 @@ async function updateTicketValidation(ticket_id, operator_id, db) {
   } catch (error) {
     console.error('[SCAN_VALIDATION] Erreur mise à jour ticket:', error.message);
     throw new Error('Impossible de mettre à jour le ticket');
+  }
+}
+
+/**
+ * Met à jour le statut d'un ticket et envoie la confirmation à Scan-Validation Service
+ * @param {number} ticketId - ID du ticket
+ * @param {Object} scanContext - Contexte du scan
+ * @param {Object} db - Instance de base de données
+ */
+async function updateTicketStatus(ticketId, scanContext, db) {
+  try {
+    // 1. Mettre à jour le ticket
+    const updateTicketQuery = `
+      UPDATE tickets 
+      SET 
+        is_validated = TRUE,
+        validated_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $1
+    `;
+    
+    await db.query(updateTicketQuery, [ticketId]);
+    
+    
+    // 3. Envoyer la confirmation à Scan-Validation Service (ASYNC - non bloquant)
+    // IMPORTANT : Cette confirmation permet à Scan-Validation Service de mettre à jour ses propres tables
+    sendConfirmationToScanValidationService(ticketId, scanContext).catch(error => {
+      console.warn('[SCAN_VALIDATION] Erreur envoi confirmation à Scan-Validation Service:', error.message);
+      // L'erreur n'est pas bloquante car la validation principale a réussi
+    });
+    
+    console.log(`[SCAN_VALIDATION] Ticket ${ticketId} mis à jour avec succès`);
+    
+  } catch (error) {
+    console.error('[SCAN_VALIDATION] Erreur mise à jour ticket:', error.message);
+    throw new Error('Impossible de mettre à jour le ticket');
+  }
+}
+
+/**
+ * Envoie une confirmation de validation à Scan-Validation Service
+ * @param {number} ticketId - ID du ticket validé
+ * @param {Object} scanContext - Contexte du scan
+ */
+async function sendConfirmationToScanValidationService(ticketId, scanContext) {
+  try {
+    const SCAN_VALIDATION_SERVICE_URL = process.env.SCAN_VALIDATION_SERVICE_URL || 'http://localhost:3005';
+    
+    const confirmationPayload = {
+      ticketId: ticketId,
+      validationResult: {
+        success: true,
+        validated_at: new Date().toISOString(),
+        operator_id: scanContext?.operatorId,
+        location: scanContext?.location,
+        device_id: scanContext?.deviceId,
+        checkpoint_id: scanContext?.checkpointId
+      },
+      scanMetadata: {
+        validation_source: 'EVENT_PLANNER_CORE',
+        validation_type: 'BUSINESS_VALIDATION',
+        processing_time_ms: scanContext?.processingTime || null
+      }
+    };
+    
+    console.log(`[SCAN_VALIDATION] Envoi confirmation à Scan-Validation Service pour ticket ${ticketId}`);
+    
+    const response = await fetch(`${SCAN_VALIDATION_SERVICE_URL}/api/internal/scan-confirmation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Service-Name': 'event-planner-core',
+        'X-Request-ID': `confirm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        'X-Timestamp': new Date().toISOString()
+      },
+      body: JSON.stringify(confirmationPayload)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Scan-Validation Service responded with ${response.status}: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log(`[SCAN_VALIDATION] Confirmation enregistrée avec succès par Scan-Validation Service:`, result);
+    
+  } catch (error) {
+    console.error('[SCAN_VALIDATION] Erreur envoi confirmation à Scan-Validation Service:', error.message);
+    // On ne relance pas l'erreur pour ne pas bloquer le flow principal
+    throw error;
   }
 }
 
