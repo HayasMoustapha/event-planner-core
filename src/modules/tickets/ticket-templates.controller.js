@@ -162,27 +162,42 @@ class TicketTemplatesController {
 
   async validateTemplateForEvent(req, res) {
     try {
-      const { templateId } = req.params;
+      const { id } = req.params;
       const { eventId } = req.body;
-      
-      const result = await ticketTemplatesService.validateTemplateForEvent(parseInt(templateId), parseInt(eventId));
-      
-      if (!result.success) {
+
+      if (!id) {
         return res.status(400).json({
           success: false,
-          error: result.error
+          error: 'Template ID is required'
         });
       }
 
-      res.json({
-        success: true,
-        data: result.data
-      });
+      try {
+        const result = await ticketTemplatesService.validateTemplateForEvent(parseInt(id), parseInt(eventId || 0));
+
+        if (!result.success) {
+          return res.status(400).json({
+            success: false,
+            error: result.error || 'Failed to validate template'
+          });
+        }
+
+        res.status(200).json({
+          success: true,
+          data: result.data
+        });
+      } catch (serviceError) {
+        console.error('Service error in validateTemplateForEvent:', serviceError);
+        return res.status(400).json({
+          success: false,
+          error: 'Template validation service unavailable'
+        });
+      }
     } catch (error) {
-      console.error('Controller error:', error);
+      console.error('Controller error in validateTemplateForEvent:', error);
       res.status(500).json({
         success: false,
-        error: 'Internal server error'
+        error: 'Internal server error during template validation'
       });
     }
   }
@@ -216,26 +231,69 @@ class TicketTemplatesController {
     try {
       const { id } = req.params;
       const { name } = req.body;
-      
-      const result = await ticketTemplatesService.cloneTemplate(parseInt(id), name, req.user.id);
-      
-      if (!result.success) {
+
+      try {
+        const result = await ticketTemplatesService.cloneTemplate(parseInt(id), name, req.user?.id);
+
+        if (!result.success) {
+          return res.status(400).json({
+            success: false,
+            error: result.error || 'Failed to clone template'
+          });
+        }
+
+        res.status(201).json({
+          success: true,
+          data: result.data
+        });
+      } catch (serviceError) {
+        console.error('Service error in cloneTemplate:', serviceError);
         return res.status(400).json({
           success: false,
-          error: result.error
+          error: 'Template cloning service unavailable'
+        });
+      }
+    } catch (error) {
+      console.error('Controller error in cloneTemplate:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error during template cloning'
+      });
+    }
+  }
+
+  async getPreview(req, res) {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          error: 'Template ID is required'
         });
       }
 
-      res.status(201).json({
+      const result = await ticketTemplatesService.getTemplateById(parseInt(id));
+
+      if (!result.success) {
+        return res.status(404).json({
+          success: false,
+          error: result.error || 'Template not found'
+        });
+      }
+
+      res.json({
         success: true,
-        data: result.data,
-        message: result.message
+        data: {
+          template: result.data,
+          previewUrl: `/api/tickets/templates/${id}/preview-image`
+        }
       });
     } catch (error) {
-      console.error('Controller error:', error);
+      console.error('Controller error in getPreview:', error);
       res.status(500).json({
         success: false,
-        error: 'Internal server error'
+        error: 'Internal server error during preview generation'
       });
     }
   }

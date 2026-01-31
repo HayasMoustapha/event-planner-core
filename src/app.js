@@ -155,6 +155,13 @@ app.use('/api/internal', databaseMiddleware);
 app.use('/api/internal', paymentWebhookRoutes);
 app.use('/api/internal', ticketWebhookRoutes);
 
+// Routes webhooks publiques (pour tests et compatibilité)
+// Ces routes sont également accessibles via /api/internal pour inter-services
+app.use('/api', responseGuard);
+app.use('/api', databaseMiddleware);
+app.use('/api', paymentWebhookRoutes);
+app.use('/api', ticketWebhookRoutes);
+
 // Routes protégées (avec authentification)
 app.use('/api', RobustAuthMiddleware.authenticate());
 app.use('/api/events', eventsRoutes);

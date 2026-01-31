@@ -68,4 +68,7 @@ function wrapController(controllerFn) {
  */
 router.post('/ticket-generation-webhook', wrapController(ticketWebhookController.receiveTicketGenerationWebhook));
 
+// Alias route for backward compatibility with tests
+router.post('/ticket-webhook', wrapController(ticketWebhookController.receiveTicketGenerationWebhook));
+
 module.exports = router;

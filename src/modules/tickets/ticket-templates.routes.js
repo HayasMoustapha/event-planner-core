@@ -40,11 +40,17 @@ router.post('/:id/validate',
   ticketTemplatesController.validateTemplateForEvent
 );
 
-router.post('/:id/clone', 
+router.post('/:id/clone',
   SecurityMiddleware.withPermissions('tickets.templates.create'),
   ValidationMiddleware.validateParams({ id: Joi.number().integer().positive().required() }),
   ValidationMiddleware.createTicketTemplatesValidator('cloneTemplate'),
   ticketTemplatesController.cloneTemplate
+);
+
+router.get('/:id/preview',
+  SecurityMiddleware.withPermissions('tickets.templates.read'),
+  ValidationMiddleware.validateParams({ id: Joi.number().integer().positive().required() }),
+  ticketTemplatesController.getPreview
 );
 
 module.exports = router;

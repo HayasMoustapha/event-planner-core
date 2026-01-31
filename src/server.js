@@ -43,6 +43,10 @@ const marketplaceRoutes = require('./modules/marketplace/marketplace.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 const ticketGenerationRoutes = require('./routes/ticket-generation-routes');
 
+// Import des routes webhook pour communication inter-services
+const paymentWebhookRoutes = require('./routes/payment-webhook.routes');
+const ticketWebhookRoutes = require('./routes/ticket-webhook.routes');
+
 // Service de communication Redis Queue pour la communication asynchrone
 const eventQueueService = require('./core/queue/event-queue.service');
 
@@ -353,6 +357,27 @@ app.get('/api', (req, res) => {
   });
 });
 
+// API info endpoint
+app.get('/api/info', (req, res) => {
+  res.json({
+    name: 'Event Planner Core API',
+    version: '1.0.0',
+    description: 'API pour la gestion des événements, invités et tickets',
+    environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    documentation: '/api-docs',
+    endpoints: {
+      events: '/api/events',
+      guests: '/api/guests',
+      tickets: '/api/tickets',
+      marketplace: '/api/marketplace',
+      admin: '/api/admin'
+    },
+    health: '/health'
+  });
+});
+
 // API routes
 app.use('/api/events', eventsRoutes);
 app.use('/api/guests', guestsRoutes);
@@ -361,6 +386,12 @@ app.use('/api/invitations', invitationsRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/v1', ticketGenerationRoutes);
+
+// Routes webhook pour communication inter-services (sans authentification)
+app.use('/api/internal', paymentWebhookRoutes);
+app.use('/api/internal', ticketWebhookRoutes);
+app.use('/api', paymentWebhookRoutes);
+app.use('/api', ticketWebhookRoutes);
 
 // 404 handler
 app.use((req, res) => {
