@@ -53,8 +53,14 @@ class TicketsRepository {
     `;
     
     const values = [
-      ticket_code, qr_code_data, ticket_type_id, ticket_template_id,
-      event_guest_id, price, currency, created_by
+      ticket_code, 
+      qr_code_data || null, 
+      ticket_type_id, 
+      ticket_template_id || null, // Convertir undefined en NULL
+      event_guest_id, 
+      price, 
+      currency, 
+      created_by
     ];
     const result = await database.query(query, values);
     
@@ -71,6 +77,68 @@ class TicketsRepository {
     const result = await database.query(query, [id]);
     
     return result.rows[0] || null;
+  }
+
+  async findTicketTemplateById(id) {
+    const query = `
+      SELECT * FROM ticket_templates 
+      WHERE id = $1 AND deleted_at IS NULL
+    `;
+    const result = await database.query(query, [id]);
+    
+    return result.rows[0] || null;
+  }
+
+  async getJobsByEventId(eventId, options = {}) {
+    const { page = 1, limit = 10, status } = options;
+    const offset = (page - 1) * limit;
+
+    let whereConditions = ['event_id = $1'];
+    let queryParams = [eventId];
+
+    if (status) {
+      whereConditions.push(`status = $${queryParams.length + 1}`);
+      queryParams.push(status);
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    const query = `
+      SELECT 
+        id, status, details, created_at, updated_at, 
+        started_at, completed_at, error_message, created_by
+      FROM ticket_generation_jobs 
+      WHERE ${whereClause} AND deleted_at IS NULL
+      ORDER BY created_at DESC 
+      LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+    `;
+    
+    queryParams.push(limit, offset);
+    const result = await database.query(query, queryParams);
+
+    // Compter le total pour pagination
+    let countQuery = `
+      SELECT COUNT(*) as total 
+      FROM ticket_generation_jobs 
+      WHERE ${whereClause} AND deleted_at IS NULL
+    `;
+    const countParams = [eventId];
+    if (status) {
+      countParams.push(status);
+    }
+    
+    const countResult = await database.query(countQuery, countParams);
+    const total = parseInt(countResult.rows[0].total);
+
+    return {
+      jobs: result.rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   }
 
   async findTicketById(id) {

@@ -1,75 +1,53 @@
 /**
- * Routes pour la consultation des jobs de génération de billets
- * Définit les endpoints HTTP pour la LECTURE SEULE des jobs de génération
+ * Routes unifiées pour la génération de tickets
+ * Structure optimisée avec Redis Queue
  * 
  * Routes :
- * GET /api/v1/tickets/generation/:job_id - Statut d'un job (LECTURE SEULE)
- * GET /api/v1/events/:event_id/tickets/generation - Jobs d'un événement (LECTURE SEULE)
- * 
- * NOTE : La génération réelle des billets est gérée par ticket-generator-service
+ * POST /api/v1/tickets/generation-jobs - Créer un job de génération
+ * GET /api/v1/tickets/generation-jobs/:job_id - Statut d'un job
+ * GET /api/v1/events/:event_id/tickets/generation-jobs - Jobs d'un événement
  */
 
 const express = require('express');
 const router = express.Router();
+const { SecurityMiddleware } = require('../../../shared');
 const { 
-  SecurityMiddleware, 
-  ContextInjector, 
-  ValidationMiddleware,
-  ErrorHandlerFactory
-} = require('../../../shared');
-const { 
-  getTicketGenerationJobStatus, 
-  getEventGenerationJobs,
   createTicketGenerationJob,
-  createModernTicketGenerationJob
-} = require('../controllers/ticket-generation-controller');
+  getTicketGenerationJobStatus,
+  getEventGenerationJobs
+} = require('../controllers/unified-ticket-generation.controller');
 
 // Apply authentication to all routes
 router.use(SecurityMiddleware.authenticated());
 
-// Apply context injection for all routes
-router.use(ContextInjector.injectEventContext());
-
-// Apply error handler for all routes
-const ticketGenerationErrorHandler = ErrorHandlerFactory.createTicketGeneratorErrorHandler();
-router.use(ticketGenerationErrorHandler);
+/**
+ * @route POST /api/v1/tickets/generation-jobs
+ * @desc Créer un job de génération de tickets avec structure enrichie
+ * @access Private (organisateur de l'événement)
+ */
+router.post('/tickets/generation-jobs', 
+  SecurityMiddleware.withPermissions('tickets.jobs.create'), 
+  createTicketGenerationJob
+);
 
 /**
- * @route GET /api/v1/tickets/generation/:job_id
- * @desc Récupérer le statut d'un job de génération de billets (LECTURE SEULE)
+ * @route GET /api/v1/tickets/generation-jobs/:job_id
+ * @desc Récupérer le statut d'un job de génération
  * @access Private (organisateur de l'événement)
- * @param job_id - UUID du job
- * @note Les données proviennent de ticket-generator-service
  */
-router.get('/tickets/generation/:job_id', SecurityMiddleware.authenticated(), async (req, res) => {
-  await getTicketGenerationJobStatus(req, res, req.db);
-});
+router.get('/tickets/generation-jobs/:job_id', 
+  SecurityMiddleware.withPermissions('tickets.jobs.read'), 
+  getTicketGenerationJobStatus
+);
 
 /**
- * @route GET /api/v1/events/:event_id/tickets/generation
- * @desc Lister tous les jobs de génération pour un événement (LECTURE SEULE)
+ * @route GET /api/v1/events/:event_id/tickets/generation-jobs
+ * @desc Lister tous les jobs de génération pour un événement
  * @access Private (organisateur de l'événement)
- * @param event_id - ID de l'événement
- * @query {
- *   page: number (défaut: 1),
- *   limit: number (défaut: 10),
- *   status: string ('pending', 'processing', 'completed', 'failed')
- * }
- * @note Les données proviennent de ticket-generator-service
  */
-router.get('/events/:event_id/tickets/generation', SecurityMiddleware.withPermissions(['manage_events']), async (req, res) => {
-  await getEventGenerationJobs(req, res, req.db);
-});
-
-
-// Initiation du job pour la creation d'un ticket (structure moderne)
-router.post('/jobs', SecurityMiddleware.withPermissions('tickets.jobs.create'), async (req, res) => {
-  await createModernTicketGenerationJob(req, res, req.db);
-});
-
-// Route alternative pour l'ancienne structure (compatibilité)
-router.post('/jobs/legacy', SecurityMiddleware.withPermissions('tickets.jobs.create'), async (req, res) => {
-  await createTicketGenerationJob(req, res, req.db);
-});
+router.get('/events/:event_id/tickets/generation-jobs', 
+  SecurityMiddleware.withPermissions(['manage_events']), 
+  getEventGenerationJobs
+);
 
 module.exports = router;

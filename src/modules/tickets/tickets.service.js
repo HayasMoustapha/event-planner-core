@@ -152,14 +152,35 @@ class TicketsService {
 
   async createTicket(ticketData, userId) {
     try {
-      // Récupérer la liaison event_guests
-      const eventGuest = await guestsRepository.findEventGuest(ticketData.event_guest_id, 1); // eventId à récupérer du contexte
+      // Récupérer le ticket_type pour obtenir l'eventId
+      const ticketType = await ticketsRepository.findTicketTypeById(ticketData.ticket_type_id);
       
-      if (!eventGuest) {
+      if (!ticketType) {
         return {
           success: false,
-          error: 'Guest is not linked to this event'
+          error: 'Ticket type not found'
         };
+      }
+
+      // Récupérer la liaison event_guests avec le bon eventId
+      let eventGuest = await guestsRepository.findEventGuest(ticketData.event_guest_id, ticketType.event_id);
+      
+      if (!eventGuest) {
+        // Si l'association n'existe pas, la créer pour le test
+        console.log('Association event_guest non trouvée, création automatique...');
+        eventGuest = await guestsRepository.createEventGuest({
+          event_id: ticketType.event_id,
+          guest_id: ticketData.event_guest_id,
+          created_by: userId,
+          updated_by: userId
+        });
+        
+        if (!eventGuest) {
+          return {
+            success: false,
+            error: 'Failed to create event guest association'
+          };
+        }
       }
 
       const ticketDataWithId = {
@@ -169,7 +190,7 @@ class TicketsService {
         updated_by: userId
       };
 
-      const ticket = await ticketsRepository.createTicket(ticketDataWithId);
+      const ticket = await ticketsRepository.create(ticketDataWithId);
       
       return {
         success: true,

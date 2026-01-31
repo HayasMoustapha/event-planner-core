@@ -18,7 +18,10 @@ class GuestsRepository {
   }
 
   async findById(id) {
-    const query = 'SELECT * FROM guests WHERE id = $1 AND deleted_at IS NULL';
+    const query = `
+      SELECT * FROM guests 
+      WHERE id = $1 AND deleted_at IS NULL
+    `;
     const result = await database.query(query, [id]);
     
     return result.rows[0] || null;
@@ -309,23 +312,20 @@ class GuestsRepository {
     const {
       event_id,
       guest_id,
-      invitation_code,
-      status = 'pending',
+      status,
       created_by,
       updated_by
     } = eventGuestData;
 
     const query = `
-      INSERT INTO event_guests (event_id, guest_id, invitation_code, status, created_by, updated_by)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO event_guests (event_id, guest_id, created_by, updated_by)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
     `;
 
     const values = [
       event_id,
       guest_id,
-      invitation_code || uuidv4(),
-      status,
       created_by,
       updated_by || created_by
     ];
