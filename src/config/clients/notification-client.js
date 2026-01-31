@@ -64,7 +64,7 @@ class NotificationClient {
    */
   async sendEmail(to, template, data) {
     try {
-      const response = await this.client.post('/api/email/send', {
+      const response = await this.client.post('/api/notifications/email', {
         to,
         template,
         data
@@ -97,7 +97,7 @@ class NotificationClient {
    */
   async queueBulkEmail(recipients, template, data) {
     try {
-      const response = await this.client.post('/api/email/queue', {
+      const response = await this.client.post('/api/notifications/email/queue', {
         recipients,
         template,
         data
@@ -129,7 +129,7 @@ class NotificationClient {
    */
   async sendSMS(to, message) {
     try {
-      const response = await this.client.post('/api/sms/send', {
+      const response = await this.client.post('/api/notifications/sms', {
         to,
         message
       });
@@ -159,7 +159,7 @@ class NotificationClient {
    */
   async queueBulkSMS(recipients, message) {
     try {
-      const response = await this.client.post('/api/sms/queue', {
+      const response = await this.client.post('/api/notifications/sms/queue', {
         recipients,
         message
       });
