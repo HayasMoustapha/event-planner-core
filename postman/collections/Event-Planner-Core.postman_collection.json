@@ -867,6 +867,93 @@
 					"response": []
 				},
 				{
+					"name": "Quick Check-in",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Guest checked in successfully\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.data).to.have.property('checkedIn');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ticketCode\": \"{{testTicketCode}}\",\n  \"eventId\": \"{{testEventId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/guests/check-in",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"guests",
+								"check-in"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Check-in Guest by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Guest checked in successfully\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.data).to.have.property('checkedInAt');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/guests/events/{{testEventId}}/guests/{{testGuestId}}/checkin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"guests",
+								"events",
+								"{{testEventId}}",
+								"guests",
+								"{{testGuestId}}",
+								"checkin"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Get Event Guest Stats",
 					"event": [
 						{
@@ -907,6 +994,723 @@
 				}
 			],
 			"description": "Gestion complète des invités avec check-in et statistiques"
+		},
+		{
+			"name": "🎫 Tickets",
+			"item": [
+				{
+					"name": "📋 Ticket Types Management",
+					"item": [
+						{
+							"name": "Create Ticket Type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Ticket type created successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('id');",
+											"    pm.expect(jsonData.data).to.have.property('name');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"VIP Pass\",\n  \"description\": \"Accès VIP complet avec avantages exclusifs\",\n  \"type\": \"paid\",\n  \"price\": 99.99,\n  \"currency\": \"EUR\",\n  \"max_quantity\": 100,\n  \"sale_start_date\": \"2024-06-01T00:00:00Z\",\n  \"sale_end_date\": \"2024-06-30T23:59:59Z\",\n  \"is_active\": true,\n  \"event_id\": \"{{testEventId}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/tickets/types",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tickets",
+										"types"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Ticket Type By ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Ticket type retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('id');",
+											"    pm.expect(jsonData.data).to.have.property('name');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/tickets/types/{{testTicketId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tickets",
+										"types",
+										"{{testTicketId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Ticket Type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Ticket type updated successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('id');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"VIP Pass - Updated\",\n  \"description\": \"Accès VIP complet avec avantages exclusifs - Updated\",\n  \"price\": 149.99,\n  \"max_quantity\": 150,\n  \"is_active\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/tickets/types/{{testTicketId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tickets",
+										"types",
+										"{{testTicketId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Ticket Type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Ticket type deleted successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/tickets/types/{{testTicketId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tickets",
+										"types",
+										"{{testTicketId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Gestion des types de tickets (CRUD complet)"
+				},
+				{
+					"name": "🎫 Tickets Management",
+					"item": [
+						{
+							"name": "Create Ticket",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Ticket created successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('id');",
+											"    pm.expect(jsonData.data).to.have.property('ticket_code');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"event_guest_id\": \"{{testGuestId}}\",\n  \"ticket_type_id\": \"{{testTicketId}}\",\n  \"status\": \"active\",\n  \"purchase_date\": \"2024-06-15T10:00:00Z\",\n  \"price_paid\": 99.99,\n  \"currency\": \"EUR\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/tickets",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tickets"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Tickets",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Tickets retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.be.an('array');",
+											"    pm.expect(jsonData).to.have.property('pagination');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/tickets?page=1&limit=10&status=active",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tickets"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "status",
+											"value": "active"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Ticket By Code",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Ticket retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('ticket_code');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/tickets/code/{{testTicketCode}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tickets",
+										"code",
+										"{{testTicketCode}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Event Tickets",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Event tickets retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.be.an('array');",
+											"    pm.expect(jsonData).to.have.property('pagination');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/tickets/events/{{testEventId}}/tickets?page=1&limit=10&status=active",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tickets",
+										"events",
+										"{{testEventId}}",
+										"tickets"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "status",
+											"value": "active"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Gestion des tickets (CRUD et recherche)"
+				},
+				{
+					"name": "✅ Ticket Validation",
+					"item": [
+						{
+							"name": "Validate Ticket By ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Ticket validated successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('validated');",
+											"    pm.expect(jsonData.data).to.have.property('validated_at');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"validation_time\": \"2024-06-15T14:30:00Z\",\n  \"validator_id\": \"validator-001\",\n  \"validation_method\": \"manual\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/tickets/{{testTicketId}}/validate",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tickets",
+										"{{testTicketId}}",
+										"validate"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Validate Ticket By Code",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Ticket validated by code successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('validated');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"ticket_code\": \"{{testTicketCode}}\",\n  \"event_id\": \"{{testEventId}}\",\n  \"validation_time\": \"2024-06-15T14:30:00Z\",\n  \"validator_id\": \"validator-001\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/tickets/validate",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tickets",
+										"validate"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Validation des tickets (par ID ou par code)"
+				},
+				{
+					"name": "📊 Ticket Statistics",
+					"item": [
+						{
+							"name": "Get Event Ticket Stats",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Event ticket stats retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('stats');",
+											"    pm.expect(jsonData.data.stats).to.have.property('total_tickets');",
+											"    pm.expect(jsonData.data.stats).to.have.property('sold_tickets');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/tickets/events/{{testEventId}}/stats",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tickets",
+										"events",
+										"{{testEventId}}",
+										"stats"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Statistiques des tickets"
+				},
+				{
+					"name": "🔄 Ticket Generation Jobs",
+					"item": [
+						{
+							"name": "Create Modern Ticket Generation Job",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Modern ticket generation job created successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('job_id');",
+											"    pm.expect(jsonData.data).to.have.property('ticket_id');",
+											"    pm.expect(jsonData.data).to.have.property('status');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"ticketData\": {\n    \"id\": \"TICKET-{{testTicketId}}\",\n    \"eventId\": \"{{testEventId}}\",\n    \"userId\": \"1\",\n    \"type\": \"standard\",\n    \"attendeeName\": \"Jean Dupont\",\n    \"attendeeEmail\": \"jean.dupont@email.com\",\n    \"attendeePhone\": \"+33612345678\",\n    \"eventTitle\": \"Conférence Tech 2024\",\n    \"eventDate\": \"2024-06-15T10:00:00Z\",\n    \"location\": \"Paris, La Défense\"\n  },\n  \"options\": {\n    \"qrFormat\": \"base64\",\n    \"qrSize\": \"medium\",\n    \"pdfFormat\": true,\n    \"includeLogo\": false,\n    \"templateId\": \"default\",\n    \"customFields\": {\n      \"seat_number\": \"A15\",\n      \"gate\": \"Gate B\"\n    },\n    \"pdfOptions\": {\n      \"format\": \"A4\",\n      \"orientation\": \"portrait\",\n      \"includeWatermark\": false,\n      \"customTemplate\": false\n    }\n  }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/jobs",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"jobs"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Legacy Ticket Generation Job",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Legacy ticket generation job created successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('job_id');",
+											"    pm.expect(jsonData.data).to.have.property('tickets_count');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"event_id\": \"{{testEventId}}\",\n  \"tickets\": [\n    {\n      \"ticket_id\": \"TICKET-LEGACY-001\",\n      \"ticket_code\": \"TICKET-LEGACY-001-{{testEventId}}\",\n      \"template_path\": \"default\",\n      \"render_payload\": {\n        \"ticketData\": {\n          \"id\": \"TICKET-LEGACY-001\",\n          \"eventId\": \"{{testEventId}}\",\n          \"type\": \"standard\",\n          \"attendeeName\": \"Marie Martin\",\n          \"attendeeEmail\": \"marie.martin@email.com\"\n        },\n        \"options\": {\n          \"qrFormat\": \"base64\",\n          \"qrSize\": \"medium\",\n          \"pdfFormat\": true\n        }\n      }\n    }\n  ]\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/jobs/legacy",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"jobs",
+										"legacy"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Ticket Generation Job Status",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Job status retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('status');",
+											"    pm.expect(jsonData.data).to.have.property('progress');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/tickets/generation/{{testTicketId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tickets",
+										"generation",
+										"{{testTicketId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Event Generation Jobs",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Event generation jobs retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('jobs');",
+											"    pm.expect(jsonData.data).to.have.property('pagination');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/events/{{testEventId}}/tickets/generation?page=1&limit=10&status=pending",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"events",
+										"{{testEventId}}",
+										"tickets",
+										"generation"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "status",
+											"value": "pending"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Gestion des jobs de génération de tickets (moderne et legacy)"
+				}
+			],
+			"description": "Gestion complète des tickets : types, création, validation, statistiques et jobs de génération"
 		}
 	]
 }
