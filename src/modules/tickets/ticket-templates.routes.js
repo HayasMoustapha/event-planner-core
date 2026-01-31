@@ -36,20 +36,20 @@ router.delete('/:id',
 // Template Operations
 router.post('/:id/validate', 
   SecurityMiddleware.withPermissions('tickets.templates.validate'),
-  ValidationMiddleware.validateParams({ id: Joi.number().integer().positive().required() }),
+  ValidationMiddleware.validateParams(Joi.object({ id: Joi.number().integer().positive().required() })),
   ticketTemplatesController.validateTemplateForEvent
 );
 
 router.post('/:id/clone',
   SecurityMiddleware.withPermissions('tickets.templates.create'),
-  ValidationMiddleware.validateParams({ id: Joi.number().integer().positive().required() }),
-  ValidationMiddleware.createTicketTemplatesValidator('cloneTemplate'),
+  ValidationMiddleware.validateParams(Joi.object({ id: Joi.number().integer().positive().required() })),
+  ValidationMiddleware.validate(Joi.object({ name: Joi.string().min(1).max(255).optional() })),
   ticketTemplatesController.cloneTemplate
 );
 
 router.get('/:id/preview',
   SecurityMiddleware.withPermissions('tickets.templates.read'),
-  ValidationMiddleware.validateParams({ id: Joi.number().integer().positive().required() }),
+  ValidationMiddleware.validateParams(Joi.object({ id: Joi.number().integer().positive().required() })),
   ticketTemplatesController.getPreview
 );
 

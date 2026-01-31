@@ -60,7 +60,7 @@ class GuestsController {
       const result = await guestsService.getGuestById(id, userId);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
           return res.status(404).json(ResponseFormatter.notFound('Guest'));
         }
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
@@ -80,7 +80,7 @@ class GuestsController {
       const result = await guestsService.updateGuest(id, req.body, userId);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
           return res.status(404).json(ResponseFormatter.notFound('Guest'));
         }
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
@@ -100,7 +100,7 @@ class GuestsController {
       const result = await guestsService.deleteGuest(id, userId);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
           return res.status(404).json(ResponseFormatter.notFound('Guest'));
         }
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));

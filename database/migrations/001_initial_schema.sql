@@ -36,7 +36,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 
 -- Commentaires pour documentation
 COMMENT ON TABLE service_config IS 'Configuration du service core-service';
-COMMENT ON TABLE audit_logs IS 'Journal d'audit pour core-service';
+COMMENT ON TABLE audit_logs IS 'Journal d''audit pour core-service';
 
 -- Insertion de la configuration de base
 INSERT INTO service_config (key, value, description) VALUES 

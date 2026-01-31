@@ -19,7 +19,9 @@ const {
 } = require('../../../shared');
 const { 
   getTicketGenerationJobStatus, 
-  getEventGenerationJobs 
+  getEventGenerationJobs,
+  createTicketGenerationJob,
+  createModernTicketGenerationJob
 } = require('../controllers/ticket-generation-controller');
 
 // Apply authentication to all routes
@@ -60,8 +62,13 @@ router.get('/events/:event_id/tickets/generation', SecurityMiddleware.withPermis
 });
 
 
-// Initiation du job pour la creation d'un ticket
+// Initiation du job pour la creation d'un ticket (structure moderne)
 router.post('/jobs', SecurityMiddleware.withPermissions('tickets.jobs.create'), async (req, res) => {
+  await createModernTicketGenerationJob(req, res, req.db);
+});
+
+// Route alternative pour l'ancienne structure (compatibilité)
+router.post('/jobs/legacy', SecurityMiddleware.withPermissions('tickets.jobs.create'), async (req, res) => {
   await createTicketGenerationJob(req, res, req.db);
 });
 

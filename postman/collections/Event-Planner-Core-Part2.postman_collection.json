@@ -285,6 +285,52 @@
 					"response": []
 				},
 				{
+					"name": "Validate Ticket by Code",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Ticket validated successfully\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.data).to.have.property('valid');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ticketCode\": \"{{testTicketCode}}\",\n  \"eventId\": \"{{testEventId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tickets/validate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"validate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Validate Ticket By Code",
 					"event": [
 						{
@@ -885,6 +931,45 @@
 								"templates",
 								"{{testTemplateId}}",
 								"validate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Template Preview",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Template preview retrieved successfully\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.data).to.have.property('preview');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/templates/{{testTemplateId}}/preview",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"templates",
+								"{{testTemplateId}}",
+								"preview"
 							]
 						}
 					},

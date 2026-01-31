@@ -10,6 +10,8 @@
  */
 
 const { createTicketGenerationJobService, getTicketGenerationJobStatusService } = require('../queues/ticket-generation-service');
+const { createTicketGenerationJob: createTicketGeneratorJob } = require('../queues/ticket-generation-producer');
+const { createModernTicketJobSchema } = require('../validators/ticket-generation.validator');
 
 /**
  * Crée un nouveau job de génération de billets
@@ -265,8 +267,114 @@ async function getEventGenerationJobs(req, res, db) {
   }
 }
 
+/**
+ * Crée un job de génération de billets avec la structure moderne
+ * Accepte la structure ticketData/options et la convertit pour ticket-generator
+ * @param {Object} req - Requête Express
+ * @param {Object} res - Réponse Express
+ * @param {Object} db - Instance de base de données
+ */
+async function createModernTicketGenerationJob(req, res, db) {
+  try {
+    // Validation des données d'entrée avec Joi
+    const { error, value } = createModernTicketJobSchema.validate(req.body);
+    
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: 'Données invalides',
+        details: error.details.map(detail => ({
+          field: detail.path.join('.'),
+          message: detail.message
+        })),
+        code: 'VALIDATION_ERROR'
+      });
+    }
+    
+    const { ticketData, options } = value;
+    const user_id = req.user.id; // ID de l'utilisateur authentifié
+    
+    // Conversion vers la structure attendue par ticket-generator-service
+    const convertedTicketData = {
+      ticket_id: ticketData.id,
+      ticket_code: `${ticketData.id}-${ticketData.eventId}`, // Générer un code unique
+      template_path: options?.templateId || 'default', // Template par défaut ou spécifié
+      render_payload: {
+        ticketData: {
+          id: ticketData.id,
+          eventId: ticketData.eventId,
+          userId: ticketData.userId,
+          type: ticketData.type || 'standard',
+          attendeeName: ticketData.attendeeName,
+          attendeeEmail: ticketData.attendeeEmail,
+          attendeePhone: ticketData.attendeePhone || null,
+          eventTitle: ticketData.eventTitle || 'Événement',
+          eventDate: ticketData.eventDate || new Date().toISOString(),
+          location: ticketData.location || 'Non spécifié'
+        },
+        options: {
+          qrFormat: options?.qrFormat || 'base64',
+          qrSize: options?.qrSize || 'medium',
+          pdfFormat: options?.pdfFormat !== false,
+          includeLogo: options?.includeLogo || false,
+          templateId: options?.templateId,
+          customFields: options?.customFields,
+          pdfOptions: options?.pdfOptions
+        }
+      }
+    };
+    
+    // Création du job avec la structure convertie
+    const jobData = {
+      event_id: ticketData.eventId,
+      tickets: [convertedTicketData], // Tableau avec un seul ticket
+      created_by: user_id
+    };
+    
+    // Utiliser le service direct pour communiquer avec ticket-generator
+    const job = await createTicketGeneratorJob(jobData);
+    
+    // Créer aussi l'entrée en base pour le suivi
+    const dbJob = await createTicketGenerationJobService(jobData, db);
+    
+    res.status(201).json({
+      success: true,
+      data: {
+        job_id: job.job_id,
+        generation_job_id: job.generation_job_id,
+        db_job_id: dbJob.job_uid,
+        event_id: ticketData.eventId,
+        ticket_id: ticketData.id,
+        status: 'pending',
+        created_at: job.created_at,
+        estimated_completion: new Date(Date.now() + 30000).toISOString() // ~30s estimés
+      },
+      message: 'Job de génération de billet créé avec succès'
+    });
+    
+  } catch (error) {
+    console.error('[CONTROLLER] Erreur création job génération moderne:', error.message);
+    
+    // Gestion des erreurs spécifiques
+    if (error.message.includes('Permissions insuffisantes')) {
+      return res.status(403).json({
+        success: false,
+        error: 'Permissions insuffisantes pour générer des billets pour cet événement',
+        code: 'INSUFFICIENT_PERMISSIONS'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Erreur interne lors de la création du job de génération',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+}
+
 module.exports = {
   createTicketGenerationJob,
+  createModernTicketGenerationJob,
   getTicketGenerationJobStatus,
   getEventGenerationJobs
 };

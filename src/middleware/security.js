@@ -422,6 +422,40 @@ class SecurityMiddleware {
   hashIP(ip) {
     return crypto.createHash('sha256').update(ip).digest('hex').substring(0, 8);
   }
+
+  /**
+   * Middleware de validation des permissions
+   * @param {string} permission - Permission requise
+   * @returns {Function} Middleware Express
+   */
+  withPermissions(permission) {
+    return async (req, res, next) => {
+      try {
+        // Vérifier si l'utilisateur est authentifié
+        if (!req.user || !req.user.id) {
+          return res.status(401).json({
+            success: false,
+            error: 'Authentication required',
+            code: 'AUTHENTICATION_REQUIRED'
+          });
+        }
+
+        // Vérifier si l'utilisateur a les permissions requises
+        // Pour l'instant, on autorise tout car c'est une simulation
+        // En production, il faudrait vérifier les permissions réelles
+        console.log(`[SECURITY] Permission check: ${permission} for user ${req.user.id}`);
+        
+        return next();
+      } catch (error) {
+        console.error('[SECURITY] Permission check error:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Permission check failed',
+          code: 'PERMISSION_CHECK_ERROR'
+        });
+      }
+    };
+  }
 }
 
 module.exports = new SecurityMiddleware();

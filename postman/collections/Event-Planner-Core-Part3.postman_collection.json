@@ -97,6 +97,53 @@
 							"response": []
 						},
 						{
+							"name": "Get Designers",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Designers list retrieved successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('designers');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/designers?page=1&limit=10",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"designers"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Get Designer By ID",
 							"event": [
 								{
@@ -182,6 +229,54 @@
 						},
 						{
 							"name": "Verify Designer",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Designer verified successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('verified');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"verified\": true,\n  \"verificationNotes\": \"Designer verified by admin\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/designers/{{testDesignerId}}/verify",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"designers",
+										"{{testDesignerId}}",
+										"verify"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Reject Template",
 							"event": [
 								{
 									"listen": "test",
@@ -442,6 +537,54 @@
 										"marketplace",
 										"templates",
 										"{{testTemplateId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Reject Template",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Template rejected successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('rejected');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"rejectionReason\": \"Template does not meet quality standards\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/marketplace/templates/{{testTemplateId}}/reject",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"marketplace",
+										"templates",
+										"{{testTemplateId}}",
+										"reject"
 									]
 								}
 							},
@@ -922,10 +1065,6 @@
 					"name": "📝 Logs",
 					"item": [
 						{
-							"name": "Get System Logs",
-							"event": [
-								{
-									"listen": "test",
 									"script": {
 										"type": "text/javascript",
 										"exec": [
@@ -1108,7 +1247,59 @@
 					"description": "Gestion des utilisateurs (via Auth Service)"
 				},
 				{
-					"name": "📅 Events Management",
+					"name": "� Moderation",
+					"item": [
+						{
+							"name": "Moderate Content",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Content moderated successfully\", function () {",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.expect(jsonData.data).to.have.property('moderated');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"contentType\": \"template\",\n  \"contentId\": \"{{testTemplateId}}\",\n  \"action\": \"approve\",\n  \"reason\": \"Template meets all quality standards\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/admin/moderate",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin",
+										"moderate"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Modération de contenu"
+				},
+				{
+					"name": "�📅 Events Management",
 					"item": [
 						{
 							"name": "Get Events",

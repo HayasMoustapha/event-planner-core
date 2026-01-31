@@ -40,7 +40,7 @@ class EventsController {
       const result = await eventsService.getEventById(eventId, req.user.id);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
           return res.status(404).json(ResponseFormatter.notFound('Event'));
         }
         if (result.error && result.error.includes('accès')) {
@@ -88,7 +88,7 @@ class EventsController {
       const result = await eventsService.updateEvent(eventId, req.body, req.user.id);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
           return res.status(404).json(ResponseFormatter.notFound('Event'));
         }
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
@@ -112,7 +112,7 @@ class EventsController {
       const result = await eventsService.deleteEvent(eventId, req.user.id);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
           return res.status(404).json(ResponseFormatter.notFound('Event'));
         }
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
@@ -136,7 +136,7 @@ class EventsController {
       const result = await eventsService.publishEvent(eventId, req.user.id);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
           return res.status(404).json(ResponseFormatter.notFound('Event'));
         }
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
@@ -160,7 +160,7 @@ class EventsController {
       const result = await eventsService.archiveEvent(eventId, req.user.id);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
           return res.status(404).json(ResponseFormatter.notFound('Event'));
         }
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
@@ -184,7 +184,7 @@ class EventsController {
       const result = await eventsService.getEventStats(eventId, req.user.id);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
           return res.status(404).json(ResponseFormatter.notFound('Event'));
         }
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
@@ -209,7 +209,7 @@ class EventsController {
       const result = await eventsService.duplicateEvent(eventId, { title, event_date }, req.user.id);
       
       if (!result.success) {
-        if (result.error && result.error.includes('not found')) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
           return res.status(404).json(ResponseFormatter.notFound('Event'));
         }
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));

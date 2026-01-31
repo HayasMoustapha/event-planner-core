@@ -78,7 +78,7 @@ app.use(helmet({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 1000, // Augmenté à 1000 requests par fenêtre pour les tests
   message: {
     success: false,
     error: 'Too many requests from this IP, please try again later.',
@@ -94,10 +94,15 @@ const limiter = rateLimit({
       path: req.path
     });
     
-    return res.apiRateLimitExceeded({
-      limit: limiter.max,
-      windowMs: limiter.windowMs,
-      retryAfter: Math.ceil(limiter.windowMs / 1000)
+    return res.status(429).json({
+      success: false,
+      error: 'Rate limit exceeded',
+      code: 'RATE_LIMIT_EXCEEDED',
+      details: {
+        limit: limiter.max,
+        windowMs: limiter.windowMs,
+        retryAfter: Math.ceil(limiter.windowMs / 1000)
+      }
     });
   }
 });

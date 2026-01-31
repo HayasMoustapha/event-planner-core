@@ -323,7 +323,22 @@ const schemas = {
   })
 };
 
+// Helper function pour créer des validateurs de templates
+const createTicketTemplatesValidator = (validatorName) => {
+  const validators = {
+    validateTemplate: Joi.object({
+      eventId: Joi.number().integer().positive().optional()
+    }),
+    cloneTemplate: Joi.object({
+      name: Joi.string().min(1).max(255).optional()
+    })
+  };
+  
+  return validators[validatorName] || Joi.object({});
+};
+
 module.exports = {
   validate,
-  schemas
+  schemas,
+  createTicketTemplatesValidator
 };
