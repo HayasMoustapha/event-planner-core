@@ -29,6 +29,7 @@ const marketplaceRoutes = require('./modules/marketplace/marketplace.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 const invitationsRoutes = require('./modules/invitations/invitations.routes');
 const healthRoutes = require('./health/health.routes');
+const ticketGenerationRoutes = require('./routes/ticket-generation-routes');
 
 // Import du controller de validation (utilisé pour les endpoints utilisateur ET internes)
 const scanValidationController = require('./controllers/scan-validation-controller');
@@ -167,6 +168,7 @@ app.use('/api', RobustAuthMiddleware.authenticate());
 app.use('/api/events', eventsRoutes);
 app.use('/api/guests', guestsRoutes);
 app.use('/api/tickets', ticketsRoutes);
+app.use('/api/tickets/generation', ticketGenerationRoutes); // Ajout des routes de génération
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/invitations', invitationsRoutes);
