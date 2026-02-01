@@ -21,11 +21,11 @@ class AdminRepository {
         -- Tickets Stats
         (SELECT COUNT(*) FROM tickets) as total_tickets,
         (SELECT COUNT(*) FROM tickets WHERE is_validated = true) as validated_tickets,
-        COALESCE((SELECT SUM(t.price) FROM tickets t INNER JOIN ticket_types tt ON t.ticket_type_id = tt.id WHERE tt.type = 'paid'), 0) as total_revenue,
+        COALESCE((SELECT SUM(t.price) FROM tickets t WHERE t.price IS NOT NULL), 0) as total_revenue,
         
         -- Marketplace Stats
         (SELECT COUNT(*) FROM designers) as total_designers,
-        (SELECT COUNT(*) FROM designers WHERE is_verified = true) as verified_designers,
+        (SELECT COUNT(*) FROM designers WHERE verified_at IS NOT NULL) as verified_designers,
         (SELECT COUNT(*) FROM templates WHERE status = 'approved') as approved_templates,
         (SELECT COUNT(*) FROM templates WHERE status = 'pending_review') as pending_templates,
         (SELECT COUNT(*) FROM purchases) as total_purchases,
@@ -238,7 +238,7 @@ class AdminRepository {
         
         // Récupérer le profil designer si existant
         const designerQuery = `
-          SELECT id as designer_id, brand_name, is_verified
+          SELECT id as designer_id, brand_name, verified_at
           FROM designers 
           WHERE user_id = $1 AND deleted_at IS NULL
         `;
@@ -431,7 +431,7 @@ class AdminRepository {
     const query = `
       SELECT d.*
       FROM designers d
-      WHERE d.is_verified = false AND d.deleted_at IS NULL
+      WHERE d.verified_at IS NULL AND d.deleted_at IS NULL
       ORDER BY d.created_at ASC
       LIMIT $1 OFFSET $2
     `;
@@ -439,8 +439,8 @@ class AdminRepository {
     const result = await database.query(query, [limit, offset]);
     
     // Get total count
-    const countQuery = 'SELECT COUNT(*) as total FROM designers WHERE is_verified = $1 AND deleted_at IS NULL';
-    const countResult = await database.query(countQuery, [false]);
+    const countQuery = 'SELECT COUNT(*) as total FROM designers WHERE verified_at IS NULL AND deleted_at IS NULL';
+    const countResult = await database.query(countQuery);
     const total = parseInt(countResult.rows[0].total);
     
     return {
@@ -548,13 +548,13 @@ class AdminRepository {
    */
   async getDashboardData(userId, token) {
     try {
-      // Get local metrics (events, guests, ticket_types) - no users table access
+      // Get local metrics (events, guests, tickets) - no users table access
       const localQuery = `
         SELECT
           (SELECT COUNT(*) FROM events WHERE deleted_at IS NULL) as total_events,
           (SELECT COUNT(*) FROM events WHERE status = 'published' AND deleted_at IS NULL) as published_events,
           (SELECT COUNT(*) FROM guests WHERE deleted_at IS NULL) as total_guests,
-          (SELECT COALESCE(SUM(price), 0) FROM ticket_types WHERE deleted_at IS NULL) as potential_revenue
+          (SELECT COALESCE(SUM(price), 0) FROM tickets WHERE price IS NOT NULL AND deleted_at IS NULL) as potential_revenue
       `;
 
       const localResult = await database.query(localQuery);
@@ -656,10 +656,10 @@ class AdminRepository {
     // Query events without users table JOIN
     const query = `
       SELECT e.*,
-             COUNT(DISTINCT g.id) as guests_count,
+             COUNT(DISTINCT eg.id) as guests_count,
              COUNT(DISTINCT tt.id) as ticket_types_count
       FROM events e
-      LEFT JOIN guests g ON g.event_id = e.id AND g.deleted_at IS NULL
+      LEFT JOIN event_guests eg ON eg.event_id = e.id AND eg.deleted_at IS NULL
       LEFT JOIN ticket_types tt ON tt.event_id = e.id AND tt.deleted_at IS NULL
       ${whereClause}
       GROUP BY e.id
@@ -730,7 +730,7 @@ class AdminRepository {
     const query = `
       SELECT d.*
       FROM designers d
-      WHERE d.is_verified = false AND d.deleted_at IS NULL
+      WHERE d.verified_at IS NULL AND d.deleted_at IS NULL
       ORDER BY d.created_at DESC
       LIMIT $1 OFFSET $2
     `;
@@ -740,7 +740,7 @@ class AdminRepository {
     const countQuery = `
       SELECT COUNT(*) as total
       FROM designers d
-      WHERE d.is_verified = false AND d.deleted_at IS NULL
+      WHERE d.verified_at IS NULL AND d.deleted_at IS NULL
     `;
     
     const countResult = await database.query(countQuery);
@@ -788,12 +788,12 @@ class AdminRepository {
       case 'designer':
         query = `
           UPDATE designers 
-          SET is_verified = $1, moderation_reason = $2, moderated_by = $3, moderated_at = NOW()
+          SET verified_at = $1, moderation_reason = $2, moderated_by = $3, moderated_at = NOW()
           WHERE user_id = $4 AND deleted_at IS NULL
           RETURNING *
         `;
-        // CORRECTION: Le paramètre $1 doit être un boolean pour is_verified
-        params = [action === 'approve' ? true : false, reason, userId, entityId];
+        // CORRECTION: Le paramètre $1 doit être un timestamp pour verified_at
+        params = [action === 'approve' ? new Date() : null, reason, userId, entityId];
         break;
         
       case 'event':
@@ -847,8 +847,7 @@ class AdminRepository {
       SELECT 
         TO_CHAR(tt.created_at, '${dateFormat}') as period,
         COUNT(*) as ticket_types_created,
-        COALESCE(SUM(tt.price * tt.quantity), 0) as potential_revenue,
-        COALESCE(AVG(tt.price), 0) as average_price
+        COALESCE(SUM(tt.quantity), 0) as total_quantity
       FROM ticket_types tt
       WHERE tt.deleted_at IS NULL ${dateFilter}
       GROUP BY TO_CHAR(tt.created_at, '${dateFormat}')

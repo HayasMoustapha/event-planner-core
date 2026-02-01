@@ -89,7 +89,15 @@ class MarketplaceController {
 
   async createTemplate(req, res, next) {
     try {
-      const { name, description, category, price, preview_url } = req.body;
+      // CORRECTION: Extraire uniquement les champs qui existent dans la table SQL templates
+      const { 
+        name, 
+        description, 
+        preview_url, 
+        source_files_path, 
+        price, 
+        currency 
+      } = req.body;
       const userId = req.user?.id;
       
       if (!userId) {
@@ -99,9 +107,10 @@ class MarketplaceController {
       const result = await marketplaceService.createTemplate({
         name,
         description,
-        category,
+        preview_url,
+        source_files_path,
         price,
-        preview_url
+        currency
       }, userId);
       
       if (!result.success) {
@@ -181,14 +190,14 @@ class MarketplaceController {
   async purchaseTemplate(req, res, next) {
     try {
       const { templateId } = req.params;
-      const { payment_method } = req.body;
+      // CORRECTION: payment_method n'existe pas en SQL, on utilise le prix du template
       const userId = req.user?.id;
       
       if (!userId) {
         return res.status(401).json(ResponseFormatter.unauthorized('Authentication required'));
       }
 
-      const result = await marketplaceService.purchaseTemplate(templateId, { payment_method }, userId);
+      const result = await marketplaceService.purchaseTemplate(templateId, {}, userId);
       
       if (!result.success) {
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));

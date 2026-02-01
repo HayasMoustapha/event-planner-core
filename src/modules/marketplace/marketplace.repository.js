@@ -48,25 +48,29 @@ class MarketplaceRepository {
   }
 
   async createPurchase(purchaseData) {
+    // CORRECTION: Utiliser les champs qui existent dans la table SQL purchases
     const { 
       user_id, 
       template_id, 
       amount, 
       currency, 
       transaction_id, 
+      purchase_date,
       created_by 
     } = purchaseData;
     
     const query = `
       INSERT INTO purchases (
-        user_id, template_id, amount, currency, transaction_id, created_by, updated_by
+        user_id, template_id, amount, currency, transaction_id, 
+        purchase_date, created_by, updated_by
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
       RETURNING *
     `;
     
     const values = [
-      user_id, template_id, amount, currency, transaction_id, created_by
+      user_id, template_id, amount, currency, transaction_id, 
+      purchase_date, created_by
     ];
     const result = await database.query(query, values);
     
@@ -484,7 +488,8 @@ class MarketplaceRepository {
   }
 
   async updateDesigner(id, updateData, updatedBy) {
-    const allowedFields = ['brand_name', 'portfolio_url', 'is_verified', 'status', 'verified_by', 'verified_at'];
+    // CORRECTION: Uniquement les champs qui existent dans la table SQL designers
+    const allowedFields = ['brand_name', 'portfolio_url', 'verified_by', 'verified_at'];
     const updates = [];
     const values = [];
     
@@ -525,7 +530,8 @@ class MarketplaceRepository {
   }
 
   async updateTemplate(id, updateData, updatedBy) {
-    const allowedFields = ['name', 'description', 'preview_url', 'source_files_path', 'price', 'currency', 'status', 'approved_by', 'approved_at', 'rejected_by', 'rejected_at', 'rejection_reason'];
+    // CORRECTION: Uniquement les champs qui existent dans la table SQL templates
+    const allowedFields = ['name', 'description', 'preview_url', 'source_files_path', 'price', 'currency', 'status', 'approved_by', 'approved_at', 'rejected_by', 'rejected_at'];
     const updates = [];
     const values = [];
     

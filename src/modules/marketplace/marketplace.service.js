@@ -118,10 +118,16 @@ class MarketplaceService {
 
   async createTemplate(templateData, userId) {
     try {
+      // CORRECTION: Mapper uniquement les champs qui existent dans la table SQL templates
       const templateDataWithCreator = {
-        ...templateData,
-        designer_id: userId,
-        status: 'pending',
+        designer_id: userId, // Injecté depuis le token utilisateur
+        name: templateData.name,
+        description: templateData.description || null,
+        preview_url: templateData.preview_url || null,
+        source_files_path: templateData.source_files_path || null,
+        price: templateData.price || null,
+        currency: templateData.currency || 'EUR',
+        status: 'pending_review', // Valeur par défaut selon CHECK constraint
         created_by: userId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -240,13 +246,15 @@ class MarketplaceService {
         };
       }
 
+      // CORRECTION: Utiliser le prix du template et générer un transaction_id
       const purchaseDataWithBuyer = {
         template_id: templateId,
-        buyer_id: userId,
-        payment_method: purchaseData.payment_method,
-        amount: template.price,
-        status: 'pending',
-        purchased_at: new Date().toISOString()
+        user_id: userId,
+        amount: template.price, // Utiliser le prix du template
+        currency: template.currency || 'EUR',
+        transaction_id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Générer un ID unique
+        purchase_date: new Date().toISOString(),
+        created_by: userId
       };
 
       const purchase = await marketplaceRepository.createPurchase(purchaseDataWithBuyer);
