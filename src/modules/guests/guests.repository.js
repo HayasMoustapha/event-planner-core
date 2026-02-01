@@ -313,22 +313,21 @@ class GuestsRepository {
     }
 
     const values = eventGuestsData.map((eventGuest, index) => {
-      const baseIndex = index * 5;
-      return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5})`;
+      const baseIndex = index * 4;
+      return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4})`;
     }).join(', ');
 
     const flatEventGuests = eventGuestsData.flatMap(eventGuest => [
       eventGuest.guest_id,
       eventGuest.event_id,
-      eventGuest.invitation_code || uuidv4(), // Generate invitation_code if not provided
       eventGuest.created_by,
       eventGuest.updated_by
     ]);
 
     const query = `
-      INSERT INTO event_guests (guest_id, event_id, invitation_code, created_by, updated_by)
+      INSERT INTO event_guests (guest_id, event_id, created_by, updated_by)
       VALUES ${values}
-      RETURNING id, guest_id, event_id, invitation_code, created_at
+      RETURNING id, guest_id, event_id, created_at
     `;
 
     const result = await database.query(query, flatEventGuests);
@@ -342,7 +341,6 @@ class GuestsRepository {
     const {
       event_id,
       guest_id,
-      status,
       created_by,
       updated_by
     } = eventGuestData;

@@ -199,7 +199,6 @@ class GuestsService {
           eventGuestsData.push({
             guest_id: guest.guest_id,
             event_id: eventId,
-            invitation_code: guest.invitation_code || null,
             created_by: userId,
             updated_by: userId
           });
@@ -236,7 +235,6 @@ class GuestsService {
           eventGuestsData.push({
             guest_id: guestRecord.id,
             event_id: eventId,
-            invitation_code: guest.invitation_code || null,
             created_by: userId,
             updated_by: userId
           });
