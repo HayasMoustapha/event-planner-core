@@ -46,6 +46,7 @@ const ticketGenerationRoutes = require('./routes/ticket-generation-routes');
 // Import des routes webhook pour communication inter-services
 const paymentWebhookRoutes = require('./routes/payment-webhook.routes');
 const ticketWebhookRoutes = require('./routes/ticket-webhook.routes');
+const scanValidationRoutes = require('./routes/scan-validation-routes'); // AJOUT: Routes de scan-validation
 
 // Service de communication Redis Queue pour la communication asynchrone
 const eventQueueService = require('./core/queue/event-queue.service');
@@ -395,6 +396,7 @@ app.use('/api/v1', ticketGenerationRoutes);
 // Routes webhook pour communication inter-services (sans authentification)
 app.use('/api/internal', paymentWebhookRoutes);
 app.use('/api/internal', ticketWebhookRoutes);
+app.use('/api/internal', scanValidationRoutes); // AJOUT: Routes de scan-validation
 app.use('/api', paymentWebhookRoutes);
 app.use('/api', ticketWebhookRoutes);
 

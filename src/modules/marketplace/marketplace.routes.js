@@ -22,6 +22,15 @@ router.use(paymentRoutes);
 // Designer Management - GET routes avec permission spécifique
 router.get('/designers', SecurityMiddleware.withPermissions('marketplace.designers.read'), marketplaceController.getDesigners);
 
+// Stats routes pour designers et templates (doivent être avant /:id)
+router.get('/designers/stats', SecurityMiddleware.withPermissions('marketplace.stats.read'), marketplaceController.getDesignerStats);
+
+router.get('/templates/stats', SecurityMiddleware.withPermissions('marketplace.stats.read'), marketplaceController.getTemplateStats);
+
+router.get('/purchases/stats', SecurityMiddleware.withPermissions('marketplace.stats.read'), marketplaceController.getPurchaseStats);
+
+router.get('/reviews/stats', SecurityMiddleware.withPermissions('marketplace.stats.read'), marketplaceController.getReviewStats);
+
 router.get('/designers/:id', SecurityMiddleware.withPermissions('marketplace.designers.read'), marketplaceController.getDesignerById);
 
 // Inscription comme designer
@@ -56,6 +65,17 @@ router.get('/purchases', SecurityMiddleware.withPermissions('marketplace.purchas
 // Admin Operations - GET routes avec permission spécifique
 router.get('/stats', SecurityMiddleware.withPermissions('marketplace.stats.read'), marketplaceController.getMarketplaceStats);
 
+// Admin routes
+router.get('/admin/designers', SecurityMiddleware.withPermissions('marketplace.admin.read'), marketplaceController.getAdminDesigners);
+
+router.get('/admin/templates', SecurityMiddleware.withPermissions('marketplace.admin.read'), marketplaceController.getAdminTemplates);
+
+router.get('/admin/purchases', SecurityMiddleware.withPermissions('marketplace.admin.read'), marketplaceController.getAdminPurchases);
+
+router.get('/admin/reviews', SecurityMiddleware.withPermissions('marketplace.admin.read'), marketplaceController.getAdminReviews);
+
+router.post('/admin/designers/:id/verify', SecurityMiddleware.withPermissions('marketplace.admin.verify'), marketplaceController.verifyDesigner);
+
 router.post('/templates/:id/approve', 
   SecurityMiddleware.withPermissions('marketplace.templates.approve'),
   ValidationMiddleware.createMarketplaceValidator('approveTemplate'), 
@@ -69,7 +89,5 @@ router.delete('/templates/:id',
 );
 
 router.post('/templates/:id/reject', SecurityMiddleware.withPermissions('marketplace.templates.reject'), ValidationMiddleware.createMarketplaceValidator('rejectTemplate'), marketplaceController.rejectTemplate);
-
-router.post('/designers/:id/verify', SecurityMiddleware.withPermissions('marketplace.designers.verify'), ValidationMiddleware.createMarketplaceValidator('verifyDesigner'), marketplaceController.verifyDesigner);
 
 module.exports = router;

@@ -2,6 +2,16 @@ const database = require('../../config/database');
 const authApiService = require('../../services/auth-api-service');
 
 class MarketplaceRepository {
+  async getDesignerByUserId(userId) {
+    const query = `
+      SELECT * FROM designers 
+      WHERE user_id = $1 AND deleted_at IS NULL
+    `;
+    
+    const result = await database.query(query, [userId]);
+    return result.rows[0] || null;
+  }
+
   async createDesigner(designerData) {
     const { user_id, brand_name, portfolio_url, created_by } = designerData;
     
@@ -199,31 +209,37 @@ class MarketplaceRepository {
   }
 
   async getDesigners(options = {}) {
-    const { page = 1, limit = 20, is_verified, search } = options;
+    const { page = 1, limit = 20, verified, search } = options;
     const offset = (page - 1) * limit;
     
     // CORRECTION: Supprimer le JOIN avec la table users qui n'existe pas dans cette base de données
     let query = `
-      SELECT d.*, COUNT(t.id) as template_count,
-             AVG(r.rating) as average_rating
+      SELECT 
+        d.*,
+        COUNT(t.id) as template_count,
+        COALESCE(AVG(r.rating), 0) as average_rating
       FROM designers d
-      LEFT JOIN templates t ON d.id = t.designer_id
-      LEFT JOIN reviews r ON t.id = r.template_id
+      LEFT JOIN templates t ON d.id = t.designer_id AND t.deleted_at IS NULL
+      LEFT JOIN reviews r ON t.id = r.template_id AND r.deleted_at IS NULL
       WHERE d.deleted_at IS NULL
     `;
     
     const values = [];
     let paramCount = 0;
     
-    if (is_verified !== undefined) {
+    // CORRECTION: Utiliser verified_at au lieu de is_verified
+    if (verified !== undefined) {
       paramCount++;
-      query += ` AND d.is_verified = $${paramCount}`;
-      values.push(is_verified);
+      if (verified === true) {
+        query += ` AND d.verified_at IS NOT NULL`;
+      } else {
+        query += ` AND d.verified_at IS NULL`;
+      }
     }
     
     if (search) {
       paramCount++;
-      query += ` AND d.brand_name ILIKE $${paramCount}`;
+      query += ` AND (d.brand_name ILIKE $${paramCount} OR d.portfolio_url ILIKE $${paramCount})`;
       values.push(`%${search}%`);
     }
     
@@ -237,24 +253,29 @@ class MarketplaceRepository {
     
     const result = await database.query(query, values);
     
-    // Get total count
+    // Count query
     let countQuery = `
       SELECT COUNT(DISTINCT d.id) as total
       FROM designers d
       WHERE d.deleted_at IS NULL
     `;
+    
     const countValues = [];
     let countParamCount = 0;
     
-    if (is_verified !== undefined) {
+    // CORRECTION: Utiliser verified_at au lieu de is_verified
+    if (verified !== undefined) {
       countParamCount++;
-      countQuery += ` AND d.is_verified = $${countParamCount}`;
-      countValues.push(is_verified);
+      if (verified === true) {
+        countQuery += ` AND d.verified_at IS NOT NULL`;
+      } else {
+        countQuery += ` AND d.verified_at IS NULL`;
+      }
     }
     
     if (search) {
       countParamCount++;
-      countQuery += ` AND d.brand_name ILIKE $${countParamCount}`;
+      countQuery += ` AND (d.brand_name ILIKE $${countParamCount} OR d.portfolio_url ILIKE $${countParamCount})`;
       countValues.push(`%${search}%`);
     }
     
@@ -593,7 +614,7 @@ class MarketplaceRepository {
     const query = `
       SELECT
         COUNT(DISTINCT d.id) FILTER (WHERE d.deleted_at IS NULL) as total_designers,
-        COUNT(DISTINCT d.id) FILTER (WHERE d.is_verified = true AND d.deleted_at IS NULL) as verified_designers,
+        COUNT(DISTINCT d.id) FILTER (WHERE d.verified_at IS NOT NULL AND d.deleted_at IS NULL) as verified_designers,
         COUNT(DISTINCT t.id) FILTER (WHERE t.deleted_at IS NULL) as total_templates,
         COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'approved' AND t.deleted_at IS NULL) as approved_templates,
         COUNT(DISTINCT p.id) as total_purchases,
@@ -602,12 +623,79 @@ class MarketplaceRepository {
         COALESCE(AVG(r.rating), 0) as average_rating
       FROM designers d
       LEFT JOIN templates t ON d.id = t.designer_id
-      LEFT JOIN purchases p ON t.id = p.template_id
-      LEFT JOIN reviews r ON t.id = r.template_id
+      LEFT JOIN purchases p ON t.id = p.template_id AND p.deleted_at IS NULL
+      LEFT JOIN reviews r ON t.id = r.template_id AND r.deleted_at IS NULL
     `;
-
+    
     const result = await database.query(query);
+    return result.rows[0] || {};
+  }
 
+  async getDesignerStats() {
+    const query = `
+      SELECT
+        COUNT(DISTINCT d.id) FILTER (WHERE d.deleted_at IS NULL) as total_designers,
+        COUNT(DISTINCT d.id) FILTER (WHERE d.verified_at IS NOT NULL AND d.deleted_at IS NULL) as verified_designers,
+        COUNT(DISTINCT d.id) FILTER (WHERE d.verified_at IS NULL AND d.deleted_at IS NULL) as pending_designers,
+        COUNT(DISTINCT t.id) FILTER (WHERE t.deleted_at IS NULL) as total_templates,
+        COALESCE(AVG(r.rating), 0) as average_rating
+      FROM designers d
+      LEFT JOIN templates t ON d.id = t.designer_id AND t.deleted_at IS NULL
+      LEFT JOIN reviews r ON t.id = r.template_id AND r.deleted_at IS NULL
+    `;
+    
+    const result = await database.query(query);
+    return result.rows[0] || {};
+  }
+
+  async getTemplateStats() {
+    const query = `
+      SELECT
+        COUNT(DISTINCT t.id) FILTER (WHERE t.deleted_at IS NULL) as total_templates,
+        COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'approved' AND t.deleted_at IS NULL) as approved_templates,
+        COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'pending_review' AND t.deleted_at IS NULL) as pending_templates,
+        COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'rejected' AND t.deleted_at IS NULL) as rejected_templates,
+        COALESCE(AVG(t.price), 0) as average_price,
+        COALESCE(SUM(p.amount), 0) as total_revenue
+      FROM templates t
+      LEFT JOIN purchases p ON t.id = p.template_id AND p.deleted_at IS NULL
+    `;
+    
+    const result = await database.query(query);
+    return result.rows[0] || {};
+  }
+
+  async getPurchaseStats() {
+    const query = `
+      SELECT
+        COUNT(DISTINCT p.id) as total_purchases,
+        COALESCE(SUM(p.amount), 0) as total_revenue,
+        COALESCE(AVG(p.amount), 0) as average_purchase,
+        COUNT(DISTINCT p.user_id) as unique_buyers,
+        COUNT(DISTINCT p.template_id) as templates_sold
+      FROM purchases p
+      WHERE p.deleted_at IS NULL
+    `;
+    
+    const result = await database.query(query);
+    return result.rows[0] || {};
+  }
+
+  async getReviewStats() {
+    const query = `
+      SELECT
+        COUNT(DISTINCT r.id) as total_reviews,
+        COALESCE(AVG(r.rating), 0) as average_rating,
+        COUNT(DISTINCT r.id) FILTER (WHERE r.rating = 5) as five_star_reviews,
+        COUNT(DISTINCT r.id) FILTER (WHERE r.rating = 4) as four_star_reviews,
+        COUNT(DISTINCT r.id) FILTER (WHERE r.rating = 3) as three_star_reviews,
+        COUNT(DISTINCT r.id) FILTER (WHERE r.rating = 2) as two_star_reviews,
+        COUNT(DISTINCT r.id) FILTER (WHERE r.rating = 1) as one_star_reviews
+      FROM reviews r
+      WHERE r.deleted_at IS NULL
+    `;
+    
+    const result = await database.query(query);
     return result.rows[0] || {};
   }
 

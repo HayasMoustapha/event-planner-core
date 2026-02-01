@@ -37,21 +37,36 @@ class MarketplaceService {
     }
   }
 
-  async getDesigners(options = {}) {
+  async getDesigners(options = {}, userId) {
     try {
-      const { page, limit, status, search, userId } = options;
-      const designers = await marketplaceRepository.getDesigners({
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 10,
-        status,
-        search,
-        userId
+      const { page, limit, verified, search } = options;
+      
+      // Security validation
+      if (page && (isNaN(page) || page < 1)) {
+        return {
+          success: false,
+          error: 'Invalid page parameter'
+        };
+      }
+      
+      if (limit && (isNaN(limit) || limit < 1 || limit > 100)) {
+        return {
+          success: false,
+          error: 'Invalid limit parameter'
+        };
+      }
+      
+      const result = await marketplaceRepository.getDesigners({
+        page: page || 1,
+        limit: limit || 20,
+        verified,
+        search
       });
       
       return {
         success: true,
-        data: designers,
-        pagination: designers.pagination
+        data: result.designers,
+        pagination: result.pagination
       };
     } catch (error) {
       console.error('Error getting designers:', error);
@@ -118,9 +133,23 @@ class MarketplaceService {
 
   async createTemplate(templateData, userId) {
     try {
+      // Récupérer d'abord le designer_id associé à cet utilisateur
+      const designer = await marketplaceRepository.getDesignerByUserId(userId);
+      
+      if (!designer) {
+        return {
+          success: false,
+          error: 'User must be registered as a designer to create templates',
+          details: {
+            userId,
+            message: 'Please register as a designer first'
+          }
+        };
+      }
+
       // CORRECTION: Mapper uniquement les champs qui existent dans la table SQL templates
       const templateDataWithCreator = {
-        designer_id: userId, // Injecté depuis le token utilisateur
+        designer_id: designer.id, // Utiliser l'ID du designer (pas du user)
         name: templateData.name,
         description: templateData.description || null,
         preview_url: templateData.preview_url || null,
@@ -472,6 +501,134 @@ class MarketplaceService {
       return {
         success: false,
         error: error.message || 'Failed to verify designer'
+      };
+    }
+  }
+
+  async getDesignerStats() {
+    try {
+      const stats = await marketplaceRepository.getDesignerStats();
+      return {
+        success: true,
+        data: stats
+      };
+    } catch (error) {
+      console.error('Error getting designer stats:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get designer stats'
+      };
+    }
+  }
+
+  async getTemplateStats() {
+    try {
+      const stats = await marketplaceRepository.getTemplateStats();
+      return {
+        success: true,
+        data: stats
+      };
+    } catch (error) {
+      console.error('Error getting template stats:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get template stats'
+      };
+    }
+  }
+
+  async getPurchaseStats() {
+    try {
+      const stats = await marketplaceRepository.getPurchaseStats();
+      return {
+        success: true,
+        data: stats
+      };
+    } catch (error) {
+      console.error('Error getting purchase stats:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get purchase stats'
+      };
+    }
+  }
+
+  async getReviewStats() {
+    try {
+      const stats = await marketplaceRepository.getReviewStats();
+      return {
+        success: true,
+        data: stats
+      };
+    } catch (error) {
+      console.error('Error getting review stats:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get review stats'
+      };
+    }
+  }
+
+  async getAdminDesigners() {
+    try {
+      const designers = await marketplaceRepository.getDesigners({ page: 1, limit: 100 });
+      return {
+        success: true,
+        data: designers.designers
+      };
+    } catch (error) {
+      console.error('Error getting admin designers:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get admin designers'
+      };
+    }
+  }
+
+  async getAdminTemplates() {
+    try {
+      const templates = await marketplaceRepository.getTemplates({ page: 1, limit: 100 });
+      return {
+        success: true,
+        data: templates.templates
+      };
+    } catch (error) {
+      console.error('Error getting admin templates:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get admin templates'
+      };
+    }
+  }
+
+  async getAdminPurchases() {
+    try {
+      const purchases = await marketplaceRepository.getPurchases({ page: 1, limit: 100 });
+      return {
+        success: true,
+        data: purchases.purchases
+      };
+    } catch (error) {
+      console.error('Error getting admin purchases:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get admin purchases'
+      };
+    }
+  }
+
+  async getAdminReviews() {
+    try {
+      const reviews = await marketplaceRepository.getReviews({ page: 1, limit: 100 });
+      return {
+        success: true,
+        data: reviews.reviews
+      };
+    } catch (error) {
+      console.error('Error getting admin reviews:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get admin reviews'
       };
     }
   }

@@ -26,16 +26,35 @@ class MarketplaceController {
 
   async getDesigners(req, res, next) {
     try {
-      const { page, limit, status, search } = req.query;
+      // Security: Validate query parameters
+      const { page, limit, verified, search } = req.query;
+      
+      if (page && (isNaN(parseInt(page)) || parseInt(page) < 1)) {
+        throw new ValidationError('Invalid page parameter');
+      }
+      
+      if (limit && (isNaN(parseInt(limit)) || parseInt(limit) < 1 || parseInt(limit) > 100)) {
+        throw new ValidationError('Invalid limit parameter');
+      }
+      
+      if (search && !SecurityValidator.isValidString(search, 100)) {
+        throw SecurityErrorHandler.handleInvalidInput(req, 'XSS attempt in search query');
+      }
+
+      if (verified !== undefined && !['true', 'false'].includes(verified)) {
+        throw new ValidationError('Invalid verified parameter');
+      }
+
+      const options = {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20,
+        verified: verified !== undefined ? verified === 'true' : undefined,
+        search
+      };
+
       const userId = req.user?.id;
       
-      const result = await marketplaceService.getDesigners({
-        page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 10,
-        status,
-        search,
-        userId
-      });
+      const result = await marketplaceService.getDesigners(options, userId);
       
       if (!result.success) {
         return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
@@ -182,6 +201,118 @@ class MarketplaceController {
       }
 
       res.json(ResponseFormatter.success('Template updated', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDesignerStats(req, res, next) {
+    try {
+      const result = await marketplaceService.getDesignerStats();
+      
+      if (!result.success) {
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.json(ResponseFormatter.success('Designer stats retrieved', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getTemplateStats(req, res, next) {
+    try {
+      const result = await marketplaceService.getTemplateStats();
+      
+      if (!result.success) {
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.json(ResponseFormatter.success('Template stats retrieved', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getPurchaseStats(req, res, next) {
+    try {
+      const result = await marketplaceService.getPurchaseStats();
+      
+      if (!result.success) {
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.json(ResponseFormatter.success('Purchase stats retrieved', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getReviewStats(req, res, next) {
+    try {
+      const result = await marketplaceService.getReviewStats();
+      
+      if (!result.success) {
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.json(ResponseFormatter.success('Review stats retrieved', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAdminDesigners(req, res, next) {
+    try {
+      const result = await marketplaceService.getAdminDesigners();
+      
+      if (!result.success) {
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.json(ResponseFormatter.success('Admin designers retrieved', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAdminTemplates(req, res, next) {
+    try {
+      const result = await marketplaceService.getAdminTemplates();
+      
+      if (!result.success) {
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.json(ResponseFormatter.success('Admin templates retrieved', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAdminPurchases(req, res, next) {
+    try {
+      const result = await marketplaceService.getAdminPurchases();
+      
+      if (!result.success) {
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.json(ResponseFormatter.success('Admin purchases retrieved', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAdminReviews(req, res, next) {
+    try {
+      const result = await marketplaceService.getAdminReviews();
+      
+      if (!result.success) {
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.json(ResponseFormatter.success('Admin reviews retrieved', result.data));
     } catch (error) {
       next(error);
     }
