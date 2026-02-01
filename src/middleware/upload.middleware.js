@@ -56,7 +56,31 @@ const upload = multer({
 });
 
 // Middleware pour l'upload de fichiers d'import d'invités
-const uploadGuestsFile = upload.single('file');
+// Accepte plusieurs noms de champs pour éviter l'erreur "Unexpected field"
+const uploadGuestsFile = (req, res, next) => {
+  // Essayer avec 'file' d'abord
+  const uploadSingle = upload.single('file');
+  
+  uploadSingle(req, res, (err) => {
+    if (err && err.code === 'LIMIT_UNEXPECTED_FILE') {
+      // Si 'file' ne fonctionne pas, essayer avec 'guests_file'
+      const uploadGuests = upload.single('guests_file');
+      
+      uploadGuests(req, res, (guestsErr) => {
+        if (guestsErr && guestsErr.code === 'LIMIT_UNEXPECTED_FILE') {
+          // Si 'guests_file' ne fonctionne pas, essayer avec 'csv'
+          const uploadCsv = upload.single('csv');
+          
+          uploadCsv(req, res, next);
+        } else {
+          next(guestsErr);
+        }
+      });
+    } else {
+      next(err);
+    }
+  });
+};
 
 module.exports = {
   uploadGuestsFile
