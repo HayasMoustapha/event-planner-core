@@ -4,18 +4,24 @@ const ResponseFormatter = require('../../../../shared/utils/response-formatter')
 class InvitationsController {
   async sendInvitations(req, res, next) {
     try {
-      const { event_id, guests } = req.body;
+      const { event_guest_ids, send_method } = req.body;
       const userId = req.user?.id;
       
       if (!userId) {
         return res.status(401).json(ResponseFormatter.unauthorized('Authentication required'));
       }
       
-      if (!event_id || !guests || !Array.isArray(guests)) {
-        return res.status(400).json(ResponseFormatter.error('Invalid request data', null, 'VALIDATION_ERROR'));
+      // Validation des entrées
+      if (!event_guest_ids || !Array.isArray(event_guest_ids) || event_guest_ids.length === 0) {
+        return res.status(400).json(ResponseFormatter.error('event_guest_ids must be a non-empty array', null, 'VALIDATION_ERROR'));
       }
       
-      const result = await invitationsService.sendInvitations(event_id, guests, userId);
+      const validSendMethods = ['email', 'sms', 'both'];
+      if (!send_method || !validSendMethods.includes(send_method)) {
+        return res.status(400).json(ResponseFormatter.error(`send_method must be one of: ${validSendMethods.join(', ')}`, null, 'VALIDATION_ERROR'));
+      }
+      
+      const result = await invitationsService.sendInvitations(event_guest_ids, send_method, userId);
       
       if (!result.success) {
         return res.status(400).json(ResponseFormatter.error(result.error, null, 'VALIDATION_ERROR'));
@@ -33,6 +39,7 @@ class InvitationsController {
       const { action } = req.body; // 'accept' | 'decline'
       const userId = req.user?.id;
       
+      // Validation basique de l'action (déjà faite dans le service mais pour une réponse rapide)
       if (!['accept', 'decline'].includes(action)) {
         return res.status(400).json(ResponseFormatter.error('Invalid action. Must be "accept" or "decline"', null, 'VALIDATION_ERROR'));
       }
@@ -43,7 +50,7 @@ class InvitationsController {
         return res.status(400).json(ResponseFormatter.error(result.error, null, 'VALIDATION_ERROR'));
       }
       
-      res.json(ResponseFormatter.success(`Invitation ${action}ed`, result.data));
+      res.json(ResponseFormatter.success(`Invitation ${action}ed successfully`, result.data));
     } catch (error) {
       next(error);
     }

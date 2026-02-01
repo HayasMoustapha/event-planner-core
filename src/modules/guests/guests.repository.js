@@ -17,6 +17,24 @@ class GuestsRepository {
     return result.rows[0];
   }
 
+  // NOUVELLE MÉTHODE : Récupérer plusieurs event_guests avec leurs infos complètes
+  async findEventGuestsByIds(eventGuestIds) {
+    const query = `
+      SELECT eg.*, 
+             g.first_name, g.last_name, g.email, g.phone, g.status as guest_status,
+             e.title as event_title, e.description as event_description, 
+             e.event_date, e.location, e.organizer_id
+      FROM event_guests eg
+      INNER JOIN guests g ON eg.guest_id = g.id
+      INNER JOIN events e ON eg.event_id = e.id
+      WHERE eg.id = ANY($1) AND eg.deleted_at IS NULL 
+        AND g.deleted_at IS NULL AND e.deleted_at IS NULL
+    `;
+    
+    const result = await database.query(query, [eventGuestIds]);
+    return result.rows;
+  }
+
   async findById(id) {
     const query = `
       SELECT * FROM guests 
@@ -88,6 +106,18 @@ class GuestsRepository {
         totalPages: Math.ceil(total / limit)
       }
     };
+  }
+
+  async updateEventGuestStatus(eventGuestId, status) {
+    const query = `
+      UPDATE event_guests 
+      SET is_present = $1, updated_at = NOW()
+      WHERE id = $2 AND deleted_at IS NULL
+      RETURNING *
+    `;
+    
+    const result = await database.query(query, [status === 'confirmed', eventGuestId]);
+    return result.rows[0];
   }
 
   async update(id, updateData, updatedBy) {

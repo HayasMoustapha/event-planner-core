@@ -61,6 +61,17 @@ class EventsRepository {
     }
   }
 
+  // NOUVELLE MÉTHODE : Récupérer plusieurs événements par IDs
+  async findByIds(eventIds) {
+    const query = `
+      SELECT * FROM events 
+      WHERE id = ANY($1) AND deleted_at IS NULL
+    `;
+    
+    const result = await database.query(query, [eventIds]);
+    return result.rows;
+  }
+
   async findById(id) {
     const query = 'SELECT * FROM events WHERE id = $1 AND deleted_at IS NULL';
     const result = await database.query(query, [id]);

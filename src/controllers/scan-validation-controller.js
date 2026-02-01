@@ -868,9 +868,189 @@ async function getScanHistory(req, res, db) {
   }
 }
 
+/**
+ * Consulte le scan record d'un ticket depuis Scan-Validation Service (LECTURE SEULE)
+ * @param {Object} req - Requête Express
+ * @param {Object} res - Réponse Express
+ * @param {Object} db - Instance de base de données locale
+ */
+async function getScanRecordFromValidationService(req, res, db) {
+  const startTime = Date.now();
+  
+  try {
+    const { ticketId } = req.params;
+    
+    console.log(`[SCAN_RECORD_LOOKUP] Consultation scan record pour ticket ${ticketId} depuis Scan-Validation Service`);
+    
+    // 1. Vérifier que le ticket existe localement
+    const ticketQuery = `
+      SELECT 
+        t.id,
+        t.ticket_code,
+        t.is_validated,
+        t.validated_at,
+        eg.event_id,
+        e.title as event_title
+      FROM tickets t
+      JOIN event_guests eg ON t.event_guest_id = eg.id
+      JOIN events e ON eg.event_id = e.id
+      WHERE t.id = $1
+    `;
+    
+    const ticketResult = await db.query(ticketQuery, [ticketId]);
+    
+    if (ticketResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket non trouvé',
+        code: 'TICKET_NOT_FOUND'
+      });
+    }
+    
+    const ticket = ticketResult.rows[0];
+    
+    // 2. Appeler Scan-Validation Service pour récupérer les logs de scan
+    const SCAN_VALIDATION_SERVICE_URL = process.env.SCAN_VALIDATION_SERVICE_URL || 'http://localhost:3005';
+    
+    try {
+      const response = await fetchWithTimeout(`${SCAN_VALIDATION_SERVICE_URL}/api/scans/ticket/${ticketId}/logs`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Service-Name': 'event-planner-core',
+          'X-Request-ID': `lookup_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          'X-Timestamp': new Date().toISOString()
+        }
+      }, HTTP_TIMEOUT);
+      
+      if (!response.ok) {
+        console.warn(`[SCAN_RECORD_LOOKUP] Scan-Validation Service responded with ${response.status}`);
+        
+        // Retourner les informations locales même si le service distant n'est pas disponible
+        return res.status(200).json({
+          success: true,
+          data: {
+            ticket: {
+              id: ticket.id,
+              ticket_code: ticket.ticket_code,
+              is_validated: ticket.is_validated,
+              validated_at: ticket.validated_at
+            },
+            event: {
+              id: ticket.event_id,
+              title: ticket.event_title
+            },
+            scan_records: {
+              local: {
+                is_validated: ticket.is_validated,
+                validated_at: ticket.validated_at
+              },
+              validation_service: {
+                available: false,
+                error: `Service responded with ${response.status}`
+              }
+            }
+          },
+          message: 'Informations locales récupérées (service distant indisponible)',
+          metadata: {
+            processing_time_ms: Date.now() - startTime,
+            source: 'LOCAL_ONLY'
+          }
+        });
+      }
+      
+      const scanValidationData = await response.json();
+      
+      const processingTime = Date.now() - startTime;
+      
+      console.log(`[SCAN_RECORD_LOOKUP] Scan record récupéré en ${processingTime}ms pour ticket ${ticketId}`);
+      
+      // 3. Combiner les données locales et distantes
+      res.status(200).json({
+        success: true,
+        data: {
+          ticket: {
+            id: ticket.id,
+            ticket_code: ticket.ticket_code,
+            is_validated: ticket.is_validated,
+            validated_at: ticket.validated_at
+          },
+          event: {
+            id: ticket.event_id,
+            title: ticket.event_title
+          },
+          scan_records: {
+            local: {
+              is_validated: ticket.is_validated,
+              validated_at: ticket.validated_at
+            },
+            validation_service: scanValidationData.success ? scanValidationData.data : {
+              available: false,
+              error: scanValidationData.error || 'Unknown error'
+            }
+          }
+        },
+        message: 'Scan record récupéré avec succès',
+        metadata: {
+          processing_time_ms: processingTime,
+          source: 'COMBINED_LOCAL_AND_VALIDATION_SERVICE'
+        }
+      });
+      
+    } catch (fetchError) {
+      console.error('[SCAN_RECORD_LOOKUP] Erreur appel Scan-Validation Service:', fetchError.message);
+      
+      // Retourner les informations locales en cas d'erreur réseau
+      res.status(200).json({
+        success: true,
+        data: {
+          ticket: {
+            id: ticket.id,
+            ticket_code: ticket.ticket_code,
+            is_validated: ticket.is_validated,
+            validated_at: ticket.validated_at
+          },
+          event: {
+            id: ticket.event_id,
+            title: ticket.event_title
+          },
+          scan_records: {
+            local: {
+              is_validated: ticket.is_validated,
+              validated_at: ticket.validated_at
+            },
+            validation_service: {
+              available: false,
+              error: 'Network error'
+            }
+          }
+        },
+        message: 'Informations locales récupérées (erreur réseau)',
+        metadata: {
+          processing_time_ms: Date.now() - startTime,
+          source: 'LOCAL_ONLY_FALLBACK'
+        }
+      });
+    }
+    
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    console.error('[SCAN_RECORD_LOOKUP] Erreur consultation scan record:', error.message);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la consultation du scan record',
+      code: 'INTERNAL_ERROR',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      processing_time_ms: processingTime
+    });
+  }
+}
+
 module.exports = {
   validateScannedTicket,
   validateTicketInternal, // NOUVEL ENDPOINT pour Scan-Validation Service
   checkTicketStatus, // ENDPOINT interne pour vérification statut
-  getScanHistory
+  getScanHistory,
+  getScanRecordFromValidationService // NOUVEL ENDPOINT pour consultation cross-service
 };

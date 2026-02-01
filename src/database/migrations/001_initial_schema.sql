@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS invitations (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     invitation_code VARCHAR UNIQUE NOT NULL,
     sent_at TIMESTAMP WITH TIME ZONE,
-    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('sent', 'opened', 'failed')),
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'opened', 'confirmed', 'failed', 'cancelled')),
     -- Foreign key vers EventGuest selon le diagramme
     event_guest_id BIGINT NOT NULL REFERENCES event_guests(id) ON DELETE CASCADE,
     -- Champs d'audit complets

@@ -1,6 +1,16 @@
 const database = require('../../config/database');
 
 class InvitationsRepository {
+  async findByEventGuestId(eventGuestId) {
+    const query = `
+      SELECT * FROM invitations 
+      WHERE event_guest_id = $1 AND deleted_at IS NULL
+    `;
+    
+    const result = await database.query(query, [eventGuestId]);
+    return result.rows[0] || null;
+  }
+
   async createInvitation(eventGuestId, userId) {
     const invitationCode = `INV-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     
@@ -17,7 +27,7 @@ class InvitationsRepository {
   async updateStatus(invitationId, status, userId = null) {
     const query = `
       UPDATE invitations 
-      SET status = $1, updated_at = NOW(), updated_by = COALESCE($2, updated_by)
+      SET status = $1, updated_at = NOW(), updated_by = COALESCE($3, updated_by)
       WHERE id = $2 AND deleted_at IS NULL
       RETURNING *
     `;
