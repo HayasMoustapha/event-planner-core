@@ -2,6 +2,7 @@
 // IMPORT DES DÉPENDANCES
 // ========================================
 const eventsRepository = require('./events.repository');
+const notificationClient = require('../../../../shared/clients/notification-client');
 // Plus besoin d'UUID - la base de données utilise des SERIAL IDs automatiques
 
 class EventsService {
@@ -334,6 +335,136 @@ class EventsService {
         success: false,
         error: error.message || 'Échec de la duplication de l\'événement'
       };
+    }
+  }
+
+  /**
+   * Envoie une notification d'annulation d'événement à tous les participants
+   * @param {number} eventId - ID de l'événement
+   * @param {string} reason - Raison de l'annulation
+   * @returns {Promise<Object>} Résultat de l'envoi
+   */
+  async sendEventCancellationNotification(eventId, reason) {
+    try {
+      // Récupérer les informations de l'événement
+      const event = await eventsRepository.findById(eventId);
+      if (!event) {
+        return {
+          success: false,
+          error: 'Événement non trouvé'
+        };
+      }
+
+      // Récupérer tous les participants à l'événement
+      const guestsRepository = require('../guests/guests.repository');
+      const participants = await guestsRepository.getEventParticipants(eventId);
+
+      if (participants.length === 0) {
+        return {
+          success: true,
+          message: 'Aucun participant à notifier'
+        };
+      }
+
+      // Préparer les données pour la notification
+      const eventData = {
+        title: event.title,
+        event_date: event.event_date,
+        cancellation_reason: reason,
+        refund_info: 'Contactez le support pour plus d\'informations',
+        organizer_name: event.organizer_name || 'L\'équipe Event Planner'
+      };
+
+      // Envoyer la notification en lot
+      const recipients = participants.map(p => ({
+        to: p.email,
+        data: {
+          firstName: p.first_name,
+          lastName: p.last_name
+        }
+      }));
+
+      const result = await notificationClient.sendBulkEmail(
+        recipients,
+        'event-cancelled',
+        `Important : L'événement "${event.title}" a été annulé`,
+        eventData,
+        'high'
+      );
+
+      if (!result.success) {
+        console.error('Failed to send event cancellation notification:', result.error);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error sending event cancellation notification:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Envoie un rappel d'événement 24h avant
+   * @param {number} eventId - ID de l'événement
+   * @returns {Promise<Object>} Résultat de l'envoi
+   */
+  async sendEventReminderNotification(eventId) {
+    try {
+      // Récupérer les informations de l'événement
+      const event = await eventsRepository.findById(eventId);
+      if (!event) {
+        return {
+          success: false,
+          error: 'Événement non trouvé'
+        };
+      }
+
+      // Récupérer tous les participants à l'événement
+      const guestsRepository = require('../guests/guests.repository');
+      const participants = await guestsRepository.getEventParticipants(eventId);
+
+      if (participants.length === 0) {
+        return {
+          success: true,
+          message: 'Aucun participant à notifier'
+        };
+      }
+
+      // Préparer les données pour la notification
+      const eventData = {
+        eventName: event.title,
+        eventDate: new Date(event.event_date).toLocaleDateString('fr-FR'),
+        eventTime: new Date(event.event_date).toLocaleTimeString('fr-FR'),
+        eventLocation: event.location,
+        organizerName: event.organizer_name
+      };
+
+      // Envoyer la notification en lot
+      const recipients = participants.map(p => ({
+        to: p.email,
+        data: {
+          firstName: p.first_name,
+          lastName: p.last_name,
+          ticketCount: p.ticket_count || 1
+        }
+      }));
+
+      const result = await notificationClient.sendBulkEmail(
+        recipients,
+        'event-reminder',
+        `Rappel : ${event.title} demain !`,
+        eventData,
+        'normal'
+      );
+
+      if (!result.success) {
+        console.error('Failed to send event reminder notification:', result.error);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error sending event reminder notification:', error);
+      return { success: false, error: error.message };
     }
   }
 }

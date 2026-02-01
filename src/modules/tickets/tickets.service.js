@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const ticketsRepository = require('./tickets.repository');
 const guestsRepository = require('../guests/guests.repository');
 const scanValidationClient = require('../../../../shared/clients/scan-validation-client'); // Client pour communiquer avec le service de validation
+const notificationClient = require('../../../../shared/clients/notification-client');
 
 class TicketsService {
   async createTicketType(ticketTypeData, userId) {
@@ -926,6 +927,147 @@ class TicketsService {
         success: false,
         error: error.message || 'Failed to get event ticket statistics'
       };
+    }
+  }
+
+  /**
+   * Envoie une notification de ticket généré
+   * @param {Object} ticketData - Données du ticket
+   * @param {Object} userData - Données de l'utilisateur
+   * @param {Object} eventData - Données de l'événement
+   * @returns {Promise<Object>} Résultat de l'envoi
+   */
+  async sendTicketNotification(ticketData, userData, eventData) {
+    try {
+      const result = await notificationClient.sendTicketEmail(userData.email, {
+        eventName: eventData.title,
+        eventDate: eventData.event_date,
+        eventLocation: eventData.location,
+        ticketCount: 1,
+        ticketIds: [ticketData.id],
+        downloadUrl: `http://localhost:3001/api/tickets/${ticketData.id}/download`,
+        qrCode: ticketData.qr_code
+      });
+
+      if (!result.success) {
+        console.error('Failed to send ticket notification:', result.error);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error sending ticket notification:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Envoie une notification d'annulation d'événement
+   * @param {Object} eventData - Données de l'événement
+   * @param {Array} participants - Liste des participants
+   * @returns {Promise<Object>} Résultat de l'envoi
+   */
+  async sendEventCancellationNotification(eventData, participants) {
+    try {
+      const recipients = participants.map(p => ({
+        to: p.email,
+        data: {
+          firstName: p.first_name,
+          lastName: p.last_name
+        }
+      }));
+
+      const result = await notificationClient.sendBulkEmail(
+        recipients,
+        'event-cancelled',
+        `Important : L'événement "${eventData.title}" a été annulé`,
+        {
+          eventName: eventData.title,
+          eventDate: eventData.event_date,
+          cancellationReason: eventData.cancellation_reason || 'Raison non spécifiée',
+          refundInfo: eventData.refund_info || 'Contactez le support pour plus d\'informations',
+          organizerName: eventData.organizer_name || 'L\'équipe Event Planner'
+        },
+        'high'
+      );
+
+      if (!result.success) {
+        console.error('Failed to send event cancellation notification:', result.error);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error sending event cancellation notification:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Envoie un rappel d'événement
+   * @param {Object} eventData - Données de l'événement
+   * @param {Array} participants - Liste des participants
+   * @returns {Promise<Object>} Résultat de l'envoi
+   */
+  async sendEventReminderNotification(eventData, participants) {
+    try {
+      const recipients = participants.map(p => ({
+        to: p.email,
+        data: {
+          firstName: p.first_name,
+          lastName: p.last_name,
+          ticketCount: p.ticket_count || 1
+        }
+      }));
+
+      const result = await notificationClient.sendBulkEmail(
+        recipients,
+        'event-reminder',
+        `Rappel : ${eventData.title} demain !`,
+        {
+          eventName: eventData.title,
+          eventDate: new Date(eventData.event_date).toLocaleDateString('fr-FR'),
+          eventTime: new Date(eventData.event_date).toLocaleTimeString('fr-FR'),
+          eventLocation: eventData.location,
+          organizerName: eventData.organizer_name
+        },
+        'normal'
+      );
+
+      if (!result.success) {
+        console.error('Failed to send event reminder notification:', result.error);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error sending event reminder notification:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Envoie une notification d'invitation à un événement
+   * @param {Object} invitationData - Données de l'invitation
+   * @param {Object} eventData - Données de l'événement
+   * @returns {Promise<Object>} Résultat de l'envoi
+   */
+  async sendInvitationNotification(invitationData, eventData) {
+    try {
+      const result = await notificationClient.sendInvitationEmail(invitationData.email, {
+        eventName: eventData.title,
+        eventDate: eventData.event_date,
+        eventLocation: eventData.location,
+        organizerName: eventData.organizer_name,
+        invitationToken: invitationData.token,
+        responseUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/invitations/${invitationData.token}/respond`
+      });
+
+      if (!result.success) {
+        console.error('Failed to send invitation notification:', result.error);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error sending invitation notification:', error);
+      return { success: false, error: error.message };
     }
   }
 }
