@@ -484,7 +484,7 @@ class MarketplaceRepository {
   }
 
   async updateDesigner(id, updateData, updatedBy) {
-    const allowedFields = ['brand_name', 'portfolio_url', 'is_verified'];
+    const allowedFields = ['brand_name', 'portfolio_url', 'is_verified', 'status', 'verified_by', 'verified_at'];
     const updates = [];
     const values = [];
     
@@ -507,11 +507,14 @@ class MarketplaceRepository {
       };
     }
     
-    values.push(updatedBy, updatedBy, id);
+    // Ajouter updated_by et updated_at à la fin
+    values.push(updatedBy); // pour updated_by
+    const updatedByIndex = values.length;
+    values.push(id); // pour WHERE id
     
     const query = `
       UPDATE designers 
-      SET ${updates.join(', ')}, updated_by = $${values.length - 1}, updated_at = NOW()
+      SET ${updates.join(', ')}, updated_by = $${updatedByIndex}, updated_at = NOW()
       WHERE id = $${values.length}
       RETURNING *
     `;
@@ -522,7 +525,7 @@ class MarketplaceRepository {
   }
 
   async updateTemplate(id, updateData, updatedBy) {
-    const allowedFields = ['name', 'description', 'preview_url', 'source_files_path', 'price', 'currency', 'status'];
+    const allowedFields = ['name', 'description', 'preview_url', 'source_files_path', 'price', 'currency', 'status', 'approved_by', 'approved_at', 'rejected_by', 'rejected_at', 'rejection_reason'];
     const updates = [];
     const values = [];
     
@@ -545,11 +548,14 @@ class MarketplaceRepository {
       };
     }
     
-    values.push(updatedBy, updatedBy, id);
+    // Ajouter updated_by et updated_at à la fin
+    values.push(updatedBy); // pour updated_by
+    const updatedByIndex = values.length;
+    values.push(id); // pour WHERE id
     
     const query = `
       UPDATE templates 
-      SET ${updates.join(', ')}, updated_by = $${values.length - 1}, updated_at = NOW()
+      SET ${updates.join(', ')}, updated_by = $${updatedByIndex}, updated_at = NOW()
       WHERE id = $${values.length}
       RETURNING *
     `;

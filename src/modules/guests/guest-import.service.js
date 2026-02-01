@@ -266,23 +266,19 @@ class GuestImportService {
    * @returns {Promise<Object>} - Résultat de l'association
    */
   async addGuestToEvent(eventId, guestId, userId, transaction) {
-    // Generate unique invitation code
-    const invitationCode = uuidv4();
-
     const query = `
-      INSERT INTO event_guests (event_id, guest_id, invitation_code, status, created_by, updated_by, created_at, updated_at)
-      VALUES ($1, $2, $3, 'pending', $4, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      RETURNING id, invitation_code
+      INSERT INTO event_guests (event_id, guest_id, created_by, updated_by)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id
     `;
 
-    const values = [eventId, guestId, invitationCode, userId];
+    const values = [eventId, guestId, userId, userId];
 
     try {
       const result = await transaction.query(query, values);
       return {
         success: true,
-        eventGuestId: result.rows[0].id,
-        invitationCode: result.rows[0].invitation_code
+        eventGuestId: result.rows[0].id
       };
     } catch (error) {
       return {

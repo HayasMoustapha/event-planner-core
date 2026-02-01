@@ -28,13 +28,17 @@ const fileFilter = (req, file, cb) => {
     'text/csv',
     'application/csv',
     'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain' // Pour les fichiers CSV depuis curl
   ];
   
   const allowedExtensions = ['.csv', '.xls', '.xlsx'];
   const fileExt = path.extname(file.originalname).toLowerCase();
   
-  if (allowedTypes.includes(file.mimetype) && allowedExtensions.includes(fileExt)) {
+  // Accepter si l'extension est valide (priorité à l'extension sur le MIME type)
+  if (allowedExtensions.includes(fileExt)) {
+    cb(null, true);
+  } else if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new Error('Invalid file type. Only CSV, XLS and XLSX files are allowed'), false);
