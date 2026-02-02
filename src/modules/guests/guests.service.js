@@ -167,6 +167,30 @@ class GuestsService {
     }
   }
 
+  async getEventGuestAssociations(eventId, options = {}) {
+    try {
+      const { page, limit, status, userId } = options;
+      const eventGuests = await guestsRepository.findEventGuestAssociationsByEventId(eventId, {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 10,
+        status,
+        userId
+      });
+      
+      return {
+        success: true,
+        data: eventGuests,
+        pagination: eventGuests.pagination
+      };
+    } catch (error) {
+      console.error('Error getting event guest associations:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get event guest associations'
+      };
+    }
+  }
+
   async addGuestsToEvent(eventId, guests, userId) {
     try {
       // Validation des entrées

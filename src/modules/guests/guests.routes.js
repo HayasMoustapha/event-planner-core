@@ -31,6 +31,8 @@ router.delete('/:id', SecurityMiddleware.withPermissions('guests.delete'), guest
 // Event Guest Management - GET routes avec permission spécifique
 router.get('/events/:eventId/guests', SecurityMiddleware.withPermissions('guests.read'), guestsController.getEventGuests);
 
+router.get('/events/:eventId/guests/associations', SecurityMiddleware.withPermissions('guests.read'), guestsController.getEventGuestAssociations);
+
 router.post('/events/:eventId/guests', SecurityMiddleware.withPermissions('guests.create'), guestsController.addGuestsToEvent);
 
 router.post('/events/:eventId/guests/bulk', SecurityMiddleware.withPermissions('guests.create'), guestsController.bulkAddGuestsToEvent);

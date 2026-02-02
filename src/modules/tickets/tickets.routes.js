@@ -34,6 +34,8 @@ router.post('/',
 
 router.get('/', SecurityMiddleware.withPermissions('tickets.read'), ticketsController.getTickets);
 
+router.get('/:id', SecurityMiddleware.withPermissions('tickets.read'), ticketsController.getTicketById);
+
 router.get('/code/:ticketCode', SecurityMiddleware.withPermissions('tickets.read'), ticketsController.getTicketByCode);
 
 router.get('/events/:eventId/tickets', SecurityMiddleware.withPermissions('tickets.read'), ticketsController.getEventTickets);

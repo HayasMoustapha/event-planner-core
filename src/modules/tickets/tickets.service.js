@@ -153,6 +153,9 @@ class TicketsService {
 
   async createTicket(ticketData, userId) {
     try {
+      // Générer automatiquement le ticket_code comme pour les invitations
+      const ticketCode = `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      
       // Récupérer le ticket_type pour obtenir l'eventId
       const ticketType = await ticketsRepository.findTicketTypeById(ticketData.ticket_type_id);
       
@@ -186,10 +189,25 @@ class TicketsService {
 
       const ticketDataWithId = {
         ...ticketData,
+        ticket_code: ticketCode, // Généré automatiquement
         event_guest_id: eventGuest.id, // Utiliser l'ID de la liaison event_guests
         created_by: userId,
         updated_by: userId
       };
+
+      // Validation du ticket_template_id
+      if (ticketDataWithId.ticket_template_id) {
+        const templateExists = await ticketsRepository.ticketTemplateExists(ticketDataWithId.ticket_template_id);
+        if (!templateExists) {
+          return {
+            success: false,
+            error: `Ticket template with ID ${ticketDataWithId.ticket_template_id} does not exist`
+          };
+        }
+      } else {
+        // Si ticket_template_id n'est pas fourni ou est null, le mettre explicitement à null
+        ticketDataWithId.ticket_template_id = null;
+      }
 
       const ticket = await ticketsRepository.create(ticketDataWithId);
       
@@ -261,6 +279,38 @@ class TicketsService {
       return {
         success: false,
         error: error.message || 'Failed to get tickets'
+      };
+    }
+  }
+
+  async getTicketById(ticketId, userId) {
+    try {
+      const ticket = await ticketsRepository.findTicketById(ticketId);
+      
+      if (!ticket) {
+        return {
+          success: false,
+          error: 'Ticket not found'
+        };
+      }
+
+      // Vérifier que l'utilisateur a les permissions nécessaires
+      if (String(ticket.organizer_id) !== String(userId) && !await this.checkUserRole(userId, 'event_manager')) {
+        return {
+          success: false,
+          error: 'Access denied: You are not the organizer of this event'
+        };
+      }
+
+      return {
+        success: true,
+        data: ticket
+      };
+    } catch (error) {
+      console.error('Error getting ticket by ID:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get ticket by ID'
       };
     }
   }
@@ -349,10 +399,11 @@ class TicketsService {
       }
 
       // ÉTAPE 2 : Vérifier que l'utilisateur a le droit de valider ce ticket
-      if (ticket.user_id !== userId && !ticket.is_admin) {
+      // L'utilisateur doit être l'organisateur de l'événement ou un admin
+      if (ticket.organizer_id !== userId && !await this.checkUserRole(userId, 'admin')) {
         return {
           success: false,
-          error: 'Access denied'
+          error: 'Access denied: You are not the organizer of this event'
         };
       }
 
@@ -499,10 +550,11 @@ class TicketsService {
       }
 
       // Check if user owns the ticket or has admin permissions
-      if (ticket.user_id !== userId && !ticket.is_admin) {
+      // L'utilisateur doit être l'organisateur de l'événement ou un admin
+      if (ticket.organizer_id !== userId && !await this.checkUserRole(userId, 'admin')) {
         return {
           success: false,
-          error: 'Access denied'
+          error: 'Access denied: You are not the organizer of this event'
         };
       }
 
@@ -1068,6 +1120,34 @@ class TicketsService {
     } catch (error) {
       console.error('Error sending invitation notification:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+    /**
+   * Vérifie si un utilisateur a un rôle spécifique
+   * @param {number} userId - ID de l'utilisateur
+   * @param {string} roleCode - Code du rôle à vérifier
+   * @returns {Promise<boolean>} True si l'utilisateur a le rôle
+   */
+  async checkUserRole(userId, roleCode) {
+    try {
+      // Appeler l'API du service d'authentification pour vérifier les rôles
+      const response = await fetch('http://localhost:3000/api/users/' + userId + '/roles', {
+        method: 'GET',
+        headers: {
+          'X-Service-Token': process.env.SHARED_SERVICE_TOKEN || 'default-token'
+        }
+      });
+      
+      if (!response.ok) {
+        return false;
+      }
+      
+      const data = await response.json();
+      return data.success && data.data.some(role => role.code === roleCode);
+    } catch (error) {
+      console.error('Error checking user role:', error);
+      return false;
     }
   }
 }

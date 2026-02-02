@@ -148,6 +148,31 @@ class TicketsController {
     }
   }
 
+  async getTicketById(req, res, next) {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.id;
+      
+      if (!id || isNaN(parseInt(id))) {
+        return res.status(400).json(ResponseFormatter.error('Invalid ticket ID provided', null, 'VALIDATION_ERROR'));
+      }
+
+      const ticketId = parseInt(id);
+      const result = await ticketsService.getTicketById(ticketId, userId);
+      
+      if (!result.success) {
+        if (result.error && result.error.includes('not found')) {
+          return res.status(404).json(ResponseFormatter.notFound('Ticket'));
+        }
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.json(ResponseFormatter.success('Ticket retrieved', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getTicketByCode(req, res, next) {
     try {
       const { ticketCode } = req.params;

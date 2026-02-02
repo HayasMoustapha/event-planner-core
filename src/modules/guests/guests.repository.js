@@ -191,7 +191,7 @@ class GuestsRepository {
     let query = `
       SELECT g.*, eg.is_present, eg.check_in_time, eg.status as event_guest_status
       FROM guests g
-      INNER JOIN event_guests eg ON g.id = eg.guest_id AND eg.deleted_at IS NULL
+      LEFT JOIN event_guests eg ON g.id = eg.guest_id AND eg.deleted_at IS NULL
       WHERE eg.event_id = $1 AND g.deleted_at IS NULL
     `;
     
@@ -405,6 +405,38 @@ class GuestsRepository {
 
     const result = await database.query(query, [checked_in_at, guest_id, event_id]);
     return result.rows[0] || null;
+  }
+
+  /**
+   * Find event guests associations by event ID (retourne les IDs des associations)
+   */
+  async findEventGuestAssociationsByEventId(eventId, options = {}) {
+    const { page = 1, limit = 20, status } = options;
+    const offset = (page - 1) * limit;
+
+    let whereConditions = ['eg.event_id = $1'];
+    let queryParams = [eventId];
+
+    if (status) {
+      whereConditions.push(`eg.status = $${queryParams.length + 1}`);
+      queryParams.push(status);
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    const query = `
+      SELECT eg.*, g.first_name, g.last_name, g.email, g.phone
+      FROM event_guests eg
+      JOIN guests g ON eg.guest_id = g.id
+      WHERE ${whereClause} AND eg.deleted_at IS NULL AND g.deleted_at IS NULL
+      ORDER BY eg.created_at DESC
+      LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+    `;
+
+    queryParams.push(limit, offset);
+
+    const result = await database.query(query, queryParams);
+    return result.rows;
   }
 
   /**

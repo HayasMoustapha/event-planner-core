@@ -135,6 +135,29 @@ class GuestsController {
     }
   }
 
+  async getEventGuestAssociations(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      const { page, limit, status } = req.query;
+      const userId = req.user?.id;
+      
+      const result = await guestsService.getEventGuestAssociations(eventId, {
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 10,
+        status,
+        userId
+      });
+      
+      if (!result.success) {
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.json(ResponseFormatter.paginated('Event guest associations retrieved', result.data, result.pagination));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async addGuestsToEvent(req, res, next) {
     try {
       const { eventId } = req.params;
