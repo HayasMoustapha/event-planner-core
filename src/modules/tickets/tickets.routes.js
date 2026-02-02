@@ -53,7 +53,7 @@ router.post('/validate', SecurityMiddleware.withPermissions('tickets.validate'),
 
 // NOTE : Les opérations de génération bulk et jobs sont gérées par ticket-generator-service
 // router.post('/bulk/generate', SecurityMiddleware.withPermissions('tickets.create'), ticketsController.bulkGenerateTickets);
-router.post('/generation-jobs', SecurityMiddleware.withPermissions('tickets.jobs.create'), ticketsController.createJob);
+// router.post('/generation-jobs', SecurityMiddleware.withPermissions('tickets.jobs.create'), ticketsController.createJob);
 router.post('/generation-jobs/:jobId/process', SecurityMiddleware.withPermissions('tickets.jobs.process'), ticketsController.processJob);
 
 // Statistics - GET routes avec permission spécifique

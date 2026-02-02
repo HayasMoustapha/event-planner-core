@@ -259,8 +259,20 @@ class UnifiedTicketGenerationController {
 
       // Ajouter les détails des résultats
       if (tickets && tickets.length > 0) {
+        // Préparer les détails enrichis avec les infos PDF
+        const enrichedTickets = tickets.map(ticket => {
+          const enrichedTicket = { ...ticket };
+          if (ticket.pdf_file) {
+            enrichedTicket.pdf_info = {
+              file_path: ticket.pdf_file,
+              generated_at: ticket.generated_at || new Date().toISOString()
+            };
+          }
+          return enrichedTicket;
+        });
+
         updateData.details = {
-          tickets_processed: tickets,
+          tickets_processed: enrichedTickets,
           summary,
           processing_time_ms
         };
@@ -272,11 +284,21 @@ class UnifiedTicketGenerationController {
       if (tickets && tickets.length > 0) {
         for (const ticketResult of tickets) {
           if (ticketResult.success) {
-            await ticketsRepository.update(ticketResult.ticket_id, {
+            // Préparer les données de mise à jour
+            const updateTicketData = {
               qr_code_data: ticketResult.qr_code_data,
               generated_at: ticketResult.generated_at
-              // Note: la table tickets n'a pas de colonne 'status'
-            });
+            };
+
+            // Si le pdf_file est fourni, le stocker (même si la table n'a pas la colonne)
+            if (ticketResult.pdf_file) {
+              // Pour l'instant, on stocke l'info dans les détails du job
+              console.log(`[TICKET_GENERATION] PDF généré pour ticket ${ticketResult.ticket_id}: ${ticketResult.pdf_file}`);
+            }
+
+            await ticketsRepository.update(ticketResult.ticket_id, updateTicketData);
+          } else {
+            console.error(`[TICKET_GENERATION] Échec génération ticket ${ticketResult.ticket_id}: ${ticketResult.error}`);
           }
         }
       }
