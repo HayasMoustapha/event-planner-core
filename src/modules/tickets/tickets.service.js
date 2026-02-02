@@ -400,7 +400,7 @@ class TicketsService {
 
       // ÉTAPE 2 : Vérifier que l'utilisateur a le droit de valider ce ticket
       // L'utilisateur doit être l'organisateur de l'événement ou un admin
-      if (ticket.organizer_id !== userId && !await this.checkUserRole(userId, 'admin')) {
+      if (String(ticket.organizer_id) !== String(userId) && !await this.checkUserRole(userId, 'admin')) {
         return {
           success: false,
           error: 'Access denied: You are not the organizer of this event'
@@ -412,7 +412,7 @@ class TicketsService {
         location: scanContext.location || 'default',
         deviceId: scanContext.deviceId || `device_${userId}`,
         timestamp: scanContext.timestamp || new Date().toISOString(),
-        operatorId: scanContext.operatorId || userId,
+        operatorId: scanContext.operatorId || String(userId),
         checkpointId: scanContext.checkpointId || 'main'
       };
 
@@ -551,7 +551,7 @@ class TicketsService {
 
       // Check if user owns the ticket or has admin permissions
       // L'utilisateur doit être l'organisateur de l'événement ou un admin
-      if (ticket.organizer_id !== userId && !await this.checkUserRole(userId, 'admin')) {
+      if (String(ticket.organizer_id) !== String(userId) && !await this.checkUserRole(userId, 'admin')) {
         return {
           success: false,
           error: 'Access denied: You are not the organizer of this event'
