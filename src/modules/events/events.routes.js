@@ -231,6 +231,143 @@ router.post('/:id/archive',
 );
 
 // ========================================
+// ROUTES D'INTERACTION AVEC LES ÉVÉNEMENTS
+// ========================================
+
+/**
+ * @swagger
+ * /events/{id}/calendar:
+ *   get:
+ *     summary: Ajouter un événement au calendrier
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Fichier calendrier généré
+ */
+router.get('/:id/calendar', 
+  SecurityMiddleware.authenticated(),
+  eventsController.getCalendarFile
+);
+
+/**
+ * @swagger
+ * /events/{id}/respond:
+ *   post:
+ *     summary: Répondre à une notification d'événement
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - response
+ *             properties:
+ *               response:
+ *                 type: string
+ *                 enum: [accepted, declined, maybe]
+ *               message:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Réponse enregistrée
+ */
+router.post('/:id/respond', 
+  SecurityMiddleware.authenticated(),
+  ValidationMiddleware.validate({
+    response: Joi.string().valid('accepted', 'declined', 'maybe').required(),
+    message: Joi.string().optional()
+  }),
+  eventsController.respondToEvent
+);
+
+/**
+ * @swagger
+ * /events/{id}/accept:
+ *   post:
+ *     summary: Accepter une invitation à un événement
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Invitation acceptée
+ */
+router.post('/:id/accept', 
+  SecurityMiddleware.authenticated(),
+  eventsController.acceptInvitation
+);
+
+/**
+ * @swagger
+ * /events/{id}/decline:
+ *   post:
+ *     summary: Refuser une invitation à un événement
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Invitation refusée
+ */
+router.post('/:id/decline', 
+  SecurityMiddleware.authenticated(),
+  eventsController.declineInvitation
+);
+
+/**
+ * @swagger
+ * /events/{id}/maybe:
+ *   post:
+ *     summary: Répondre "peut-être" à une invitation
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Réponse "peut-être" enregistrée
+ */
+router.post('/:id/maybe', 
+  SecurityMiddleware.authenticated(),
+  eventsController.maybeRespondToInvitation
+);
+
+// ========================================
 // EXPORTATION DU ROUTEUR
 // ========================================
 module.exports = router;

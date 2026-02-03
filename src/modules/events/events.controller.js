@@ -220,6 +220,134 @@ class EventsController {
       next(error);
     }
   }
+
+  // ========================================
+  // MÉTHODES D'INTERACTION AVEC LES ÉVÉNEMENTS
+  // ========================================
+
+  async getCalendarFile(req, res, next) {
+    try {
+      const { id } = req.params;
+      const eventId = parseInt(id);
+      
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json(ResponseFormatter.error('Invalid event ID', null, 'VALIDATION_ERROR'));
+      }
+
+      const result = await eventsService.getCalendarFile(eventId, req.user.id);
+      
+      if (!result.success) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
+          return res.status(404).json(ResponseFormatter.notFound('Event'));
+        }
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      // Envoyer le fichier calendrier
+      res.setHeader('Content-Type', 'text/calendar');
+      res.setHeader('Content-Disposition', `attachment; filename="event-${eventId}.ics"`);
+      res.send(result.data);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async respondToEvent(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { response, message } = req.body;
+      const eventId = parseInt(id);
+      
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json(ResponseFormatter.error('Invalid event ID', null, 'VALIDATION_ERROR'));
+      }
+
+      const result = await eventsService.respondToEvent(eventId, req.user.id, response, message);
+      
+      if (!result.success) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
+          return res.status(404).json(ResponseFormatter.notFound('Event'));
+        }
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.status(200).json(ResponseFormatter.success('Response recorded successfully', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async acceptInvitation(req, res, next) {
+    try {
+      const { id } = req.params;
+      const eventId = parseInt(id);
+      
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json(ResponseFormatter.error('Invalid event ID', null, 'VALIDATION_ERROR'));
+      }
+
+      const result = await eventsService.respondToEvent(eventId, req.user.id, 'accepted');
+      
+      if (!result.success) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
+          return res.status(404).json(ResponseFormatter.notFound('Event'));
+        }
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.status(200).json(ResponseFormatter.success('Invitation accepted', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async declineInvitation(req, res, next) {
+    try {
+      const { id } = req.params;
+      const eventId = parseInt(id);
+      
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json(ResponseFormatter.error('Invalid event ID', null, 'VALIDATION_ERROR'));
+      }
+
+      const result = await eventsService.respondToEvent(eventId, req.user.id, 'declined');
+      
+      if (!result.success) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
+          return res.status(404).json(ResponseFormatter.notFound('Event'));
+        }
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.status(200).json(ResponseFormatter.success('Invitation declined', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async maybeRespondToInvitation(req, res, next) {
+    try {
+      const { id } = req.params;
+      const eventId = parseInt(id);
+      
+      if (isNaN(eventId) || eventId <= 0) {
+        return res.status(400).json(ResponseFormatter.error('Invalid event ID', null, 'VALIDATION_ERROR'));
+      }
+
+      const result = await eventsService.respondToEvent(eventId, req.user.id, 'maybe');
+      
+      if (!result.success) {
+        if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
+          return res.status(404).json(ResponseFormatter.notFound('Event'));
+        }
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.status(200).json(ResponseFormatter.success('Maybe response recorded', result.data));
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new EventsController();

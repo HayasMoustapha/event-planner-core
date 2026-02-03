@@ -467,6 +467,152 @@ class EventsService {
       return { success: false, error: error.message };
     }
   }
+
+  // ========================================
+  // MÉTHODES D'INTERACTION AVEC LES ÉVÉNEMENTS
+  // ========================================
+
+  async getCalendarFile(eventId, userId) {
+    try {
+      // Vérifier que l'événement existe et que l'utilisateur y a accès
+      const event = await eventsRepository.findById(eventId);
+      if (!event) {
+        return { success: false, error: 'Event not found' };
+      }
+
+      // Vérifier les permissions (organisateur ou participant)
+      const hasAccess = await this.checkEventAccess(eventId, userId);
+      if (!hasAccess) {
+        return { success: false, error: 'Access denied' };
+      }
+
+      // Générer le fichier ICS
+      const icsContent = this.generateICSFile(event);
+      
+      return {
+        success: true,
+        data: icsContent
+      };
+    } catch (error) {
+      console.error('Error generating calendar file:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async respondToEvent(eventId, userId, response, message = null) {
+    try {
+      // Vérifier que l'événement existe
+      const event = await eventsRepository.findById(eventId);
+      if (!event) {
+        return { success: false, error: 'Event not found' };
+      }
+
+      // Vérifier que l'utilisateur est invité ou a accès
+      const hasAccess = await this.checkEventAccess(eventId, userId);
+      if (!hasAccess) {
+        return { success: false, error: 'Access denied' };
+      }
+
+      // Enregistrer la réponse dans la table des invitations/réponses
+      const invitationsRepository = require('../invitations/invitations.repository');
+      const result = await invitationsRepository.recordResponse(eventId, userId, response, message);
+
+      if (!result.success) {
+        return result;
+      }
+
+      // Notifier l'organisateur si nécessaire
+      if (event.organizer_id !== userId) {
+        await this.notifyOrganizerOfResponse(event, userId, response);
+      }
+
+      return {
+        success: true,
+        data: {
+          eventId,
+          userId,
+          response,
+          message,
+          recordedAt: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      console.error('Error recording event response:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Méthodes utilitaires
+  generateICSFile(event) {
+    const startDate = new Date(event.event_date);
+    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // +2 heures par défaut
+
+    const formatDate = (date) => {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    return `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Event Planner//Event//FR
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:event-${event.id}@eventplanner.com
+DTSTART:${formatDate(startDate)}
+DTEND:${formatDate(endDate)}
+SUMMARY:${event.title}
+DESCRIPTION:${event.description || ''}
+LOCATION:${event.location}
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+END:VCALENDAR`;
+  }
+
+  async checkEventAccess(eventId, userId) {
+    try {
+      // Vérifier si l'utilisateur est l'organisateur
+      const event = await eventsRepository.findById(eventId);
+      if (event && event.organizer_id === userId) {
+        return true;
+      }
+
+      // Vérifier si l'utilisateur est un participant invité
+      const invitationsRepository = require('../invitations/invitations.repository');
+      const invitation = await invitationsRepository.findByEventAndUser(eventId, userId);
+      
+      return !!invitation;
+    } catch (error) {
+      console.error('Error checking event access:', error);
+      return false;
+    }
+  }
+
+  async notifyOrganizerOfResponse(event, userId, response) {
+    try {
+      const usersRepository = require('../../shared/repositories/users.repository');
+      const user = await usersRepository.findById(userId);
+      
+      if (!user) return;
+
+      const notificationClient = require('../../../shared/clients/notification-client');
+      
+      await notificationClient.sendEmail({
+        to: event.organizer_email,
+        template: 'event-notification',
+        data: {
+          organizerName: event.organizer_name,
+          eventName: event.title,
+          participantName: `${user.first_name} ${user.last_name}`,
+          response: response,
+          eventDate: new Date(event.event_date).toLocaleDateString('fr-FR'),
+          eventUrl: `${process.env.FRONTEND_URL}/events/${event.id}`
+        }
+      });
+    } catch (error) {
+      console.error('Error notifying organizer:', error);
+    }
+  }
 }
 
 module.exports = new EventsService();
