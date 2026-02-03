@@ -2,6 +2,10 @@ const { database } = require('../../config');
 const { v4: uuidv4 } = require('uuid');
 
 class GuestsRepository {
+  generateInvitationCode() {
+    return `INV-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+  }
+
   async create(guestData) {
     const { first_name, last_name, email, phone, created_by } = guestData;
     
@@ -313,21 +317,22 @@ class GuestsRepository {
     }
 
     const values = eventGuestsData.map((eventGuest, index) => {
-      const baseIndex = index * 4;
-      return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4})`;
+      const baseIndex = index * 5;
+      return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5})`;
     }).join(', ');
 
     const flatEventGuests = eventGuestsData.flatMap(eventGuest => [
       eventGuest.guest_id,
       eventGuest.event_id,
+      eventGuest.invitation_code || this.generateInvitationCode(),
       eventGuest.created_by,
       eventGuest.updated_by
     ]);
 
     const query = `
-      INSERT INTO event_guests (guest_id, event_id, created_by, updated_by)
+      INSERT INTO event_guests (guest_id, event_id, invitation_code, created_by, updated_by)
       VALUES ${values}
-      RETURNING id, guest_id, event_id, created_at
+      RETURNING id, guest_id, event_id, invitation_code, created_at
     `;
 
     const result = await database.query(query, flatEventGuests);
@@ -341,19 +346,21 @@ class GuestsRepository {
     const {
       event_id,
       guest_id,
+      invitation_code,
       created_by,
       updated_by
     } = eventGuestData;
 
     const query = `
-      INSERT INTO event_guests (event_id, guest_id, created_by, updated_by)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO event_guests (event_id, guest_id, invitation_code, created_by, updated_by)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `;
 
     const values = [
       event_id,
       guest_id,
+      invitation_code || this.generateInvitationCode(),
       created_by,
       updated_by || created_by
     ];

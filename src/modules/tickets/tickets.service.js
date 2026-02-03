@@ -39,6 +39,29 @@ class TicketsService {
     }
   }
 
+  async getAllTicketTypes({ page = 1, limit = 10, event_id = null, userId }) {
+    try {
+      const result = await ticketsRepository.getAllTicketTypes({
+        page,
+        limit,
+        event_id,
+        userId
+      });
+      
+      return {
+        success: true,
+        data: result.ticketTypes,
+        pagination: result.pagination
+      };
+    } catch (error) {
+      console.error('Error getting all ticket types:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get ticket types'
+      };
+    }
+  }
+
   async getTicketTypeById(ticketTypeId, userId) {
     try {
       const ticketType = await ticketsRepository.getTicketTypeById(ticketTypeId);

@@ -8,6 +8,12 @@ const router = express.Router();
 router.use(SecurityMiddleware.authenticated());
 
 // Ticket Type Management
+router.get('/', 
+  SecurityMiddleware.withPermissions('tickets.types.read'),
+  ValidationMiddleware.createTicketsValidator('getAllTicketTypes'),
+  ticketsController.getAllTicketTypes
+);
+
 router.post('/', 
   SecurityMiddleware.withPermissions('tickets.types.create'),
   ValidationMiddleware.createTicketsValidator('createTicketType'),

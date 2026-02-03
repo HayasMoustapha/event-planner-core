@@ -50,6 +50,9 @@ CREATE TABLE IF NOT EXISTS event_guests (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     is_present BOOLEAN DEFAULT FALSE,
     check_in_time TIMESTAMP WITH TIME ZONE,
+    invitation_code VARCHAR UNIQUE NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled')),
+    uid UUID DEFAULT gen_random_uuid(),
     -- Foreign keys selon les relations du diagramme
     event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     guest_id BIGINT NOT NULL REFERENCES guests(id) ON DELETE CASCADE,

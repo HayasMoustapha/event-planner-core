@@ -30,6 +30,28 @@ class TicketsController {
     }
   }
 
+  async getAllTicketTypes(req, res, next) {
+    try {
+      const { page, limit, event_id } = req.query;
+      const userId = req.user?.id;
+      
+      const result = await ticketsService.getAllTicketTypes({
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 10,
+        event_id: event_id ? parseInt(event_id) : null,
+        userId
+      });
+      
+      if (!result.success) {
+        return res.status(400).json(ResponseFormatter.error(result.error, result.details, 'VALIDATION_ERROR'));
+      }
+
+      res.json(ResponseFormatter.paginated('Ticket types retrieved', result.data, result.pagination));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getTicketTypeById(req, res, next) {
     try {
       const { id } = req.params;
@@ -257,9 +279,13 @@ class TicketsController {
 
   async validateTicketByCode(req, res, next) {
     try {
-      const { ticketCode } = req.body;
+      const ticketCode = req.body.ticketCode || req.body.ticket_code;
       const userId = req.user?.id;
       
+      if (!ticketCode) {
+        return res.status(400).json(ResponseFormatter.error('ticketCode is required', null, 'VALIDATION_ERROR'));
+      }
+
       const result = await ticketsService.validateTicketByCode(ticketCode, userId);
       
       if (!result.success) {

@@ -534,6 +534,67 @@ class TicketsRepository {
   }
 
   /**
+   * Get all ticket types with pagination and optional filtering
+   */
+  async getAllTicketTypes({ page = 1, limit = 10, event_id = null, userId }) {
+    let query = `
+      SELECT 
+        tt.*,
+        e.title as event_title
+      FROM ticket_types tt
+      LEFT JOIN events e ON tt.event_id = e.id
+      WHERE tt.deleted_at IS NULL
+    `;
+    
+    const values = [];
+    let paramIndex = 1;
+    
+    if (event_id) {
+      query += ` AND tt.event_id = $${paramIndex}`;
+      values.push(event_id);
+      paramIndex++;
+    }
+    
+    // Add ordering
+    query += ` ORDER BY tt.created_at DESC`;
+    
+    // Add pagination
+    const offset = (page - 1) * limit;
+    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    values.push(limit, offset);
+    
+    const result = await database.query(query, values);
+    
+    // Get total count for pagination
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM ticket_types tt
+      WHERE tt.deleted_at IS NULL
+    `;
+    
+    const countValues = [];
+    if (event_id) {
+      countQuery += ` AND tt.event_id = $1`;
+      countValues.push(event_id);
+    }
+    
+    const countResult = await database.query(countQuery, countValues);
+    const total = parseInt(countResult.rows[0].total);
+    
+    return {
+      ticketTypes: result.rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1
+      }
+    };
+  }
+
+  /**
    * Get tickets with pagination and filters
    */
   async getTickets(options = {}) {

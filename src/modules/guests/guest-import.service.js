@@ -9,6 +9,10 @@ const { v4: uuidv4 } = require('uuid');
  * Gère l'import en lot avec validation, déduplication et transactions SQL
  */
 class GuestImportService {
+  generateInvitationCode() {
+    return `INV-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+  }
+
   constructor(database) {
     this.db = database;
   }
@@ -266,19 +270,21 @@ class GuestImportService {
    * @returns {Promise<Object>} - Résultat de l'association
    */
   async addGuestToEvent(eventId, guestId, userId, transaction) {
+    const invitationCode = this.generateInvitationCode();
     const query = `
-      INSERT INTO event_guests (event_id, guest_id, created_by, updated_by)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO event_guests (event_id, guest_id, invitation_code, created_by, updated_by)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING id
     `;
 
-    const values = [eventId, guestId, userId, userId];
+    const values = [eventId, guestId, invitationCode, userId, userId];
 
     try {
       const result = await transaction.query(query, values);
       return {
         success: true,
-        eventGuestId: result.rows[0].id
+        eventGuestId: result.rows[0].id,
+        invitationCode
       };
     } catch (error) {
       return {
