@@ -7,7 +7,7 @@
  */
 
 const paymentService = require('../../services/payment.service');
-const { successResponse, errorResponse } = require('../../../../shared');
+const { success, error } = require('../../../../shared');
 const logger = require('../../utils/logger');
 
 /**
@@ -37,7 +37,7 @@ class PaymentController {
       // Validation des données requises
       if (!templateId || !userId || !customerEmail) {
         return res.status(400).json(
-          errorResponse('Missing required fields', 'templateId, userId, and customerEmail are required')
+          error('Missing required fields', 'templateId, userId, and customerEmail are required')
         );
       }
 
@@ -77,25 +77,29 @@ class PaymentController {
       });
 
       if (result.success) {
-        return res.status(201).json(
-          successResponse('Template purchase initiated successfully', {
+        return res.status(201).json({
+          success: true,
+          message: 'Template purchase initiated successfully',
+          data: {
             transactionId: result.transactionId,
             status: result.status,
             amount: result.amount,
             currency: result.currency,
             templateId: result.templateId,
             paymentDetails: result.paymentDetails
-          })
-        );
+          }
+        });
       } else {
-        return res.status(400).json(
-          errorResponse('Template purchase failed', result.error)
-        );
+        return res.status(400).json({
+          success: false,
+          error: 'Template purchase failed',
+          details: result.error
+        });
       }
     } catch (error) {
       logger.error('Template purchase controller error:', error.message);
       return res.status(500).json(
-        errorResponse('Template purchase processing failed', error.message)
+        error('Template purchase processing failed', error.message)
       );
     }
   }
@@ -125,7 +129,7 @@ class PaymentController {
       // Validation des données requises
       if (!userId || !amount || !customerEmail) {
         return res.status(400).json(
-          errorResponse('Missing required fields', 'userId, amount, and customerEmail are required')
+          error('Missing required fields', 'userId, amount, and customerEmail are required')
         );
       }
 
@@ -154,7 +158,7 @@ class PaymentController {
 
       if (result.success) {
         return res.status(201).json(
-          successResponse('Payment initiated successfully', {
+          success('Payment initiated successResponsefully', {
             transactionId: result.transactionId,
             status: result.status,
             amount: result.amount,
@@ -165,13 +169,13 @@ class PaymentController {
         );
       } else {
         return res.status(400).json(
-          errorResponse('Payment processing failed', result.error)
+          error('Payment processing failed', result.error)
         );
       }
     } catch (error) {
       logger.error('Payment processing controller error:', error.message);
       return res.status(500).json(
-        errorResponse('Payment processing failed', error.message)
+        error('Payment processing failed', error.message)
       );
     }
   }
@@ -187,7 +191,7 @@ class PaymentController {
 
       if (!transactionId) {
         return res.status(400).json(
-          errorResponse('Missing transaction ID', 'transactionId is required')
+          error('Missing transaction ID', 'transactionId is required')
         );
       }
 
@@ -197,7 +201,7 @@ class PaymentController {
 
       if (result.success) {
         return res.status(200).json(
-          successResponse('Payment status retrieved successfully', {
+          success('Payment status retrieved successResponsefully', {
             transactionId: result.transactionId,
             status: result.status,
             amount: result.amount,
@@ -208,13 +212,13 @@ class PaymentController {
         );
       } else {
         return res.status(404).json(
-          errorResponse('Payment status not found', result.error)
+          error('Payment status not found', result.error)
         );
       }
     } catch (error) {
       logger.error('Get payment status controller error:', error.message);
       return res.status(500).json(
-        errorResponse('Failed to get payment status', error.message)
+        error('Failed to get payment status', error.message)
       );
     }
   }
@@ -245,21 +249,23 @@ class PaymentController {
 
       if (result.success) {
         return res.status(200).json(
-          successResponse('Payment statistics retrieved successfully', {
+          success('Payment statistics retrieved successResponsefully', {
             transactions: result.transactions,
             gatewayStats: result.gatewayStats
           })
         );
       } else {
         return res.status(400).json(
-          errorResponse('Failed to get payment statistics', result.error)
+          error('Failed to get payment statistics', result.error)
         );
       }
     } catch (error) {
       logger.error('Get payment statistics controller error:', error.message);
-      return res.status(500).json(
-        errorResponse('Failed to get payment statistics', error.message)
-      );
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to get payment statistics',
+        details: error.message
+      });
     }
   }
 
@@ -276,19 +282,19 @@ class PaymentController {
 
       if (result.success) {
         return res.status(200).json(
-          successResponse('Available gateways retrieved successfully', {
+          success('Available gateways retrieved successResponsefully', {
             gateways: result.gateways
           })
         );
       } else {
         return res.status(400).json(
-          errorResponse('Failed to get available gateways', result.error)
+          error('Failed to get available gateways', result.error)
         );
       }
     } catch (error) {
       logger.error('Get available gateways controller error:', error.message);
       return res.status(500).json(
-        errorResponse('Failed to get available gateways', error.message)
+        error('Failed to get available gateways', error.message)
       );
     }
   }
@@ -309,7 +315,7 @@ class PaymentController {
 
       if (!transactionId) {
         return res.status(400).json(
-          errorResponse('Missing transaction ID', 'transactionId is required')
+          error('Missing transaction ID', 'transactionId is required')
         );
       }
 
@@ -324,20 +330,20 @@ class PaymentController {
 
       if (result.success) {
         return res.status(201).json(
-          successResponse('Invoice generated successfully', {
+          success('Invoice generated successResponsefully', {
             invoiceId: result.invoiceId,
             downloadUrl: result.downloadUrl
           })
         );
       } else {
         return res.status(400).json(
-          errorResponse('Failed to generate invoice', result.error)
+          error('Failed to generate invoice', result.error)
         );
       }
     } catch (error) {
       logger.error('Generate invoice controller error:', error.message);
       return res.status(500).json(
-        errorResponse('Failed to generate invoice', error.message)
+        error('Failed to generate invoice', error.message)
       );
     }
   }
@@ -353,13 +359,13 @@ class PaymentController {
 
       return res.status(result.success ? 200 : 503).json(
         result.success ? 
-          successResponse('Payment service is healthy', result) :
-          errorResponse('Payment service is unhealthy', result.error)
+          success('Payment service is healthy', result) :
+          error('Payment service is unhealthy', result.error)
       );
     } catch (error) {
       logger.error('Payment service health check error:', error.message);
       return res.status(500).json(
-        errorResponse('Payment service health check failed', error.message)
+        error('Payment service health check failed', error.message)
       );
     }
   }

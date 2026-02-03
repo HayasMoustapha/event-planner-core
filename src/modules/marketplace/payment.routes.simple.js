@@ -73,9 +73,7 @@ router.post('/payments/process',
  */
 router.get('/payments/status/:transactionId',
   // Validation du paramètre transactionId
-  ValidationMiddleware.validate(Joi.object({
-    transactionId: Joi.string().required().description('ID de la transaction')
-  }), 'params'),
+  ValidationMiddleware.createPaymentsValidator('getPaymentStatus'),
   paymentController.getPaymentStatus
 );
 
@@ -87,12 +85,7 @@ router.get('/payments/status/:transactionId',
  */
 router.get('/payments/statistics',
   // Validation des paramètres de requête
-  ValidationMiddleware.validate(Joi.object({
-    userId: Joi.string().optional().description('Filtrer par utilisateur'),
-    startDate: Joi.string().isoDate().optional().description('Date de début (ISO)'),
-    endDate: Joi.string().isoDate().optional().description('Date de fin (ISO)'),
-    status: Joi.string().optional().description('Filtrer par statut')
-  }), 'query'),
+  ValidationMiddleware.createPaymentsValidator('getPaymentStatistics'),
   paymentController.getPaymentStatistics
 );
 
