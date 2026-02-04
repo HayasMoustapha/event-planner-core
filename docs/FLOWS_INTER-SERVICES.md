@@ -360,6 +360,10 @@ Génération de QR codes, PDF tickets, et fichiers d'événements.
 9. UTILISATEUR ──► Tickets générés disponibles
 ```
 
+Notes:
+- Le ticket-generator enregistre le PDF généré dans sa base locale (`generated_tickets` + `ticket_generation_logs`).
+- L’endpoint `GET /api/tickets/:ticketId/download` sert **le PDF stocké**, pour garantir un rendu identique au fichier généré par le job.
+
 ### 📋 **MERMAID VERSION (pour IDE compatibles)**
 
 ```mermaid
@@ -404,7 +408,7 @@ sequenceDiagram
 
 #### **Ticket-Generator → Event-Planner-Core (Webhook)**
 ```javascript
-// Generation webhook
+// Generation webhook (format actuel)
 {
   "eventType": "ticket.completed",
   "jobId": 123,
@@ -416,8 +420,8 @@ sequenceDiagram
         "ticketId": 789,
         "ticketCode": "TKT-001",
         "qrCodeData": "base64_qr_data",
-        "fileUrl": "https://cdn.eventplanner.com/tickets/789.pdf",
-        "filePath": "/tickets/2026/01/30/789.pdf",
+        "fileUrl": "file:///generated-tickets/ticket-789.pdf",
+        "filePath": "/generated-tickets/ticket-789.pdf",
         "generatedAt": "2026-01-30T03:00:00Z",
         "success": true
       }
@@ -431,6 +435,10 @@ sequenceDiagram
   }
 }
 ```
+
+Notes d’implémentation:
+- Le core normalise automatiquement ce payload camelCase vers le format snake_case interne.
+- Le core persiste `tickets.qr_code_data` + `ticket_generation_jobs.details` à partir de ce webhook.
 
 ---
 
@@ -670,7 +678,8 @@ sequenceDiagram
 | Table | Champs synchronisés | Service source |
 |-------|-------------------|----------------|
 | `purchases` | `payment_status`, `payment_gateway`, `payment_intent_id` | Payment Service |
-| `tickets` | `qr_code_data`, `ticket_file_url`, `ticket_file_path`, `generation_job_id` | Ticket-Generator |
+| `tickets` | `qr_code_data` | Ticket-Generator (webhook) |
+| `ticket_generation_jobs` | `status`, `details`, `started_at`, `completed_at`, `error_message` | Ticket-Generator (webhook) |
 | `tickets` | `is_validated`, `validated_at` | Scan-Validation |
 
 ### **Payment Service**
@@ -681,8 +690,8 @@ sequenceDiagram
 ### **Ticket-Generator Service**
 | Table | Champs synchronisés | Service destination |
 |-------|-------------------|-------------------|
-| `ticket_generation_logs` | Logs webhooks | Event-Planner-Core (webhook) |
-| `generated_tickets` | Fichiers générés | Event-Planner-Core (webhook) |
+| `ticket_generation_logs` | Logs techniques + détails PDF | Local (ticket-generator) |
+| `generated_tickets` | Fichiers générés (pdf_file_path) | Local (ticket-generator) |
 
 ### **Notification Service**
 | Table | Champs synchronisés | Service destination |
@@ -704,7 +713,7 @@ POST /api/internal/scan-confirmation        # Scan-Validation
 ### **Event-Planner-Core (Émission)**
 ```
 POST /api/payments/process                  # Payment Service
-POST /api/tickets/generate                  # Ticket-Generator (Redis)
+POST /api/v1/tickets/generation-jobs        # Ticket-Generator (Redis Queue)
 POST /api/notifications/email               # Notification Service
 POST /api/scans/validate                    # Scan-Validation
 ```
