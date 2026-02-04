@@ -66,13 +66,17 @@ const updateJobStatusSchema = Joi.object({
     then: Joi.array().items(
       Joi.object({
         ticket_id: Joi.number().integer().positive().required().description('ID du ticket'),
+        ticket_code: Joi.string().optional().description('Code unique du ticket'),
+        original_ticket_code: Joi.string().optional().description('Code original du ticket'),
         qr_code_data: Joi.string().optional().description('Données du QR code en base64'),
+        file_url: Joi.string().optional().description('URL du fichier PDF (compatibilité)'),
+        file_path: Joi.string().optional().description('Chemin du fichier PDF (compatibilité)'),
         pdf_file: Joi.object({
           url: Joi.string().required().description('URL du fichier PDF'),
           path: Joi.string().required().description('Chemin du fichier PDF'),
           size_bytes: Joi.number().integer().min(0).required().description('Taille du fichier en octets')
-        }).required(),
-        generated_at: Joi.string().isoDate().required().description('Date de génération'),
+        }).optional(),
+        generated_at: Joi.string().isoDate().optional().description('Date de génération'),
         success: Joi.boolean().required().description('Succès de la génération'),
         error_message: Joi.string().optional().description('Message d\'erreur si échec')
       })
@@ -84,7 +88,10 @@ const updateJobStatusSchema = Joi.object({
     then: Joi.object({
       total: Joi.number().integer().min(0).required().description('Nombre total de tickets'),
       successful: Joi.number().integer().min(0).required().description('Nombre de tickets générés avec succès'),
-      failed: Joi.number().integer().min(0).required().description('Nombre de tickets en échec')
+      failed: Joi.number().integer().min(0).required().description('Nombre de tickets en échec'),
+      processing_time: Joi.number().integer().min(0).optional().description('Temps de traitement en ms (legacy)'),
+      processingTime: Joi.number().integer().min(0).optional().description('Temps de traitement en ms (camelCase)'),
+      processing_time_ms: Joi.number().integer().min(0).optional().description('Temps de traitement en ms (explicite)')
     }).required().description('Résumé du traitement'),
     otherwise: Joi.object().optional().description('Résumé du traitement')
   })
