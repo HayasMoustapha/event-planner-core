@@ -1,6 +1,7 @@
 const invitationsRepository = require('./invitations.repository');
 const guestsRepository = require('../guests/guests.repository');
 const eventsRepository = require('../events/events.repository');
+const notificationClient = require('../../../../shared/clients/notification-client');
 
 class InvitationsService {
   async checkUserRole(userId, roleCode) {
@@ -146,33 +147,22 @@ class InvitationsService {
 
   async sendNotificationByMethod(guest, invitation, event, sendMethod) {
     try {
-      const notificationData = {
-        template: 'event_invitation',
-        data: {
-          invitationCode: invitation.invitation_code,
-          guestName: `${guest.first_name} ${guest.last_name}`,
-          eventTitle: event.title,
-          eventDescription: event.description,
-          eventDate: event.event_date,
-          location: event.location,
-          acceptUrl: `https://app.eventplanner.com/invitations/${invitation.invitation_code}/accept`,
-          declineUrl: `https://app.eventplanner.com/invitations/${invitation.invitation_code}/decline`
-        }
-      };
+      // Construire un payload cohérent avec les templates du notification-service
+      const notificationData = this.buildInvitationNotificationData(guest, invitation, event);
 
       switch (sendMethod) {
         case 'email':
-          return guest.email ? await this.sendEmailNotification(guest.email, notificationData) : 
+          return guest.email ? await this.sendEmailNotification(guest.email, notificationData) :
                  { success: false, error: 'No email available' };
           
         case 'sms':
-          return guest.phone ? await this.sendSMSNotification(guest.phone, notificationData) : 
+          return guest.phone ? await this.sendSMSNotification(guest.phone, notificationData) :
                  { success: false, error: 'No phone available' };
           
         case 'both':
-          const emailResult = guest.email ? await this.sendEmailNotification(guest.email, notificationData) : 
+          const emailResult = guest.email ? await this.sendEmailNotification(guest.email, notificationData) :
                               { success: false, error: 'No email', type: 'email' };
-          const smsResult = guest.phone ? await this.sendSMSNotification(guest.phone, notificationData) : 
+          const smsResult = guest.phone ? await this.sendSMSNotification(guest.phone, notificationData) :
                             { success: false, error: 'No phone', type: 'sms' };
           
           return {
@@ -191,26 +181,50 @@ class InvitationsService {
     }
   }
   
+  /**
+   * Prépare les données d'invitation (email + SMS) avec un contenu cohérent
+   */
+  buildInvitationNotificationData(guest, invitation, event) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const eventDate = new Date(event.event_date);
+    const dateLabel = eventDate.toLocaleDateString('fr-FR');
+    const timeLabel = eventDate.toLocaleTimeString('fr-FR');
+
+    return {
+      template: 'event-invitation',
+      subject: `Vous êtes invité à ${event.title}`,
+      data: {
+        firstName: guest.first_name || 'Invité',
+        eventName: event.title,
+        eventDate: dateLabel,
+        eventTime: timeLabel,
+        eventLocation: event.location,
+        organizerName: event.organizer_name,
+        invitationToken: invitation.invitation_code,
+        responseUrl: `${frontendUrl}/invitations/${invitation.invitation_code}`,
+        acceptUrl: `${frontendUrl}/invitations/${invitation.invitation_code}/accept`,
+        declineUrl: `${frontendUrl}/invitations/${invitation.invitation_code}/decline`,
+        message: event.description || `Vous êtes invité à ${event.title}.`,
+        senderName: event.organizer_name,
+        eventId: event.id,
+        frontendUrl
+      }
+    };
+  }
+
   async sendEmailNotification(email, notificationData) {
     try {
-      const response = await fetch('http://localhost:3002/api/notifications/email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Service-Token': process.env.NOTIFICATION_SERVICE_API_KEY || process.env.SHARED_SERVICE_TOKEN || 'default-token'
-        },
-        body: JSON.stringify({
-          to: email,
-          template: notificationData.template,
-          data: notificationData.data
-        })
+      // Utiliser le client partagé pour garder les headers et le format unifiés
+      const result = await notificationClient.sendEmail({
+        to: email,
+        template: notificationData.template,
+        subject: notificationData.subject,
+        data: notificationData.data
       });
-      
-      if (response.ok) {
-        return { success: true, type: 'email', to: email };
-      } else {
-        return { success: false, type: 'email', to: email, error: `HTTP ${response.status}` };
-      }
+
+      return result.success
+        ? { success: true, type: 'email', to: email }
+        : { success: false, type: 'email', to: email, error: result.error };
     } catch (error) {
       return { success: false, type: 'email', to: email, error: error.message };
     }
@@ -218,24 +232,20 @@ class InvitationsService {
   
   async sendSMSNotification(phone, notificationData) {
     try {
-      const response = await fetch('http://localhost:3002/api/notifications/sms', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Service-Token': process.env.NOTIFICATION_SERVICE_API_KEY || process.env.SHARED_SERVICE_TOKEN || 'default-token'
-        },
-        body: JSON.stringify({
-          phoneNumber: phone,
-          template: notificationData.template,
-          data: notificationData.data
-        })
+      // Pour les SMS, on mappe l'invitation vers le template SMS existant
+      const result = await notificationClient.sendAppointmentReminderSMS(phone, {
+        firstName: notificationData.data.firstName,
+        appointmentType: `Invitation à ${notificationData.data.eventName}`,
+        appointmentDate: notificationData.data.eventDate,
+        appointmentTime: notificationData.data.eventTime,
+        location: notificationData.data.eventLocation,
+        confirmationUrl: notificationData.data.acceptUrl,
+        notes: notificationData.data.message
       });
-      
-      if (response.ok) {
-        return { success: true, type: 'sms', to: phone };
-      } else {
-        return { success: false, type: 'sms', to: phone, error: `HTTP ${response.status}` };
-      }
+
+      return result.success
+        ? { success: true, type: 'sms', to: phone }
+        : { success: false, type: 'sms', to: phone, error: result.error };
     } catch (error) {
       return { success: false, type: 'sms', to: phone, error: error.message };
     }
@@ -347,9 +357,19 @@ class InvitationsService {
         console.log(`📧 Notification sent to organizer: Guest ${invitation.first_name} ${invitation.last_name} ${action}ed invitation to ${invitation.event_title}`);
       }
       
-      // Confirmation au guest si accepté
+      // Confirmation au guest si accepté (via notification-service)
       if (action === 'accept' && invitation.email) {
-        console.log(`📧 Confirmation sent to guest: ${invitation.email} - Your attendance to ${invitation.event_title} is confirmed`);
+        await notificationClient.sendEmail({
+          to: invitation.email,
+          template: 'event-confirmation',
+          subject: `Confirmation de votre participation à ${invitation.event_title}`,
+          data: {
+            eventName: invitation.event_title,
+            eventDate: invitation.event_date,
+            eventLocation: invitation.location,
+            organizerName: event.organizer_name
+          }
+        });
       }
       
     } catch (error) {
