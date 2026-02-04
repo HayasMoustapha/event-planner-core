@@ -1,6 +1,26 @@
 const database = require('../../config/database');
 
 class InvitationsRepository {
+  async findByEventAndEmail(eventId, email) {
+    const query = `
+      SELECT i.*, 
+             eg.id as event_guest_id,
+             eg.status as event_guest_status,
+             eg.guest_id
+      FROM event_guests eg
+      INNER JOIN guests g ON eg.guest_id = g.id
+      LEFT JOIN invitations i ON i.event_guest_id = eg.id AND i.deleted_at IS NULL
+      WHERE eg.event_id = $1 
+        AND g.email = $2
+        AND eg.deleted_at IS NULL 
+        AND g.deleted_at IS NULL
+      LIMIT 1
+    `;
+    
+    const result = await database.query(query, [eventId, email]);
+    return result.rows[0] || null;
+  }
+
   async findByEventGuestId(eventGuestId) {
     const query = `
       SELECT * FROM invitations 
@@ -132,6 +152,57 @@ class InvitationsRepository {
     
     const result = await database.query(query, [userId, invitationId]);
     return result.rows[0];
+  }
+
+  async recordResponse(eventId, userId, response, message = null, userEmail = null) {
+    // NOTE: message is not persisted (no column in schema)
+    const statusMap = {
+      accepted: 'confirmed',
+      declined: 'cancelled',
+      maybe: 'pending'
+    };
+    const targetStatus = statusMap[response] || 'pending';
+
+    // Find matching invitation/event_guest using email (preferred)
+    const invitation = userEmail
+      ? await this.findByEventAndEmail(eventId, userEmail)
+      : null;
+
+    if (!invitation || !invitation.event_guest_id) {
+      return { success: false, error: 'Invitation not found for user' };
+    }
+
+    // Update event_guests status
+    const updateGuestQuery = `
+      UPDATE event_guests
+      SET status = $1, updated_at = NOW(), updated_by = $2
+      WHERE id = $3 AND deleted_at IS NULL
+      RETURNING *
+    `;
+    const guestResult = await database.query(updateGuestQuery, [targetStatus, userId, invitation.event_guest_id]);
+
+    // Mark invitation as opened (avoid invalid statuses)
+    if (invitation.id) {
+      const updateInvitationQuery = `
+        UPDATE invitations
+        SET opened_at = COALESCE(opened_at, NOW()), updated_at = NOW(), updated_by = $2,
+            status = CASE WHEN status = 'opened' THEN status ELSE 'opened' END
+        WHERE id = $1 AND deleted_at IS NULL
+        RETURNING *
+      `;
+      await database.query(updateInvitationQuery, [invitation.id, userId]);
+    }
+
+    return {
+      success: true,
+      data: {
+        eventId,
+        userId,
+        response,
+        message,
+        eventGuest: guestResult.rows[0] || null
+      }
+    };
   }
 }
 

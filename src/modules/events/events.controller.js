@@ -234,7 +234,7 @@ class EventsController {
         return res.status(400).json(ResponseFormatter.error('Invalid event ID', null, 'VALIDATION_ERROR'));
       }
 
-      const result = await eventsService.getCalendarFile(eventId, req.user.id);
+      const result = await eventsService.getCalendarFile(eventId, req.user.id, req.user.email);
       
       if (!result.success) {
         if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
@@ -262,7 +262,7 @@ class EventsController {
         return res.status(400).json(ResponseFormatter.error('Invalid event ID', null, 'VALIDATION_ERROR'));
       }
 
-      const result = await eventsService.respondToEvent(eventId, req.user.id, response, message);
+      const result = await eventsService.respondToEvent(eventId, req.user.id, response, message, req.user.email);
       
       if (!result.success) {
         if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
@@ -286,7 +286,7 @@ class EventsController {
         return res.status(400).json(ResponseFormatter.error('Invalid event ID', null, 'VALIDATION_ERROR'));
       }
 
-      const result = await eventsService.respondToEvent(eventId, req.user.id, 'accepted');
+      const result = await eventsService.respondToEvent(eventId, req.user.id, 'accepted', null, req.user.email);
       
       if (!result.success) {
         if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
@@ -310,7 +310,7 @@ class EventsController {
         return res.status(400).json(ResponseFormatter.error('Invalid event ID', null, 'VALIDATION_ERROR'));
       }
 
-      const result = await eventsService.respondToEvent(eventId, req.user.id, 'declined');
+      const result = await eventsService.respondToEvent(eventId, req.user.id, 'declined', null, req.user.email);
       
       if (!result.success) {
         if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {
@@ -334,7 +334,7 @@ class EventsController {
         return res.status(400).json(ResponseFormatter.error('Invalid event ID', null, 'VALIDATION_ERROR'));
       }
 
-      const result = await eventsService.respondToEvent(eventId, req.user.id, 'maybe');
+      const result = await eventsService.respondToEvent(eventId, req.user.id, 'maybe', null, req.user.email);
       
       if (!result.success) {
         if (result.error && (result.error.includes('not found') || result.error.includes('non trouvé'))) {

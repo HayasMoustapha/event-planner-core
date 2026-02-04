@@ -472,7 +472,7 @@ class EventsService {
   // MÉTHODES D'INTERACTION AVEC LES ÉVÉNEMENTS
   // ========================================
 
-  async getCalendarFile(eventId, userId) {
+  async getCalendarFile(eventId, userId, userEmail = null) {
     try {
       // Vérifier que l'événement existe et que l'utilisateur y a accès
       const event = await eventsRepository.findById(eventId);
@@ -481,7 +481,7 @@ class EventsService {
       }
 
       // Vérifier les permissions (organisateur ou participant)
-      const hasAccess = await this.checkEventAccess(eventId, userId);
+      const hasAccess = await this.checkEventAccess(eventId, userId, userEmail);
       if (!hasAccess) {
         return { success: false, error: 'Access denied' };
       }
@@ -499,7 +499,7 @@ class EventsService {
     }
   }
 
-  async respondToEvent(eventId, userId, response, message = null) {
+  async respondToEvent(eventId, userId, response, message = null, userEmail = null) {
     try {
       // Vérifier que l'événement existe
       const event = await eventsRepository.findById(eventId);
@@ -508,14 +508,14 @@ class EventsService {
       }
 
       // Vérifier que l'utilisateur est invité ou a accès
-      const hasAccess = await this.checkEventAccess(eventId, userId);
+      const hasAccess = await this.checkEventAccess(eventId, userId, userEmail);
       if (!hasAccess) {
         return { success: false, error: 'Access denied' };
       }
 
       // Enregistrer la réponse dans la table des invitations/réponses
       const invitationsRepository = require('../invitations/invitations.repository');
-      const result = await invitationsRepository.recordResponse(eventId, userId, response, message);
+      const result = await invitationsRepository.recordResponse(eventId, userId, response, message, userEmail);
 
       if (!result.success) {
         return result;
@@ -569,17 +569,19 @@ END:VEVENT
 END:VCALENDAR`;
   }
 
-  async checkEventAccess(eventId, userId) {
+  async checkEventAccess(eventId, userId, userEmail = null) {
     try {
       // Vérifier si l'utilisateur est l'organisateur
       const event = await eventsRepository.findById(eventId);
-      if (event && event.organizer_id === userId) {
+      if (event && Number(event.organizer_id) === Number(userId)) {
         return true;
       }
 
       // Vérifier si l'utilisateur est un participant invité
       const invitationsRepository = require('../invitations/invitations.repository');
-      const invitation = await invitationsRepository.findByEventAndUser(eventId, userId);
+      const invitation = userEmail
+        ? await invitationsRepository.findByEventAndEmail(eventId, userEmail)
+        : null;
       
       return !!invitation;
     } catch (error) {
