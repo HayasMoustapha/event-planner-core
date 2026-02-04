@@ -137,7 +137,7 @@ class InvitationsService {
       const userIdNum = parseInt(userId);
       if (userIdNum === 1) return true; // Super admin
       
-      return events.every(event => event.organizer_id === userIdNum);
+      return events.every(event => Number(event.organizer_id) === userIdNum);
     } catch (error) {
       console.error('Error validating permissions:', error);
       return false;

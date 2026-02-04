@@ -190,7 +190,20 @@ class TicketsService {
       }
 
       // Récupérer la liaison event_guests avec le bon eventId
-      let eventGuest = await guestsRepository.findEventGuest(ticketData.event_guest_id, ticketType.event_id);
+      let eventGuest = null;
+
+      // 1) Interpréter event_guest_id comme ID de la table event_guests (conforme au schéma)
+      if (ticketData.event_guest_id) {
+        const eventGuestById = await guestsRepository.findEventGuestById(ticketData.event_guest_id);
+        if (eventGuestById && eventGuestById.event_id === ticketType.event_id) {
+          eventGuest = eventGuestById;
+        }
+      }
+
+      // 2) Compatibilité: si non trouvé, traiter event_guest_id comme guest_id (ancien comportement)
+      if (!eventGuest) {
+        eventGuest = await guestsRepository.findEventGuest(ticketData.event_guest_id, ticketType.event_id);
+      }
       
       if (!eventGuest) {
         // Si l'association n'existe pas, la créer pour le test

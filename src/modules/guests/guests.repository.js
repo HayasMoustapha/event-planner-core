@@ -397,6 +397,16 @@ class GuestsRepository {
     return result.rows[0] || null;
   }
 
+  async findEventGuestById(eventGuestId) {
+    const query = `
+      SELECT * FROM event_guests
+      WHERE id = $1 AND deleted_at IS NULL
+    `;
+
+    const result = await database.query(query, [eventGuestId]);
+    return result.rows[0] || null;
+  }
+
   /**
    * Check in a guest
    */

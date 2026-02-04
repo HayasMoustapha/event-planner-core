@@ -21,8 +21,8 @@ const router = express.Router();
 router.use(SecurityMiddleware.authenticated());
 
 // Injection du contexte événementiel pour toutes les routes
-// Ajoute des informations contextuelles utiles (utilisateur, permissions, etc.)
-router.use(ContextInjector.injectEventContext());
+// Autoriser les lectures non-organizer (designer/user) tout en gardant les permissions RBAC
+router.use(ContextInjector.injectEventContext({ requireOrganizer: false }));
 
 // Application du gestionnaire d'erreurs spécifique aux événements
 // Gère les erreurs de manière centralisée pour ce module
