@@ -10,6 +10,36 @@ const { ResponseFormatter } = require('../../../shared');
  * Reçoit les webhooks du Ticket-Generator Service
  * Structure optimisée avec mise à jour des tables
  */
+function normalizeWebhookPayload(body = {}) {
+  // Supporter les deux formats:
+  // 1) Legacy: { job_id, status, timestamp, tickets, summary }
+  // 2) Nouveau: { eventType, jobId, status, timestamp, data: { tickets, summary } }
+  const normalized = {
+    job_id: body.job_id || body.jobId,
+    status: body.status,
+    timestamp: body.timestamp,
+    tickets: body.tickets || body.data?.tickets || [],
+    summary: body.summary || body.data?.summary,
+    processing_time_ms: body.processing_time_ms || body.data?.processingTime || body.data?.processing_time_ms
+  };
+
+  // Normaliser les tickets vers snake_case attendu par le core
+  if (Array.isArray(normalized.tickets)) {
+    normalized.tickets = normalized.tickets.map((ticket) => ({
+      ticket_id: ticket.ticket_id ?? ticket.ticketId ?? ticket.id,
+      ticket_code: ticket.ticket_code ?? ticket.ticketCode,
+      qr_code_data: ticket.qr_code_data ?? ticket.qrCodeData ?? ticket.qrCode,
+      file_url: ticket.file_url ?? ticket.fileUrl,
+      file_path: ticket.file_path ?? ticket.filePath,
+      pdf_file: ticket.pdf_file ?? ticket.filePath ?? ticket.fileUrl,
+      generated_at: ticket.generated_at ?? ticket.generatedAt,
+      success: ticket.success ?? (ticket.status === 'completed')
+    }));
+  }
+
+  return normalized;
+}
+
 async function receiveTicketGenerationWebhook(req, res) {
   const startTime = Date.now();
 
@@ -21,7 +51,8 @@ async function receiveTicketGenerationWebhook(req, res) {
       });
     }
 
-    const { job_id, status, timestamp, tickets, summary, processing_time_ms } = req.body || {};
+    const normalizedPayload = normalizeWebhookPayload(req.body || {});
+    const { job_id, status, timestamp, tickets, summary, processing_time_ms } = normalizedPayload;
 
     if (!job_id || !status || !timestamp) {
       return res.status(400).json({
@@ -39,7 +70,7 @@ async function receiveTicketGenerationWebhook(req, res) {
     });
 
     // Traiter le webhook avec le controller unifié
-    const result = await unifiedTicketGenerationController.processGenerationWebhook(req.body);
+    const result = await unifiedTicketGenerationController.processGenerationWebhook(normalizedPayload);
 
     if (!result.success) {
       return res.status(500).json({

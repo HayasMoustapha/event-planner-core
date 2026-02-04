@@ -278,9 +278,10 @@ class UnifiedTicketGenerationController {
         // Préparer les détails enrichis avec les infos PDF
         const enrichedTickets = tickets.map(ticket => {
           const enrichedTicket = { ...ticket };
-          if (ticket.pdf_file) {
+          const pdfPath = ticket.pdf_file || ticket.file_path || ticket.file_url;
+          if (pdfPath) {
             enrichedTicket.pdf_info = {
-              file_path: ticket.pdf_file,
+              file_path: pdfPath,
               generated_at: ticket.generated_at || new Date().toISOString()
             };
           }
@@ -302,17 +303,18 @@ class UnifiedTicketGenerationController {
           if (ticketResult.success) {
             // Préparer les données de mise à jour
             const updateTicketData = {
-              qr_code_data: ticketResult.qr_code_data,
-              generated_at: ticketResult.generated_at
+              qr_code_data: ticketResult.qr_code_data || ticketResult.qrCodeData
             };
 
             // Si le pdf_file est fourni, le stocker (même si la table n'a pas la colonne)
-            if (ticketResult.pdf_file) {
+            if (ticketResult.pdf_file || ticketResult.file_path || ticketResult.file_url) {
               // Pour l'instant, on stocke l'info dans les détails du job
-              console.log(`[TICKET_GENERATION] PDF généré pour ticket ${ticketResult.ticket_id}: ${ticketResult.pdf_file}`);
+              const pdfPath = ticketResult.pdf_file || ticketResult.file_path || ticketResult.file_url;
+              console.log(`[TICKET_GENERATION] PDF généré pour ticket ${ticketResult.ticket_id}: ${pdfPath}`);
             }
 
-            await ticketsRepository.update(ticketResult.ticket_id, updateTicketData);
+            const ticketId = ticketResult.ticket_id || ticketResult.ticketId;
+            await ticketsRepository.update(ticketId, updateTicketData);
           } else {
             console.error(`[TICKET_GENERATION] Échec génération ticket ${ticketResult.ticket_id}: ${ticketResult.error}`);
           }

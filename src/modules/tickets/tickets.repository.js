@@ -772,10 +772,20 @@ class TicketsRepository {
     const values = [jobId, status];
     let paramIndex = 3;
 
+    if (additionalData.details) {
+      updateFields.push(`details = $${paramIndex}`);
+      values.push(additionalData.details);
+      paramIndex++;
+    }
+
     if (status === 'processing') {
-      updateFields.push(`started_at = NOW()`);
+      updateFields.push(`started_at = $${paramIndex}`);
+      values.push(additionalData.started_at || new Date());
+      paramIndex++;
     } else if (status === 'completed') {
-      updateFields.push(`completed_at = NOW()`);
+      updateFields.push(`completed_at = $${paramIndex}`);
+      values.push(additionalData.completed_at || new Date());
+      paramIndex++;
     } else if (status === 'failed') {
       updateFields.push(`error_message = $${paramIndex}`);
       values.push(additionalData.error_message || 'Unknown error');
