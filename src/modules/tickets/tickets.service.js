@@ -457,15 +457,9 @@ class TicketsService {
       // ÉTAPE 6 : Si la validation est réussie, mettre à jour le ticket
       if (validationResult.valid) {
         const updateData = {
-          status: 'validated',
+          is_validated: true,
           validated_at: new Date().toISOString(),
-          validated_by: userId,
-          validation_metadata: {
-            service: 'scan-validation-service',
-            timestamp: validationResult.validation.timestamp,
-            fraudFlags: validationResult.validation.fraudFlags || [],
-            restrictions: validationResult.validation.restrictions || []
-          }
+          validated_by: userId
         };
 
         const updatedTicket = await ticketsRepository.update(ticketId, updateData);

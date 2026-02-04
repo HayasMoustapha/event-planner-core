@@ -48,3 +48,9 @@ logger.rejections.handle(
 );
 
 module.exports = logger;
+
+// Domain-specific helpers for consistent structured logging
+// (Avoid runtime errors when calling logger.payment in services)
+logger.payment = (message, meta = {}) => {
+  logger.info(message, { category: 'payment', ...meta });
+};

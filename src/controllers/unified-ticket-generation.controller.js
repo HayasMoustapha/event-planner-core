@@ -44,6 +44,14 @@ class UnifiedTicketGenerationController {
           'ENRICHMENT_ERROR'
         ));
       }
+      
+      if (!Array.isArray(enrichmentResult.data) || enrichmentResult.data.length === 0) {
+        return res.status(404).json(ResponseFormatter.error(
+          'No tickets could be enriched for generation',
+          null,
+          'TICKETS_NOT_FOUND'
+        ));
+      }
 
       // Valider les données enrichies
       const validation = ticketDataEnrichmentService.validateEnrichedData(enrichmentResult.data);
@@ -56,6 +64,14 @@ class UnifiedTicketGenerationController {
       }
 
       // Étape 2: Créer le job en base de données
+      if (!enrichmentResult.data[0]?.event?.id) {
+        return res.status(400).json(ResponseFormatter.error(
+          'Event data missing for ticket generation',
+          null,
+          'MISSING_EVENT_ID'
+        ));
+      }
+
       const jobData = {
         event_id: enrichmentResult.data[0]?.event?.id || null,
         status: 'pending',

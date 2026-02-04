@@ -669,7 +669,7 @@ class TicketsRepository {
    * Update ticket
    */
   async update(ticketId, updateData) {
-    const allowedFields = ['status', 'validated_at', 'validated_by', 'qr_code_data'];
+    const allowedFields = ['is_validated', 'validated_at', 'validated_by', 'qr_code_data'];
     const updates = [];
     const values = [];
     let paramIndex = 1;
