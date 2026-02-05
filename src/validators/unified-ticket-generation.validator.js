@@ -58,7 +58,7 @@ const createTicketGenerationJobSchema = Joi.object({
  */
 const updateJobStatusSchema = Joi.object({
   job_id: Joi.number().integer().positive().required().description('ID du job'),
-  status: Joi.string().valid('pending', 'processing', 'completed', 'failed').required().description('Statut du job'),
+  status: Joi.string().valid('pending', 'processing', 'completed', 'failed', 'partial').required().description('Statut du job'),
   timestamp: Joi.string().isoDate().required().description('Timestamp du traitement'),
   processing_time_ms: Joi.number().integer().min(0).optional().description('Temps de traitement en ms'),
   tickets: Joi.when('status', {

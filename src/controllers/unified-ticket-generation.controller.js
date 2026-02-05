@@ -260,16 +260,18 @@ class UnifiedTicketGenerationController {
   async processGenerationWebhook(webhookData) {
     try {
       const { job_id, status, timestamp, tickets, summary, processing_time_ms } = webhookData;
+      // Normaliser le statut pour respecter la contrainte DB (pas de "partial")
+      const normalizedStatus = status === 'partial' ? 'failed' : status;
 
       // Mettre à jour le statut du job
       const updateData = {
-        status,
+        status: normalizedStatus,
         updated_at: new Date()
       };
 
-      if (status === 'processing') {
+      if (normalizedStatus === 'processing') {
         updateData.started_at = timestamp;
-      } else if (status === 'completed' || status === 'failed') {
+      } else if (normalizedStatus === 'completed' || normalizedStatus === 'failed') {
         updateData.completed_at = timestamp;
       }
 
@@ -295,7 +297,7 @@ class UnifiedTicketGenerationController {
         };
       }
 
-      await ticketsRepository.updateJobStatus(job_id, status, updateData);
+      await ticketsRepository.updateJobStatus(job_id, normalizedStatus, updateData);
 
       // Mettre à jour les tickets individuels avec les résultats
       if (tickets && tickets.length > 0) {
@@ -321,12 +323,12 @@ class UnifiedTicketGenerationController {
         }
       }
 
-      console.log(`[TICKET_GENERATION] Job ${job_id} mis à jour: ${status}`);
+      console.log(`[TICKET_GENERATION] Job ${job_id} mis à jour: ${normalizedStatus}`);
 
       return {
         success: true,
         job_id,
-        status,
+        status: normalizedStatus,
         tickets_processed: tickets?.length || 0
       };
     } catch (error) {

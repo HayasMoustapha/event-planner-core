@@ -169,6 +169,8 @@ app.use('/api/events', eventsRoutes);
 app.use('/api/guests', guestsRoutes);
 app.use('/api/tickets', ticketsRoutes);
 app.use('/api/tickets/generation', ticketGenerationRoutes); // Ajout des routes de génération
+// Alias compatible avec les collections Postman existantes (/api/v1/...)
+app.use('/api/v1', ticketGenerationRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/invitations', invitationsRoutes);
