@@ -6,6 +6,7 @@
 const ticketsRepository = require('../modules/tickets/tickets.repository');
 const guestsRepository = require('../modules/guests/guests.repository');
 const eventsRepository = require('../modules/events/events.repository');
+const authApiService = require('./auth-api-service');
 
 class TicketDataEnrichmentService {
   /**
@@ -53,6 +54,20 @@ class TicketDataEnrichmentService {
           continue;
         }
 
+        // Récupérer le nom de l'organisateur depuis Auth Service
+        let organizerName = '';
+        if (event.organizer_id) {
+          try {
+            const organizerData = await authApiService.getUserById(event.organizer_id);
+            const organizer = organizerData?.data?.user || organizerData?.data || organizerData;
+            const firstName = organizer?.first_name || '';
+            const lastName = organizer?.last_name || '';
+            organizerName = `${firstName} ${lastName}`.trim();
+          } catch (error) {
+            console.warn(`Impossible de récupérer l'organisateur ${event.organizer_id}:`, error.message);
+          }
+        }
+
         // Construire l'objet enrichi
         const enrichedTicket = {
           ticket_id: ticket.id,
@@ -76,10 +91,11 @@ class TicketDataEnrichmentService {
             source_files_path: '/templates/default/'
           },
           event: {
-            id: event.id, // Ajouter l'ID de l'événement
+            id: event.id,
             title: event.title,
             location: event.location || 'Non spécifié',
-            date: (event.event_date || event.created_at).toISOString()
+            date: (event.event_date || event.created_at).toISOString(),
+            organizer_name: organizerName
           }
         };
 

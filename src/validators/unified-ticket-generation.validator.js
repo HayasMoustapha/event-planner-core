@@ -29,7 +29,8 @@ const enrichedTicketDataSchema = Joi.object({
     id: Joi.number().integer().positive().required().description('ID de l\'événement'),
     title: Joi.string().required().description('Titre de l\'événement'),
     location: Joi.string().required().description('Lieu de l\'événement'),
-    date: Joi.string().isoDate().required().description('Date de l\'événement')
+    date: Joi.string().isoDate().required().description('Date de l\'événement'),
+    organizer_name: Joi.string().allow('').optional().description('Nom de l\'organisateur')
   }).required()
 }).required();
 
