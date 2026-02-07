@@ -36,21 +36,27 @@ class MarketplaceRepository {
       source_files_path, 
       price, 
       currency, 
+      status,
+      approved_by,
+      approved_at,
+      rejected_by,
+      rejected_at,
       created_by 
     } = templateData;
     
     const query = `
       INSERT INTO templates (
         designer_id, name, description, preview_url, source_files_path, 
-        price, currency, created_by, updated_by
+        price, currency, status, approved_by, approved_at, rejected_by, rejected_at,
+        created_by, updated_by
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $13)
       RETURNING *
     `;
     
     const values = [
       designer_id, name, description, preview_url, source_files_path,
-      price, currency, created_by
+      price, currency, status, approved_by, approved_at, rejected_by, rejected_at, created_by
     ];
     const result = await database.query(query, values);
     
@@ -718,7 +724,7 @@ class MarketplaceRepository {
    */
   async deleteTemplate(templateId, deletedBy) {
     const query = `
-      UPDATE ticket_templates
+      UPDATE templates
       SET deleted_at = NOW(), deleted_by = $2, updated_at = NOW(), updated_by = $2
       WHERE id = $1 AND deleted_at IS NULL
       RETURNING *

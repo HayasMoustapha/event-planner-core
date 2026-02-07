@@ -1,4 +1,7 @@
 const marketplaceRepository = require('./marketplace.repository');
+const templateValidationService = require('./template-validation.service');
+const notificationClient = require('../../../../shared/clients/notification-client');
+const authApiService = require('../../services/auth-api-service');
 
 class MarketplaceService {
   async becomeDesigner(userId, designerData, token) {
@@ -147,6 +150,18 @@ class MarketplaceService {
         };
       }
 
+      // Validation technique du package template (structure + variables + preview)
+      const validation = await templateValidationService.validateTemplatePackage(
+        templateData.source_files_path,
+        templateData.preview_url
+      );
+
+      const now = new Date().toISOString();
+      const status = validation.valid ? 'approved' : 'rejected';
+      const statusFields = validation.valid
+        ? { approved_by: userId, approved_at: now }
+        : { rejected_by: userId, rejected_at: now };
+
       // CORRECTION: Mapper uniquement les champs qui existent dans la table SQL templates
       const templateDataWithCreator = {
         designer_id: designer.id, // Utiliser l'ID du designer (pas du user)
@@ -156,17 +171,21 @@ class MarketplaceService {
         source_files_path: templateData.source_files_path || null,
         price: templateData.price || null,
         currency: templateData.currency || 'EUR',
-        status: 'pending_review', // Valeur par défaut selon CHECK constraint
+        status,
+        ...statusFields,
         created_by: userId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        created_at: now,
+        updated_at: now
       };
 
       const template = await marketplaceRepository.createTemplate(templateDataWithCreator);
+
+      await this.notifyDesignerTemplateStatus(designer, template, validation);
       
       return {
         success: true,
-        data: template
+        data: template,
+        validation
       };
     } catch (error) {
       console.error('Error creating template:', error);
@@ -179,14 +198,38 @@ class MarketplaceService {
 
   async getTemplates(options = {}) {
     try {
-      const { page, limit, category, search, designer_id, userId } = options;
+      const { page, limit, category, search, designer_id, user, status } = options;
+      let effectiveStatus = status;
+
+      const isAdmin = !!(
+        user &&
+        (user.email === 'admin@eventplanner.com' ||
+          (user.roles || []).includes('super_admin') ||
+          (user.permissions || []).includes('marketplace.admin.read'))
+      );
+
+      if (!isAdmin && !effectiveStatus) {
+        let canSeeAllForDesigner = false;
+
+        if (designer_id && user?.id) {
+          const designer = await marketplaceRepository.getDesignerByUserId(user.id);
+          if (designer && Number(designer.id) === Number(designer_id)) {
+            canSeeAllForDesigner = true;
+          }
+        }
+
+        if (!canSeeAllForDesigner) {
+          effectiveStatus = 'approved';
+        }
+      }
+
       const templates = await marketplaceRepository.getTemplates({
         page: page ? parseInt(page) : 1,
         limit: limit ? parseInt(limit) : 10,
         category,
         search,
         designer_id,
-        userId
+        status: effectiveStatus
       });
       
       return {
@@ -405,6 +448,12 @@ class MarketplaceService {
         approved_at: new Date().toISOString()
       });
 
+      const designer = await marketplaceRepository.getDesignerById(template.designer_id);
+      await this.notifyDesignerTemplateStatus(designer, approvedTemplate, {
+        valid: true,
+        reason: 'Template approuvé'
+      });
+
       return {
         success: true,
         data: approvedTemplate
@@ -429,7 +478,7 @@ class MarketplaceService {
         };
       }
 
-      await marketplaceRepository.deleteTemplate(templateId);
+      await marketplaceRepository.deleteTemplate(templateId, userId);
 
       return {
         success: true,
@@ -457,9 +506,14 @@ class MarketplaceService {
 
       const rejectedTemplate = await marketplaceRepository.updateTemplate(templateId, {
         status: 'rejected',
-        rejection_reason: rejectData.reason,
         rejected_by: userId,
         rejected_at: new Date().toISOString()
+      });
+
+      const designer = await marketplaceRepository.getDesignerById(template.designer_id);
+      await this.notifyDesignerTemplateStatus(designer, rejectedTemplate, {
+        valid: false,
+        reason: rejectData.reason || 'Template rejeté'
       });
 
       return {
@@ -630,6 +684,39 @@ class MarketplaceService {
         success: false,
         error: error.message || 'Failed to get admin reviews'
       };
+    }
+  }
+
+  async notifyDesignerTemplateStatus(designer, template, validation) {
+    try {
+      if (!designer?.user_id) return;
+
+      const designerUser = await authApiService.getUserById(designer.user_id);
+      const user = designerUser.data || designerUser;
+
+      if (!user?.email) return;
+
+      const isApproved = validation?.valid === true;
+      const statusLabel = isApproved ? 'approuvé' : 'rejeté';
+      const reason = validation?.reason || (isApproved ? 'Template approuvé' : 'Template rejeté');
+
+      await notificationClient.sendEmail({
+        to: user.email,
+        template: 'event-notification',
+        subject: `Template ${statusLabel} - ${template?.name || ''}`.trim(),
+        data: {
+          firstName: user.first_name || user.firstName || 'Designer',
+          notificationTitle: `Votre template a été ${statusLabel}`,
+          eventName: template?.name || 'Template',
+          eventDate: new Date().toLocaleDateString('fr-FR'),
+          eventLocation: 'Marketplace',
+          organizerName: 'Event Planner',
+          message: reason,
+          frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000'
+        }
+      });
+    } catch (error) {
+      console.error('Failed to notify designer for template status:', error.message);
     }
   }
 }

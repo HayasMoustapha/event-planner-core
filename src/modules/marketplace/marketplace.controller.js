@@ -145,7 +145,7 @@ class MarketplaceController {
   async getTemplates(req, res, next) {
     try {
       const { page, limit, category, search, designer_id } = req.query;
-      const userId = req.user?.id;
+      const user = req.user;
       
       const result = await marketplaceService.getTemplates({
         page: page ? parseInt(page) : 1,
@@ -153,7 +153,7 @@ class MarketplaceController {
         category,
         search,
         designer_id,
-        userId
+        user
       });
       
       if (!result.success) {
