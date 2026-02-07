@@ -3,6 +3,7 @@ const ExcelParser = require('../../utils/parsers/excel.parser');
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const { ensureGuestAuthAccount } = require('./guest-auth.helper');
 
 /**
  * Service d'import des invités pour les fichiers CSV et Excel
@@ -186,6 +187,23 @@ class GuestImportService {
 
       // Commit the transaction
       await client.query('COMMIT');
+
+      for (const guest of imported) {
+        if (!guest?.email) continue;
+        try {
+          await ensureGuestAuthAccount({
+            first_name: guest.first_name,
+            last_name: guest.last_name,
+            email: guest.email,
+            phone: guest.phone || null
+          });
+        } catch (error) {
+          console.warn('Failed to provision guest auth account:', {
+            email: guest.email,
+            error: error.message
+          });
+        }
+      }
 
       return {
         success: true,

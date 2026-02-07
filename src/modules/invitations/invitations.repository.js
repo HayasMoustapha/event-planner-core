@@ -74,6 +74,34 @@ class InvitationsRepository {
     return result.rows[0];
   }
 
+  async getEventTicketTypeSummary(eventId) {
+    const query = `
+      SELECT 
+        COUNT(*) AS total,
+        COUNT(CASE WHEN type = 'free' THEN 1 END) AS free_count,
+        COUNT(CASE WHEN type = 'paid' THEN 1 END) AS paid_count,
+        COUNT(CASE WHEN type = 'donation' THEN 1 END) AS donation_count
+      FROM ticket_types
+      WHERE event_id = $1 AND deleted_at IS NULL
+    `;
+
+    const result = await database.query(query, [eventId]);
+    return result.rows[0] || { total: 0, free_count: 0, paid_count: 0, donation_count: 0 };
+  }
+
+  async findTicketByEventGuestId(eventGuestId) {
+    const query = `
+      SELECT t.id, t.ticket_code, t.qr_code_data, t.price, t.currency
+      FROM tickets t
+      WHERE t.event_guest_id = $1 AND t.deleted_at IS NULL
+      ORDER BY t.created_at DESC
+      LIMIT 1
+    `;
+
+    const result = await database.query(query, [eventGuestId]);
+    return result.rows[0] || null;
+  }
+
   async findByEventId(eventId, options = {}) {
     const { page = 1, limit = 10, status } = options;
     const offset = (page - 1) * limit;

@@ -2,6 +2,7 @@ const invitationsRepository = require('./invitations.repository');
 const guestsRepository = require('../guests/guests.repository');
 const eventsRepository = require('../events/events.repository');
 const notificationClient = require('../../../../shared/clients/notification-client');
+const { ensureGuestAuthAccount, DEFAULT_GUEST_PASSWORD, AUTH_SERVICE_URL } = require('../guests/guest-auth.helper');
 
 class InvitationsService {
   async checkUserRole(userId, roleCode) {
@@ -51,9 +52,33 @@ class InvitationsService {
         };
       }
       
+      const ticketTypeSummaryByEvent = new Map();
+
       // 3. Pour chaque event_guest
       for (const eventGuest of eventGuests) {
         try {
+          let ticketSummary = ticketTypeSummaryByEvent.get(eventGuest.event_id);
+          if (!ticketSummary) {
+            ticketSummary = await invitationsRepository.getEventTicketTypeSummary(eventGuest.event_id);
+            ticketTypeSummaryByEvent.set(eventGuest.event_id, ticketSummary);
+          }
+
+          const isPaidEvent = Number(ticketSummary.paid_count || 0) > 0;
+          const isFreeEvent = !isPaidEvent;
+          const guestTicket = isFreeEvent
+            ? await invitationsRepository.findTicketByEventGuestId(eventGuest.id)
+            : null;
+
+          let authAccount = null;
+          if (eventGuest.email) {
+            authAccount = await ensureGuestAuthAccount({
+              first_name: eventGuest.first_name,
+              last_name: eventGuest.last_name,
+              email: eventGuest.email,
+              phone: eventGuest.phone || null
+            });
+          }
+
           // Vérifier si invitation existe déjà
           const existingInvitation = await invitationsRepository.findByEventGuestId(eventGuest.id);
           if (existingInvitation) {
@@ -87,6 +112,12 @@ class InvitationsService {
             }, 
             invitation, 
             eventData, 
+            {
+              authAccount,
+              isFreeEvent,
+              isPaidEvent,
+              guestTicket
+            },
             sendMethod
           );
           
@@ -145,10 +176,10 @@ class InvitationsService {
     }
   }
 
-  async sendNotificationByMethod(guest, invitation, event, sendMethod) {
+  async sendNotificationByMethod(guest, invitation, event, options, sendMethod) {
     try {
       // Construire un payload cohérent avec les templates du notification-service
-      const notificationData = this.buildInvitationNotificationData(guest, invitation, event);
+      const notificationData = this.buildInvitationNotificationData(guest, invitation, event, options);
 
       switch (sendMethod) {
         case 'email':
@@ -184,11 +215,28 @@ class InvitationsService {
   /**
    * Prépare les données d'invitation (email + SMS) avec un contenu cohérent
    */
-  buildInvitationNotificationData(guest, invitation, event) {
+  buildInvitationNotificationData(guest, invitation, event, options = {}) {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const eventDate = new Date(event.event_date);
     const dateLabel = eventDate.toLocaleDateString('fr-FR');
     const timeLabel = eventDate.toLocaleTimeString('fr-FR');
+    const ticketGeneratorUrl = process.env.TICKET_GENERATOR_URL || 'http://localhost:3004';
+
+    const authAccount = options.authAccount || null;
+    const loginToken = authAccount?.loginToken || null;
+    const loginUrl = authAccount?.loginUrl || (loginToken ? `${AUTH_SERVICE_URL}/api/auth/login/${loginToken}` : null);
+    const defaultPassword = authAccount?.defaultPassword || null;
+    const isFreeEvent = !!options.isFreeEvent;
+    const isPaidEvent = !!options.isPaidEvent;
+    const guestTicket = options.guestTicket || null;
+
+    const ticketDownloadUrl = guestTicket
+      ? `${ticketGeneratorUrl}/api/tickets/${guestTicket.id}/download`
+      : null;
+
+    const ticketAccessUrl = isFreeEvent && ticketDownloadUrl
+      ? ticketDownloadUrl
+      : `${frontendUrl}/events/${event.id}/tickets`;
 
     return {
       template: 'event-invitation',
@@ -207,7 +255,15 @@ class InvitationsService {
         message: event.description || `Vous êtes invité à ${event.title}.`,
         senderName: event.organizer_name,
         eventId: event.id,
-        frontendUrl
+        frontendUrl,
+        loginToken,
+        loginUrl,
+        defaultPassword,
+        isFreeEvent,
+        isPaidEvent,
+        ticketDownloadUrl,
+        ticketAccessUrl,
+        ticketCode: guestTicket?.ticket_code || null
       }
     };
   }

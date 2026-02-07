@@ -1,5 +1,6 @@
 const guestsRepository = require('./guests.repository');
 const { v4: uuidv4 } = require('uuid');
+const { ensureGuestAuthAccount } = require('./guest-auth.helper');
 
 class GuestsService {
   async createGuest(guestData, userId) {
@@ -24,6 +25,15 @@ class GuestsService {
       };
 
       const guest = await guestsRepository.create(guestDataWithCreator);
+
+      try {
+        await ensureGuestAuthAccount(guest);
+      } catch (error) {
+        console.warn('Failed to provision guest auth account:', {
+          email: guest.email,
+          error: error.message
+        });
+      }
       
       return {
         success: true,
@@ -254,6 +264,15 @@ class GuestsService {
           };
 
           guestRecord = await guestsRepository.create(guestData);
+
+          try {
+            await ensureGuestAuthAccount(guestRecord);
+          } catch (error) {
+            console.warn('Failed to provision guest auth account:', {
+              email: guestRecord.email,
+              error: error.message
+            });
+          }
           
           // Créer la liaison event_guests
           eventGuestsData.push({
@@ -372,6 +391,17 @@ class GuestsService {
             created_by: userId,
             updated_by: userId
           });
+
+          if (guestRecord?.email) {
+            try {
+              await ensureGuestAuthAccount(guestRecord);
+            } catch (error) {
+              console.warn('Failed to provision guest auth account:', {
+                email: guestRecord.email,
+                error: error.message
+              });
+            }
+          }
         }
       }
 
@@ -455,10 +485,15 @@ class GuestsService {
   async getEventGuestStats(eventId, userId) {
     try {
       const stats = await guestsRepository.getEventStats(eventId);
+      const guests = await guestsRepository.findByEventId(eventId, { page: 1, limit: 1000 });
       
       return {
         success: true,
-        data: stats
+        data: {
+          ...stats,
+          guests: guests || [],
+          guests_count: Array.isArray(guests) ? guests.length : 0
+        }
       };
     } catch (error) {
       console.error('Error getting event guest stats:', error);
