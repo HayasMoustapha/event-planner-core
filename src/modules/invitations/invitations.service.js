@@ -2,6 +2,7 @@ const invitationsRepository = require('./invitations.repository');
 const guestsRepository = require('../guests/guests.repository');
 const eventsRepository = require('../events/events.repository');
 const notificationClient = require('../../../../shared/clients/notification-client');
+const authApiService = require('../../services/auth-api-service');
 const { ensureGuestAuthAccount, DEFAULT_GUEST_PASSWORD, AUTH_SERVICE_URL } = require('../guests/guest-auth.helper');
 
 class InvitationsService {
@@ -51,6 +52,27 @@ class InvitationsService {
           error: 'Access denied: You are not the organizer of these events'
         };
       }
+
+      const organizerIds = [...new Set(eventGuests.map(eg => eg.organizer_id).filter(Boolean))];
+      const organizerMap = new Map();
+
+      if (organizerIds.length > 0) {
+        try {
+          const usersResponse = await authApiService.getUsersBatch(organizerIds);
+          const users = usersResponse.data?.users || usersResponse.data || [];
+
+          users.forEach((user) => {
+            const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+            organizerMap.set(user.id, {
+              name: fullName || user.email || 'Organisateur',
+              email: user.email || null,
+              phone: user.phone || null
+            });
+          });
+        } catch (error) {
+          console.error('Failed to fetch organizer info for invitations:', error.message);
+        }
+      }
       
       const ticketTypeSummaryByEvent = new Map();
 
@@ -94,12 +116,16 @@ class InvitationsService {
           const invitation = await invitationsRepository.createInvitation(eventGuest.id, userId);
           
           // Préparer les données de l'événement pour la notification
+          const organizerInfo = organizerMap.get(eventGuest.organizer_id) || null;
           const eventData = {
             id: eventGuest.event_id,
             title: eventGuest.event_title,
             description: eventGuest.event_description,
             event_date: eventGuest.event_date,
-            location: eventGuest.location
+            location: eventGuest.location,
+            organizer_name: organizerInfo?.name || null,
+            organizer_email: organizerInfo?.email || null,
+            organizer_phone: organizerInfo?.phone || null
           };
           
           // Envoyer notification selon la méthode
@@ -223,8 +249,8 @@ class InvitationsService {
     const ticketGeneratorUrl = process.env.TICKET_GENERATOR_URL || 'http://localhost:3004';
 
     const authAccount = options.authAccount || null;
-    const loginToken = authAccount?.loginToken || null;
-    const loginUrl = authAccount?.loginUrl || (loginToken ? `${AUTH_SERVICE_URL}/api/auth/login/${loginToken}` : null);
+    const loginToken = null;
+    const loginUrl = authAccount?.loginUrl || `${frontendUrl}/login`;
     const defaultPassword = authAccount?.defaultPassword || null;
     const isFreeEvent = !!options.isFreeEvent;
     const isPaidEvent = !!options.isPaidEvent;
@@ -248,6 +274,8 @@ class InvitationsService {
         eventTime: timeLabel,
         eventLocation: event.location,
         organizerName: event.organizer_name,
+        organizerEmail: event.organizer_email,
+        organizerPhone: event.organizer_phone,
         invitationToken: invitation.invitation_code,
         responseUrl: `${frontendUrl}/invitations/${invitation.invitation_code}`,
         acceptUrl: `${frontendUrl}/invitations/${invitation.invitation_code}/accept`,
