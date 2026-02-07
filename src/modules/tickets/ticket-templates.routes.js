@@ -1,9 +1,18 @@
 const express = require('express');
 const Joi = require('joi');
 const ticketTemplatesController = require('./ticket-templates.controller');
+const { uploadTemplateFile } = require('../../middleware/upload.middleware');
 const { SecurityMiddleware, ValidationMiddleware } = require('../../../../shared');
 
 const router = express.Router();
+
+const attachTemplateFile = (req, res, next) => {
+  if (req.file?.path) {
+    req.body = req.body || {};
+    req.body.source_files_path = req.file.path;
+  }
+  next();
+};
 
 // Apply authentication to all routes
 router.use(SecurityMiddleware.authenticated());
@@ -11,6 +20,8 @@ router.use(SecurityMiddleware.authenticated());
 // Ticket Templates CRUD Operations
 router.post('/', 
   SecurityMiddleware.withPermissions('tickets.templates.create'),
+  uploadTemplateFile,
+  attachTemplateFile,
   ValidationMiddleware.createTicketTemplatesValidator('createTemplate'),
   ticketTemplatesController.createTemplate
 );
@@ -23,6 +34,8 @@ router.get('/:id', SecurityMiddleware.withPermissions('tickets.templates.read'),
 
 router.put('/:id', 
   SecurityMiddleware.withPermissions('tickets.templates.update'),
+  uploadTemplateFile,
+  attachTemplateFile,
   ValidationMiddleware.createTicketTemplatesValidator('updateTemplate'),
   ticketTemplatesController.updateTemplate
 );

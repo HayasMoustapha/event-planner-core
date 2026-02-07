@@ -86,7 +86,8 @@ class TicketTemplatesController {
   async updateTemplate(req, res) {
     try {
       const { id } = req.params;
-      const result = await ticketTemplatesService.updateTemplate(parseInt(id), req.body, req.user.id);
+      const updatePayload = req.body || {};
+      const result = await ticketTemplatesService.updateTemplate(parseInt(id), updatePayload, req.user.id);
       
       if (!result.success) {
         return res.status(400).json({

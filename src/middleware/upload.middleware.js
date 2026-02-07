@@ -45,7 +45,104 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Configuration de Multer
+// Configuration du stockage pour les templates (zip)
+const templateStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../../../temp/uploads/templates');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname) || '.zip';
+    cb(null, `template-${uniqueSuffix}${ext}`);
+  }
+});
+
+const templateFileFilter = (req, file, cb) => {
+  const allowedTypes = [
+    'application/zip',
+    'application/x-zip-compressed',
+    'multipart/x-zip'
+  ];
+  const allowedExtensions = ['.zip'];
+  const fileExt = path.extname(file.originalname).toLowerCase();
+
+  if (allowedExtensions.includes(fileExt)) {
+    cb(null, true);
+  } else if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only ZIP templates are allowed'), false);
+  }
+};
+
+const templateUpload = multer({
+  storage: templateStorage,
+  fileFilter: templateFileFilter,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB max
+    files: 1
+  }
+});
+
+// Middleware pour l'upload des templates (zip)
+const uploadTemplateFile = (req, res, next) => {
+  // Si ce n'est pas un multipart/form-data, on ne tente pas l'upload
+  if (!req.is('multipart/form-data')) {
+    return next();
+  }
+
+  const uploadSingle = templateUpload.single('file');
+
+  uploadSingle(req, res, (err) => {
+    if (err && err.code === 'LIMIT_UNEXPECTED_FILE') {
+      const uploadTemplate = templateUpload.single('template');
+      uploadTemplate(req, res, (templateErr) => {
+        if (templateErr && templateErr.code === 'LIMIT_UNEXPECTED_FILE') {
+          const uploadSource = templateUpload.single('source_files');
+          uploadSource(req, res, (sourceErr) => {
+            if (sourceErr && sourceErr.code === 'LIMIT_UNEXPECTED_FILE') {
+              const uploadZip = templateUpload.single('zip');
+              uploadZip(req, res, next);
+            } else {
+              if (sourceErr) {
+                return res.status(400).json({
+                  success: false,
+                  error: 'Invalid upload form data',
+                  message: sourceErr.message
+                });
+              }
+              next(sourceErr);
+            }
+          });
+        } else {
+          if (templateErr) {
+            return res.status(400).json({
+              success: false,
+              error: 'Invalid upload form data',
+              message: templateErr.message
+            });
+          }
+          next(templateErr);
+        }
+      });
+    } else {
+      if (err) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid upload form data',
+          message: err.message
+        });
+      }
+      next(err);
+    }
+  });
+};
+
+// Configuration de Multer (import invités)
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
@@ -73,15 +170,30 @@ const uploadGuestsFile = (req, res, next) => {
           
           uploadCsv(req, res, next);
         } else {
+          if (guestsErr) {
+            return res.status(400).json({
+              success: false,
+              error: 'Invalid upload form data',
+              message: guestsErr.message
+            });
+          }
           next(guestsErr);
         }
       });
     } else {
+      if (err) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid upload form data',
+          message: err.message
+        });
+      }
       next(err);
     }
   });
 };
 
 module.exports = {
-  uploadGuestsFile
+  uploadGuestsFile,
+  uploadTemplateFile
 };

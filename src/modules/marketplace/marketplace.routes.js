@@ -3,9 +3,18 @@ const Joi = require('joi');
 const marketplaceController = require('./marketplace.controller');
 const paymentRoutes = require('./payment.routes.simple'); // Utilisation des routes simplifiées pour les tests
 const { SecurityMiddleware, ValidationMiddleware, ContextInjector } = require('../../../../shared');
+const { uploadTemplateFile } = require('../../middleware/upload.middleware');
 const marketplaceErrorHandler = require('./marketplace.errorHandler');
 
 const router = express.Router();
+
+const attachTemplateFile = (req, res, next) => {
+  if (req.file?.path) {
+    req.body = req.body || {};
+    req.body.source_files_path = req.file.path;
+  }
+  next();
+};
 
 // Apply authentication to all routes
 router.use(SecurityMiddleware.authenticated());
@@ -41,6 +50,8 @@ router.put('/designers/:id', SecurityMiddleware.withPermissions('marketplace.des
 // Template Management
 router.post('/templates', 
   SecurityMiddleware.withPermissions('marketplace.templates.create'),
+  uploadTemplateFile,
+  attachTemplateFile,
   ValidationMiddleware.createMarketplaceValidator('createTemplate'), 
   marketplaceController.createTemplate
 );
@@ -49,7 +60,13 @@ router.get('/templates', SecurityMiddleware.withPermissions('marketplace.templat
 
 router.get('/templates/:id', SecurityMiddleware.withPermissions('marketplace.templates.read'), marketplaceController.getTemplateById);
 
-router.put('/templates/:id', SecurityMiddleware.withPermissions('marketplace.templates.update'), ValidationMiddleware.createMarketplaceValidator('updateTemplate'), marketplaceController.updateTemplate);
+router.put('/templates/:id',
+  SecurityMiddleware.withPermissions('marketplace.templates.update'),
+  uploadTemplateFile,
+  attachTemplateFile,
+  ValidationMiddleware.createMarketplaceValidator('updateTemplate'),
+  marketplaceController.updateTemplate
+);
 
 // Template Purchase
 router.post('/templates/:templateId/purchase', SecurityMiddleware.withPermissions('marketplace.templates.purchase'), ValidationMiddleware.createMarketplaceValidator('purchaseTemplate'), marketplaceController.purchaseTemplate);

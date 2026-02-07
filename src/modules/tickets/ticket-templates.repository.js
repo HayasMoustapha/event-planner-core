@@ -93,6 +93,17 @@ class TicketTemplatesRepository {
   }
 
   async update(id, updateData, updatedBy) {
+    if (!updateData || typeof updateData !== 'object') {
+      return {
+        success: false,
+        error: 'No data provided for update',
+        details: {
+          message: 'updateData is required',
+          provided: updateData
+        }
+      };
+    }
+
     const allowedFields = ['name', 'description', 'preview_url', 'source_files_path', 'is_customizable'];
     const updates = [];
     const values = [];
