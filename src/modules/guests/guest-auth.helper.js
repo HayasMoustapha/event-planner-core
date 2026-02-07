@@ -77,10 +77,47 @@ async function verifyGuestEmail(email, otpCode) {
   return response.data;
 }
 
+async function createGuestAccountInternal(guest) {
+  const response = await authClient.post(
+    '/api/internal/auth/guests',
+    {
+      first_name: guest.first_name || 'Invité',
+      last_name: guest.last_name || '',
+      email: guest.email,
+      phone: guest.phone || null,
+      password: DEFAULT_GUEST_PASSWORD
+    },
+    {
+      headers: {
+        'X-Service-Token': process.env.SHARED_SERVICE_TOKEN || 'shared-service-token-abcdef12345678901234567890'
+      }
+    }
+  );
+
+  return response.data;
+}
+
 async function ensureGuestAuthAccount(guest) {
   const email = safeLower(guest.email);
   if (!email) {
     return { success: false, reason: 'missing_email' };
+  }
+
+  try {
+    const internalResult = await createGuestAccountInternal({ ...guest, email });
+    if (internalResult?.success && internalResult?.data) {
+      return {
+        success: true,
+        created: true,
+        email,
+        loginToken: internalResult.data.loginToken || null,
+        loginUrl: internalResult.data.loginUrl || null,
+        defaultPassword: internalResult.data.defaultPassword || null,
+        source: 'internal'
+      };
+    }
+  } catch (error) {
+    // fallback to public flow
   }
 
   const existingUser = await findAuthUserByEmail(email);
