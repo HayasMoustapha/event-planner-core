@@ -10,15 +10,18 @@ const axios = require('axios');
 
 const REQUIRED_VARIABLES = [
   'EVENT_TITLE',
-  'EVENT_TYPE',
   'EVENT_DATE',
   'EVENT_TIME',
   'EVENT_LOCATION',
   'GUEST_NAME',
   'GUEST_EMAIL',
-  'TICKET_ID',
+  'TICKET_CODE',
   'QR_CODE',
-  'ORGANIZER_NAME',
+  'ORGANIZER_NAME'
+];
+
+const OPTIONAL_VARIABLES = [
+  'EVENT_TYPE',
   'ISSUED_AT'
 ];
 
@@ -30,7 +33,7 @@ const SAMPLE_DATA = {
   EVENT_LOCATION: 'Event Hall',
   GUEST_NAME: 'John Doe',
   GUEST_EMAIL: 'john.doe@example.com',
-  TICKET_ID: 'TICKET-0001',
+  TICKET_CODE: 'TICKET-0001',
   ORGANIZER_NAME: 'Event Planner',
   ISSUED_AT: '2026-01-01 12:00'
 };
