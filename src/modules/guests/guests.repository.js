@@ -371,7 +371,7 @@ class GuestsRepository {
   }
 
   async getEventStats(eventId) {
-    const query = `
+    const guestStatsQuery = `
       SELECT 
         COUNT(*) as total_guests,
         COUNT(CASE WHEN eg.is_present = true THEN 1 END) as checked_in_guests,
@@ -380,11 +380,59 @@ class GuestsRepository {
       WHERE eg.event_id = $1 AND eg.deleted_at IS NULL
     `;
     
-    const result = await database.query(query, [eventId]);
-    return result.rows[0] || {
+    const ticketsGeneratedQuery = `
+      SELECT COUNT(t.id) as tickets_generated
+      FROM tickets t
+      INNER JOIN event_guests eg ON t.event_guest_id = eg.id
+      WHERE eg.event_id = $1 AND t.deleted_at IS NULL AND eg.deleted_at IS NULL
+    `;
+
+    const ticketsSentQuery = `
+      SELECT COUNT(i.id) as invitations_sent
+      FROM invitations i
+      INNER JOIN event_guests eg ON i.event_guest_id = eg.id
+      WHERE eg.event_id = $1
+        AND i.deleted_at IS NULL
+        AND i.status IN ('sent', 'opened', 'confirmed')
+    `;
+
+    const categoriesQuery = `
+      SELECT 
+        tt.id as ticket_type_id,
+        tt.name as ticket_type_name,
+        tt.type as ticket_type,
+        COUNT(DISTINCT eg.id) as guests_count,
+        COUNT(t.id) as tickets_count,
+        COUNT(CASE WHEN eg.is_present = true THEN 1 END) as checked_in_count
+      FROM ticket_types tt
+      LEFT JOIN tickets t ON t.ticket_type_id = tt.id AND t.deleted_at IS NULL
+      LEFT JOIN event_guests eg ON t.event_guest_id = eg.id AND eg.deleted_at IS NULL
+      WHERE tt.event_id = $1 AND tt.deleted_at IS NULL
+      GROUP BY tt.id, tt.name, tt.type
+      ORDER BY tt.created_at ASC
+    `;
+
+    const [guestStatsResult, ticketsGeneratedResult, ticketsSentResult, categoriesResult] = await Promise.all([
+      database.query(guestStatsQuery, [eventId]),
+      database.query(ticketsGeneratedQuery, [eventId]),
+      database.query(ticketsSentQuery, [eventId]),
+      database.query(categoriesQuery, [eventId])
+    ]);
+
+    const guestStats = guestStatsResult.rows[0] || {
       total_guests: 0,
       checked_in_guests: 0,
       pending_guests: 0
+    };
+
+    const ticketsGenerated = parseInt(ticketsGeneratedResult.rows[0]?.tickets_generated || 0);
+    const invitationsSent = parseInt(ticketsSentResult.rows[0]?.invitations_sent || 0);
+
+    return {
+      ...guestStats,
+      tickets_generated: ticketsGenerated,
+      invitations_sent: invitationsSent,
+      categories: categoriesResult.rows || []
     };
   }
 
