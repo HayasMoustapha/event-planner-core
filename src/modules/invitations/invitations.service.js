@@ -103,17 +103,24 @@ class InvitationsService {
 
           // Vérifier si invitation existe déjà
           const existingInvitation = await invitationsRepository.findByEventGuestId(eventGuest.id);
+          let invitation = existingInvitation;
+
           if (existingInvitation) {
-            results.push({ 
-              success: false, 
-              event_guest_id: eventGuest.id, 
-              error: 'Invitation already exists' 
-            });
-            continue;
+            if (existingInvitation.status !== 'failed') {
+              results.push({ 
+                success: false, 
+                event_guest_id: eventGuest.id, 
+                error: 'Invitation already exists' 
+              });
+              continue;
+            }
+
+            // Autoriser le renvoi si la précédente tentative a échoué
+            await invitationsRepository.updateStatus(existingInvitation.id, 'pending', userId);
+          } else {
+            // Créer l'invitation
+            invitation = await invitationsRepository.createInvitation(eventGuest.id, userId);
           }
-          
-          // Créer l'invitation
-          const invitation = await invitationsRepository.createInvitation(eventGuest.id, userId);
           
           // Préparer les données de l'événement pour la notification
           const organizerInfo = organizerMap.get(eventGuest.organizer_id) || null;
@@ -147,9 +154,11 @@ class InvitationsService {
             sendMethod
           );
           
-          // Mettre à jour le statut si notification envoyée
+          // Mettre à jour le statut selon l'envoi
           if (notificationResult.success) {
             await invitationsRepository.updateStatus(invitation.id, 'sent', userId);
+          } else {
+            await invitationsRepository.updateStatus(invitation.id, 'failed', userId);
           }
           
           results.push({
@@ -164,6 +173,9 @@ class InvitationsService {
           
         } catch (error) {
           console.error(`Failed to send invitation to event_guest ${eventGuest.id}:`, error);
+          if (invitation?.id) {
+            await invitationsRepository.updateStatus(invitation.id, 'failed', userId);
+          }
           results.push({
             success: false,
             event_guest_id: eventGuest.id,

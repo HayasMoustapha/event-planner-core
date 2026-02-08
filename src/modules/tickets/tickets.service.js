@@ -476,6 +476,13 @@ class TicketsService {
         };
 
         const updatedTicket = await ticketsRepository.update(ticketId, updateData);
+        if (ticket.guest_id && ticket.event_id) {
+          await guestsRepository.checkIn({
+            guest_id: ticket.guest_id,
+            event_id: ticket.event_id,
+            checked_in_at: new Date().toISOString()
+          });
+        }
 
         return {
           success: true,
@@ -543,15 +550,18 @@ class TicketsService {
 
       // Mettre à jour le ticket localement
       const updatedTicket = await ticketsRepository.update(ticketId, {
-        status: 'validated',
+        is_validated: true,
         validated_at: new Date().toISOString(),
-        validated_by: userId,
-        validation_metadata: {
-          service: 'local-fallback',
-          reason: 'scan-validation-service-unavailable',
-          timestamp: new Date().toISOString()
-        }
+        validated_by: userId
       });
+
+      if (ticket.guest_id && ticket.event_id) {
+        await guestsRepository.checkIn({
+          guest_id: ticket.guest_id,
+          event_id: ticket.event_id,
+          checked_in_at: new Date().toISOString()
+        });
+      }
 
       return {
         success: true,
@@ -597,10 +607,18 @@ class TicketsService {
       };
 
       const updatedTicket = await ticketsRepository.update(ticket.id, {
-        status: 'validated',
+        is_validated: true,
         validated_at: new Date().toISOString(),
         validated_by: userId
       });
+
+      if (ticket.guest_id && ticket.event_id) {
+        await guestsRepository.checkIn({
+          guest_id: ticket.guest_id,
+          event_id: ticket.event_id,
+          checked_in_at: new Date().toISOString()
+        });
+      }
 
       return {
         success: true,
@@ -755,20 +773,19 @@ class TicketsService {
       // ÉTAPE 10 : Mettre à jour le ticket si validation réussie
       if (validationResult.valid) {
         const updateData = {
-          status: 'used',
+          is_validated: true,
           validated_at: new Date().toISOString(),
-          validated_by: userId,
-          last_scan_context: scanContext,
-          validation_metadata: {
-            qr_code_validated: qrCode,
-            scan_options: options,
-            fraud_flags: validationResult.fraudFlags,
-            restrictions: validationResult.restrictions,
-            validated_at: new Date().toISOString()
-          }
+          validated_by: userId
         };
 
         const updatedTicket = await ticketsRepository.update(ticketId, updateData);
+        if (ticket.guest_id && ticket.event_id) {
+          await guestsRepository.checkIn({
+            guest_id: ticket.guest_id,
+            event_id: ticket.event_id,
+            checked_in_at: new Date().toISOString()
+          });
+        }
 
         console.log(`Ticket ${ticketId} validé avec succès par QR code`);
 

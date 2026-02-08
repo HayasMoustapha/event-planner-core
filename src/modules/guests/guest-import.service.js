@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { ensureGuestAuthAccount } = require('./guest-auth.helper');
+const eventsRepository = require('../events/events.repository');
 
 /**
  * Service d'import des invités pour les fichiers CSV et Excel
@@ -27,6 +28,14 @@ class GuestImportService {
    */
   async importGuestsFromFile(eventId, filePath, userId = null) {
     try {
+      const event = await eventsRepository.findById(eventId);
+      if (!event) {
+        throw new Error('Event not found');
+      }
+      if (event.status === 'archived') {
+        throw new Error('Cannot import guests for an archived event');
+      }
+
       // Vérifier que le fichier existe
       if (!fs.existsSync(filePath)) {
         throw new Error('File not found');
@@ -101,6 +110,14 @@ class GuestImportService {
     const client = await this.db.pool.connect();
 
     try {
+      const eventCheck = await eventsRepository.findById(eventId);
+      if (!eventCheck) {
+        throw new Error('Event not found');
+      }
+      if (eventCheck.status === 'archived') {
+        throw new Error('Cannot import guests for an archived event');
+      }
+
       // Start transaction
       await client.query('BEGIN');
 

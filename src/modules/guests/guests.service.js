@@ -1,8 +1,19 @@
 const guestsRepository = require('./guests.repository');
 const { v4: uuidv4 } = require('uuid');
 const { ensureGuestAuthAccount } = require('./guest-auth.helper');
+const eventsRepository = require('../events/events.repository');
 
 class GuestsService {
+  async ensureEventAcceptsGuests(eventId) {
+    const event = await eventsRepository.findById(eventId);
+    if (!event) {
+      throw new Error('Event not found');
+    }
+    if (event.status === 'archived') {
+      throw new Error('Cannot add guests to an archived event');
+    }
+  }
+
   async createGuest(guestData, userId) {
     try {
       // Check if email already exists
@@ -207,6 +218,8 @@ class GuestsService {
       if (!eventId) {
         throw new Error('Event ID is required');
       }
+
+      await this.ensureEventAcceptsGuests(eventId);
       
       if (!guests || !Array.isArray(guests)) {
         throw new Error('Guests must be an array');
@@ -310,6 +323,8 @@ class GuestsService {
       if (!eventId) {
         throw new Error('Event ID is required');
       }
+
+      await this.ensureEventAcceptsGuests(eventId);
 
       if (!guests || !Array.isArray(guests)) {
         throw new Error('Guests must be an array');

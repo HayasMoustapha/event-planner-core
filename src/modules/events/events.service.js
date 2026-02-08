@@ -2,6 +2,7 @@
 // IMPORT DES DÉPENDANCES
 // ========================================
 const eventsRepository = require('./events.repository');
+const ticketsRepository = require('../tickets/tickets.repository');
 const notificationClient = require('../../../../shared/clients/notification-client');
 // Plus besoin d'UUID - la base de données utilise des SERIAL IDs automatiques
 
@@ -195,6 +196,14 @@ class EventsService {
 
   async publishEvent(eventId, userId) {
     try {
+      const ticketTypes = await ticketsRepository.findTicketTypesByEventId(eventId, { page: 1, limit: 1 });
+      if (!ticketTypes?.pagination?.total || ticketTypes.pagination.total < 1) {
+        return {
+          success: false,
+          error: 'Cannot publish event without at least one ticket type'
+        };
+      }
+
       const publishedEvent = await eventsRepository.publish(eventId, userId);
       
       if (!publishedEvent) {

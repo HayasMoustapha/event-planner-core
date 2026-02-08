@@ -115,12 +115,13 @@ class GuestsRepository {
   async updateEventGuestStatus(eventGuestId, status) {
     const query = `
       UPDATE event_guests 
-      SET is_present = $1, updated_at = NOW()
+      SET is_present = $1, status = $3, updated_at = NOW()
       WHERE id = $2 AND deleted_at IS NULL
       RETURNING *
     `;
     
-    const result = await database.query(query, [status === 'confirmed', eventGuestId]);
+    const normalizedStatus = status || null;
+    const result = await database.query(query, [status === 'confirmed', eventGuestId, normalizedStatus]);
     return result.rows[0];
   }
 
@@ -252,7 +253,7 @@ class GuestsRepository {
   async checkInGuest(invitationCode) {
     const query = `
       UPDATE event_guests 
-      SET is_present = true, check_in_time = NOW(), updated_at = NOW()
+      SET is_present = true, status = 'confirmed', check_in_time = NOW(), updated_at = NOW()
       WHERE invitation_code = $1 AND is_present = false AND deleted_at IS NULL
       RETURNING *
     `;
@@ -415,8 +416,8 @@ class GuestsRepository {
 
     const query = `
       UPDATE event_guests 
-      SET is_present = true, check_in_time = $1, updated_at = NOW()
-      WHERE guest_id = $2 AND event_id = $3
+      SET is_present = true, status = 'confirmed', check_in_time = $1, updated_at = NOW()
+      WHERE guest_id = $2 AND event_id = $3 AND deleted_at IS NULL
       RETURNING *
     `;
 
