@@ -127,11 +127,11 @@ class TicketTemplatesRepository {
       };
     }
     
-    values.push(updatedBy, updatedBy, id);
+    values.push(id);
     
     const query = `
       UPDATE ticket_templates 
-      SET ${updates.join(', ')}, updated_by = $${values.length - 1}, updated_at = NOW()
+      SET ${updates.join(', ')}, updated_at = NOW()
       WHERE id = $${values.length}
       RETURNING *
     `;
