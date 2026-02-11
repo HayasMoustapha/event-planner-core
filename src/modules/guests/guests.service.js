@@ -503,17 +503,24 @@ class GuestsService {
       const guests = await guestsRepository.findByEventId(eventId, { page: 1, limit: 1000 });
       const totalGuests = parseInt(stats.total_guests || 0);
       const checkedIn = parseInt(stats.checked_in_guests || 0);
-      const attendanceRate = totalGuests > 0 ? Math.round((checkedIn / totalGuests) * 100) : 0;
+      const ticketsGenerated = parseInt(stats.tickets_generated || 0);
+      const invitationsSent = parseInt(stats.invitations_sent || 0);
+      const attendanceBase = ticketsGenerated > 0 ? ticketsGenerated : totalGuests;
+      const attendanceRate = attendanceBase > 0 ? Math.round((checkedIn / attendanceBase) * 100) : 0;
 
       const categories = Array.isArray(stats.categories) ? stats.categories : [];
-      const restrictedCategories = categories.filter(cat =>
-        cat.ticket_type && String(cat.ticket_type).toLowerCase() !== 'standard'
-      );
+      const restrictedCategories = categories.filter(cat => {
+        const type = String(cat.ticket_type || '').toLowerCase();
+        const name = String(cat.ticket_type_name || '').toLowerCase();
+        return type === 'paid' || type === 'donation' || name.includes('vip') || name.includes('premium');
+      });
 
       return {
         success: true,
         data: {
           ...stats,
+          tickets_generated: ticketsGenerated,
+          tickets_sent: invitationsSent,
           attendance_rate_percent: attendanceRate,
           restricted_categories: restrictedCategories,
           guests: guests || [],
