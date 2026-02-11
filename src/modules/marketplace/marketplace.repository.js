@@ -514,6 +514,67 @@ class MarketplaceRepository {
     };
   }
 
+  async getPurchases(options = {}) {
+    const { page = 1, limit = 20 } = options;
+    const offset = (page - 1) * limit;
+
+    const query = `
+      SELECT p.*, t.name as template_name, t.preview_url, d.brand_name
+      FROM purchases p
+      LEFT JOIN templates t ON p.template_id = t.id
+      LEFT JOIN designers d ON t.designer_id = d.id
+      WHERE p.deleted_at IS NULL
+      ORDER BY p.purchase_date DESC
+      LIMIT $1 OFFSET $2
+    `;
+
+    const result = await database.query(query, [limit, offset]);
+
+    const countQuery = 'SELECT COUNT(*) as total FROM purchases WHERE deleted_at IS NULL';
+    const countResult = await database.query(countQuery);
+    const total = parseInt(countResult.rows[0].total);
+
+    return {
+      purchases: result.rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  }
+
+  async getReviews(options = {}) {
+    const { page = 1, limit = 20 } = options;
+    const offset = (page - 1) * limit;
+
+    const query = `
+      SELECT r.*, t.name as template_name
+      FROM reviews r
+      LEFT JOIN templates t ON r.template_id = t.id
+      WHERE r.deleted_at IS NULL
+      ORDER BY r.created_at DESC
+      LIMIT $1 OFFSET $2
+    `;
+
+    const result = await database.query(query, [limit, offset]);
+
+    const countQuery = 'SELECT COUNT(*) as total FROM reviews WHERE deleted_at IS NULL';
+    const countResult = await database.query(countQuery);
+    const total = parseInt(countResult.rows[0].total);
+
+    return {
+      reviews: result.rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  }
+
   async updateDesigner(id, updateData, updatedBy) {
     // CORRECTION: Uniquement les champs qui existent dans la table SQL designers
     const allowedFields = ['brand_name', 'portfolio_url', 'verified_by', 'verified_at'];

@@ -986,6 +986,17 @@ class AdminRepository {
   async createBackup(options = {}) {
     const { type, include, userId } = options;
     
+    await database.query(`
+      CREATE TABLE IF NOT EXISTS backups (
+        id UUID PRIMARY KEY,
+        type VARCHAR(50) NOT NULL,
+        include JSONB NOT NULL,
+        created_by BIGINT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        status VARCHAR(20) NOT NULL DEFAULT 'pending'
+      )
+    `);
+
     const backupData = {
       id: uuidv4(),
       type: type || 'full',
