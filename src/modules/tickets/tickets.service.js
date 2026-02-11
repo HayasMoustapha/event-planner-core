@@ -331,7 +331,7 @@ class TicketsService {
       }
 
       // Vérifier que l'utilisateur a les permissions nécessaires
-      if (String(ticket.organizer_id) !== String(userId) && !await this.checkUserRole(userId, 'event_manager')) {
+      if (String(ticket.organizer_id) !== String(userId) && !await this.checkUserRole(userId, 'organizer') && !await this.checkUserRole(userId, 'super_admin')) {
         return {
           success: false,
           error: 'Access denied: You are not the organizer of this event'
@@ -436,7 +436,7 @@ class TicketsService {
 
       // ÉTAPE 2 : Vérifier que l'utilisateur a le droit de valider ce ticket
       // L'utilisateur doit être l'organisateur de l'événement ou un admin
-      if (String(ticket.organizer_id) !== String(userId) && !await this.checkUserRole(userId, 'admin')) {
+      if (String(ticket.organizer_id) !== String(userId) && !await this.checkUserRole(userId, 'super_admin')) {
         return {
           success: false,
           error: 'Access denied: You are not the organizer of this event'
@@ -591,7 +591,7 @@ class TicketsService {
 
       // Check if user owns the ticket or has admin permissions
       // L'utilisateur doit être l'organisateur de l'événement ou un admin
-      if (String(ticket.organizer_id) !== String(userId) && !await this.checkUserRole(userId, 'admin')) {
+      if (String(ticket.organizer_id) !== String(userId) && !await this.checkUserRole(userId, 'super_admin')) {
         return {
           success: false,
           error: 'Access denied: You are not the organizer of this event'

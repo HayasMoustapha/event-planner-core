@@ -78,6 +78,7 @@ class InvitationsService {
 
       // 3. Pour chaque event_guest
       for (const eventGuest of eventGuests) {
+        let invitation = null;
         try {
           let ticketSummary = ticketTypeSummaryByEvent.get(eventGuest.event_id);
           if (!ticketSummary) {
@@ -93,17 +94,24 @@ class InvitationsService {
 
           let authAccount = null;
           if (eventGuest.email) {
-            authAccount = await ensureGuestAuthAccount({
-              first_name: eventGuest.first_name,
-              last_name: eventGuest.last_name,
-              email: eventGuest.email,
-              phone: eventGuest.phone || null
-            });
+            try {
+              authAccount = await ensureGuestAuthAccount({
+                first_name: eventGuest.first_name,
+                last_name: eventGuest.last_name,
+                email: eventGuest.email,
+                phone: eventGuest.phone || null
+              });
+            } catch (error) {
+              console.warn('Failed to provision guest auth account for invitation:', {
+                email: eventGuest.email,
+                error: error.message
+              });
+            }
           }
 
           // Vérifier si invitation existe déjà
           const existingInvitation = await invitationsRepository.findByEventGuestId(eventGuest.id);
-          let invitation = existingInvitation;
+          invitation = existingInvitation;
 
           if (existingInvitation) {
             if (existingInvitation.status !== 'failed') {
