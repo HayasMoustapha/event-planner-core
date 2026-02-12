@@ -20,6 +20,7 @@
    - DB + Redis
    - URLs des services: Auth, Notification, Payment, Ticket Generator, Scan
    - `JWT_SECRET`
+3. Vérifier la connectivité inter‑services (curl /api/health)
 
 ---
 
@@ -44,4 +45,3 @@ npm run start
 ```
 GET http://localhost:3001/api/health
 ```
-
