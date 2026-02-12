@@ -21,8 +21,9 @@ class GuestsService {
         const existingGuest = await guestsRepository.findByEmail(guestData.email);
         if (existingGuest) {
           return {
-            success: false,
-            error: 'Guest with this email already exists'
+            success: true,
+            data: existingGuest,
+            already_exists: true
           };
         }
       }

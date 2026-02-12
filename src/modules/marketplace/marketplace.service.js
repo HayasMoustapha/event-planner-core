@@ -10,8 +10,9 @@ class MarketplaceService {
       const existingDesigner = await marketplaceRepository.findDesignerByUserId(userId, token);
       if (existingDesigner) {
         return {
-          success: false,
-          error: 'User is already registered as a designer'
+          success: true,
+          data: existingDesigner,
+          already_exists: true
         };
       }
 

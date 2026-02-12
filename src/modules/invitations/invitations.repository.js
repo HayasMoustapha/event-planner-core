@@ -209,11 +209,11 @@ class InvitationsRepository {
     `;
     const guestResult = await database.query(updateGuestQuery, [targetStatus, userId, invitation.event_guest_id]);
 
-    // Mark invitation as opened (avoid invalid statuses)
+    // Mark invitation as opened (schema has no opened_at column)
     if (invitation.id) {
       const updateInvitationQuery = `
         UPDATE invitations
-        SET opened_at = COALESCE(opened_at, NOW()), updated_at = NOW(), updated_by = $2,
+        SET updated_at = NOW(), updated_by = $2,
             status = CASE WHEN status = 'opened' THEN status ELSE 'opened' END
         WHERE id = $1 AND deleted_at IS NULL
         RETURNING *
