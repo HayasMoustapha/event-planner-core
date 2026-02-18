@@ -130,7 +130,11 @@ app.use('/docs', swaggerUi.serve);
 app.get('/docs', swaggerUi.setup(swaggerSpecs, swaggerUiOptions));
 app.get('/docs/spec.yaml', (req, res) => {
   const path = require('path');
+  const fs = require('fs');
   const specFile = path.join(__dirname, '../../../shared/docs/specs/core-service.yaml');
+  if (!fs.existsSync(specFile)) {
+    return res.status(404).json({ error: 'Spec not yet generated — run: npm run docs:generate' });
+  }
   res.setHeader('Content-Type', 'application/yaml');
   res.sendFile(specFile);
 });
