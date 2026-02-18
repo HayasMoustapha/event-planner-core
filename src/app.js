@@ -124,6 +124,17 @@ const RobustAuthMiddleware = require('../../shared/middlewares/robust-auth-middl
 app.use('/health', healthRoutes);
 app.get('/metrics', metricsEndpoint);
 
+// Documentation Swagger — http://localhost:3001/docs
+const { specs: swaggerSpecs, swaggerUi, swaggerUiOptions } = require('./config/swagger');
+app.use('/docs', swaggerUi.serve);
+app.get('/docs', swaggerUi.setup(swaggerSpecs, swaggerUiOptions));
+app.get('/docs/spec.yaml', (req, res) => {
+  const path = require('path');
+  const specFile = path.join(__dirname, '../../../shared/docs/specs/core-service.yaml');
+  res.setHeader('Content-Type', 'application/yaml');
+  res.sendFile(specFile);
+});
+
 // Middleware pour wrapper les controllers et injecter req.db
 function wrapController(controllerFn) {
   return (req, res, next) => {
