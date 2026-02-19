@@ -10,7 +10,7 @@ module.exports = {
   nodeEnv: process.env.NODE_ENV || 'development',
   
   // CORS
-  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  corsOrigin: [process.env.CORS_ORIGIN || 'http://localhost:3000', 'http://localhost:3099'],
   
   // JWT
   jwtSecret: process.env.JWT_SECRET || 'your_jwt_secret_for_validation',
